@@ -1,0 +1,16 @@
+{
+  "schema": "ooda/project/v1",
+  "project_id": "example-analytical-product",
+  "project_class": "analytical-product",
+  "authority": {
+    "integration_owner": "human",
+    "self_merge": false
+  },
+  "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
+  "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
+  "analysis": {
+    "scenario_first": true,
+    "decision_support_not_authority": true
+  },
+  "monitor": {"enabled": false}
+}
