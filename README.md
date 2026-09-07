@@ -6,6 +6,109 @@ OODA keeps execution bounded without making thought narrow.
 
 The project is intentionally small. It does not replace your current agent runtime, Git workflow, or monitor. It gives them a shared doctrine and lightweight execution contracts.
 
+## Cheat sheet
+
+### Current operating paradigm
+
+```text
+LAWRENCE + CHATGPT
+ideas / goals / challenge / prioritization
+          |
+          v
+NARROW CONTEXT BOOTSTRAP
+read only enough durable repo truth to orient
+          |
+          v
+IS THIS WORTH AGENT TIME?
+      /         \
+    no           yes
+    |             |
+keep thinking     v
+             OODA WORK ORDER
+             role + profile + lenses
+             scope + authority + stop conditions
+                    |
+                    v
+               GROK BUILD
+          grok-safe -> /start -> /ooda
+             one bounded mission
+                    |
+                    v
+                /handoff
+             Git / tests / PR
+                    |
+                    v
+          LAWRENCE + CHATGPT
+        review / accept / correct
+                    |
+                    v
+                OODA TRACE
+          durable lesson / outcome
+                    |
+                    v
+               NEXT OODA LOOP
+```
+
+**Rule of thumb:** think broadly, orient intelligently, act narrowly, verify reality, preserve what matters.
+
+### OODA command table
+
+| Command | What it does | Typical use |
+|---|---|---|
+| `ooda init --project-id <id> --project-class <class>` | Adds the minimal `.ooda/project.json` routing overlay to an existing repo. | Adopt an existing project without changing its docs. |
+| `ooda init --project-id <id> --project-class <class> --scaffold` | Creates the minimal OODA starter pack when files are missing. | Start a new OODA-ready repo. |
+| `ooda doctor` | Validates the project overlay and reports whether expected durable state files exist. | Run after adoption/scaffolding or when project setup looks wrong. |
+| `ooda work-order ... --output <file>` | Creates one bounded `ooda/work-order/v1` execution contract. | Turn a decision into a Grok mission. |
+| `ooda trace --work-order <file> ... --output <file>` | Creates an `ooda/trace/v1` result record tied to a work order. | Preserve a useful outcome, negative finding, blocker, or lesson. |
+| `ooda validate <file>` | Validates an OODA project, work-order, or trace JSON contract. | Check a contract before execution or commit. |
+| `./scripts/check.sh` | Runs the OODA unit/contract test suite and validates examples. | Before merging OODA framework changes. |
+| `./scripts/install-cli.sh` | Installs/symlinks the local `ooda` command. | One-time local setup. |
+| `./scripts/install-grok.sh` | Installs/symlinks the single Grok `/ooda` skill without replacing existing lifecycle skills. | One-time Grok adapter setup. |
+
+### Current Grok session commands
+
+OODA does **not** replace your existing Grok lifecycle.
+
+| Command | Purpose in the current paradigm |
+|---|---|
+| `grok-safe` | Start Grok with the existing bounded runtime/efficiency controls. |
+| `/start` | Establish current checkout, Git state, durable project truth, and objective. |
+| `/ooda <work-order>` | Load the bounded OODA mission, role, profile, lenses, authority, and stop conditions. |
+| `/checkpoint` | Persist/verify an in-progress session when it will continue. |
+| `/handoff` | Verify, push/open-or-update PR, report truthful completion state, then stop for review. |
+| `/end` | Finish the existing lifecycle when appropriate under the project's current rules. |
+
+### OODA starter-pack files
+
+`ooda init --scaffold` creates only the following minimal operating spine, and only when the files do not already exist.
+
+| File / directory | What it is for | What should live there |
+|---|---|---|
+| `README.md` | Stable project identity. | What the project does, why it exists, basic usage, major architecture. |
+| `AGENTS.md` | Standing instructions and invariants for agents. | Safety rules, do-not-touch areas, scientific/engineering invariants, authority boundaries. |
+| `PROJECT_STATE.md` | Small current-state checkpoint. | Current objective, phase/gate, important recent truth, blockers, immediate next work. Keep it concise. |
+| `.ooda/project.json` | OODA routing/authority overlay. | Project ID/class, integration authority, state sources, current provider/lifecycle settings. Not project history. |
+| `.ooda/README.md` | Local explanation of the OODA overlay. | How this repo uses work orders/traces and what `.ooda/` is for. |
+| `.ooda/work-orders/` | Bounded execution contracts. | One file per substantial mission worth agent resources. |
+| `.ooda/traces/` | Durable execution outcomes. | Concise Observe/Orient/Decide/Act result, verification, cost, stop reason, useful negative findings. |
+
+The starter pack is deliberately **not** a giant documentation framework. Add more files only when repeated project usage earns them.
+
+### Role / profile / lens selection
+
+Use this sequence:
+
+| Choice | Question to answer |
+|---|---|
+| **Role** | Who owns the next judgment or action? |
+| **Profile** | What expertise does that role need for this mission? |
+| **Lens 1** | What epistemic/control perspective could change the decision? |
+| **Lens 2** | What domain perspective is necessary? |
+| **Lens 3 (optional)** | What challenge/opportunity perspective would materially improve orientation? |
+| **Claim level** | How strongly will we rely on the result: Discovery, Evidence, Qualification, or N/A? |
+
+Normally use **one role + one profile + no more than three lenses**. OODA/Boyd is already the backbone, so `boyd` does not need to be selected mechanically for every task. See `docs/ROUTING.md`.
+
 ## What OODA is
 
 OODA applies John Boyd's Observe → Orient → Decide → Act loop as the control grammar for AI-assisted work.
@@ -16,34 +119,6 @@ OODA applies John Boyd's Observe → Orient → Decide → Act loop as the contr
 - **Act:** execute, verify, and feed the result back into observation.
 
 Orientation is deliberately broad. Bounded execution is not permission for narrow thinking.
-
-## Current operating model
-
-```text
-Lawrence + ChatGPT
-  raw ideas / goals / creative dialogue
-            |
-            v
-  narrow context bootstrap from durable repo truth
-            |
-            v
-      OODA work order
-            |
-            v
-   existing Grok Build workflow
-   /start -> /ooda -> work -> /handoff
-            |
-            v
-    ChatGPT + Lawrence review
-            |
-            v
-       OODA run trace
-            |
-            v
- Agent Ops Monitor (later ingestion)
-```
-
-Today, Grok remains the execution provider. OODA does not replace `grok-safe`, `/start`, `/handoff`, GitHub PR review, or the human integration gate.
 
 ## Install locally
 
@@ -81,19 +156,6 @@ ooda init \
 ooda doctor
 ```
 
-The scaffold creates only the minimal durable operating spine when files are missing:
-
-```text
-README.md
-AGENTS.md
-PROJECT_STATE.md
-.ooda/
-  project.json
-  README.md
-  work-orders/
-  traces/
-```
-
 Existing Markdown files are never silently overwritten.
 
 ## Create a bounded task contract
@@ -127,17 +189,6 @@ Jump into mldugom/tenniskal. Goal: decide the next R6E move. Use OODA. Do not ex
 ```
 
 ChatGPT/controller bootstraps from narrow durable repo truth. See `docs/CONTEXT_BOOTSTRAP.md` and `docs/CHATGPT_USAGE.md`.
-
-## Role and lens routing
-
-Choose:
-
-- **role by accountability** — who owns the decision/action;
-- **profile by expertise** — what domain capability is needed;
-- **lenses by what could materially change the decision**;
-- **claim level by how strongly the result will be relied upon**.
-
-OODA itself is always the backbone, so `boyd` does not need to be redundantly selected for every task. Normally activate no more than three lenses. See `docs/ROUTING.md`.
 
 ## Repo map
 
