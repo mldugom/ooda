@@ -1,0 +1,17 @@
+{
+  "schema": "ooda/project/v1",
+  "project_id": "example-data-ml-system",
+  "project_class": "data-ml-system",
+  "authority": {
+    "integration_owner": "human",
+    "self_merge": false,
+    "production_release_requires_gate": true
+  },
+  "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
+  "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
+  "model": {
+    "default_claim_level": "discovery",
+    "promotion_requires_independent_validation": true
+  },
+  "monitor": {"enabled": false}
+}
