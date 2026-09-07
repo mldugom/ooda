@@ -79,6 +79,39 @@ class InstallCliTests(unittest.TestCase):
             self.assertEqual(unknown.read_text(encoding="utf-8"), "#!/bin/sh\necho unrelated\n")
             self.assertIn("Refusing to replace existing", cp.stderr)
 
+    def test_macos_bash_persists_path_in_bash_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            bin_dir = home / ".local" / "bin"
+            home.mkdir(parents=True)
+
+            env = os.environ.copy()
+            env.update(
+                {
+                    "HOME": str(home),
+                    "OODA_BIN_DIR": str(bin_dir),
+                    "SHELL": "/bin/bash",
+                    "OODA_OS_NAME": "Darwin",
+                    "PATH": env.get("PATH", ""),
+                }
+            )
+            cp = subprocess.run(
+                ["bash", str(INSTALLER)],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(cp.returncode, 0, cp.stderr)
+            profile = home / ".bash_profile"
+            self.assertTrue(profile.is_file())
+            self.assertIn(str(bin_dir), profile.read_text(encoding="utf-8"))
+            self.assertFalse((home / ".bashrc").exists())
+            self.assertIn(".bash_profile", cp.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
