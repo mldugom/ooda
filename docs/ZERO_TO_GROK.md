@@ -1,32 +1,10 @@
 # Zero to Grok with OODA
 
-This is the copy/paste path from a fresh machine to an OODA Controller conversation and, when warranted, a bounded worker mission.
-
----
+This is the copy/paste path from a fresh machine to one OODA Controller conversation that can dispatch bounded child workers when needed.
 
 ## A. First-time install
 
-### Pip from GitHub
-
-Once the repository is public:
-
-```bash
-python3 -m pip install "git+https://github.com/mldugom/ooda.git"
-ooda setup
-ooda help
-```
-
-This installs:
-
-- `ooda` command;
-- `grok-safe` command;
-- Grok `/ooda` worker skill;
-- Grok `/ooda-controller` Controller skill;
-- bundled Grok efficiency policy.
-
-The distribution name is `ooda-ai`; do not run `pip install ooda`, which is a different project.
-
-### Or install from a clone
+### Clone — recommended
 
 ```bash
 mkdir -p ~/repos
@@ -34,26 +12,27 @@ cd ~/repos
 git clone https://github.com/mldugom/ooda.git
 cd ooda
 bash install.sh
-ooda help
 ```
 
-If a clone install cannot find `ooda`, ensure `~/.local/bin` is on `PATH`:
+If the installer says `~/.local/bin` was not active in the current shell, run the exact `export PATH=...` line it prints (or open a new terminal).
+
+Verify:
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+ooda help
+grok-safe --help
 ```
 
----
+### Or pip from GitHub
+
+```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
+```
+
+This provides `ooda`, `grok-safe`, `/ooda`, `/ooda-controller`, and the bundled Grok efficiency policy after setup.
 
 ## B. Adopt an existing checked-out repo
-
-Assume an existing product repo is already at:
-
-```text
-~/repos/example-app
-```
-
-If it already has useful README/architecture/process documentation, add only OODA's thin overlay:
 
 ```bash
 cd ~/repos/example-app
@@ -65,9 +44,7 @@ ooda init \
 ooda doctor
 ```
 
-Do **not** use `--scaffold` just because it exists. Use it for a new/empty repo that needs the starter pack, not to compete with existing durable documentation.
-
-This creates:
+For an existing repo with useful docs, normally do **not** use `--scaffold`. OODA adds only:
 
 ```text
 .ooda/
@@ -76,32 +53,20 @@ This creates:
   traces/
 ```
 
-It does not rewrite application code or existing project docs.
-
----
-
-## C. Open Grok and ask a repo-level question
-
-From the target repo:
+## C. Open one Controller conversation
 
 ```bash
 cd ~/repos/example-app
 grok-safe
 ```
 
-Then in Grok:
+Then:
 
 ```text
-/ooda-controller Jump into this repo. Use only the minimum durable repo/control state needed to orient. I want to think about <your question>. Do not do deep code archaeology or implementation yourself; if deeper evidence is required, propose the smallest worker/orientation mission.
+/ooda-controller Jump into this repo. Use only the minimum durable repo/control state needed to orient. I want to think about <your question>. If deeper evidence or implementation is required, construct the smallest bounded mission and delegate it rather than absorbing the deep task context yourself.
 ```
 
-Example:
-
-```text
-/ooda-controller I want to decide the highest-value next product/engineering move. Use compact current state only. If you need deeper product or architecture facts, propose the smallest orientation spike rather than loading the whole repo yourself.
-```
-
-The Controller normally ends with one of:
+Possible outcomes:
 
 ```text
 KEEP THINKING
@@ -110,26 +75,23 @@ HUMAN GATE
 NO ACTION
 ```
 
----
+## D. When deeper facts are needed
 
-## D. If the Controller needs deeper repo facts
-
-A Controller may propose an orientation spike such as:
+The Controller may create/propose an orientation mission such as:
 
 ```text
-PROPOSE MISSION
 role: architect
 profile: full-stack
 lenses: product-user, reliability-systems
 claim: n-a
-objective: Inspect only the architecture, key entrypoints, and current durable backlog/state necessary to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement.
+objective: Inspect only the architecture, key entrypoints, and current durable state needed to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement.
 ```
 
-Create it:
+A durable contract can be created with:
 
 ```bash
 ooda mission \
-  "Inspect only the architecture, key entrypoints, and current durable backlog/state necessary to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement." \
+  "Inspect only the architecture, key entrypoints, and current durable state needed to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement." \
   --role architect \
   --profile full-stack \
   --lenses product-user,reliability-systems \
@@ -143,45 +105,48 @@ Default output:
 .ooda/work-orders/ORIENT-001.json
 ```
 
----
+## E. Preferred: inline child execution
 
-## E. Execute the bounded worker mission
+When execution is authorized and Grok child agents are available, the Controller may dispatch the bounded work order **inside the same Controller session**.
 
-Start a separate worker session from the same repo:
+```text
+CONTROLLER
+    |
+    | work order explicit
+    v
+CHILD WORKER
+separate deep context
+    |
+    v
+/handoff + concise evidence/result
+    |
+    v
+CONTROLLER re-observes
+```
+
+The child owns deep code/research/data context. The Controller should receive only the compact result required for the next decision.
+
+Default to one active child mission at a time.
+
+You do not need to open another terminal just because a worker exists.
+
+## F. Optional: standalone worker session
+
+Use a separate session when duration, concurrency, isolation, or independent review makes it materially better:
 
 ```bash
 cd ~/repos/example-app
 grok-safe
 ```
 
-Then:
-
 ```text
 /start
 /ooda .ooda/work-orders/ORIENT-001.json
 ```
 
-The worker should:
+Both inline and standalone workers obey the same mission contract.
 
-```text
-OBSERVE current repo/task truth
-        ↓
-ORIENT under role/profile/lenses
-        ↓
-DECIDE one bounded tactic
-        ↓
-ACT + verify
-        ↓
-RE-OBSERVE
-        ↓
-/handoff
-```
-
-Bring the handoff/result to the human + ChatGPT and/or the Controller for review/reorientation.
-
----
-
-## F. Record the result
+## G. Record durable feedback
 
 ```bash
 ooda trace \
@@ -196,7 +161,7 @@ Default output:
 .ooda/traces/ORIENT-001.json
 ```
 
-For a useful negative result:
+Negative findings should be preserved too:
 
 ```bash
 ooda trace \
@@ -205,106 +170,50 @@ ooda trace \
   --summary "Current architecture/user workflow does not support the proposed slice without a materially broader redesign."
 ```
 
----
+## H. Re-orient
 
-## G. Ask the Controller to re-orient
+In the same Controller conversation:
 
-Return to the Controller conversation, or start a fresh one:
+```text
+Re-observe from ORIENT-001 and the latest durable state. What is the best next bounded move?
+```
+
+Or restart Grok and `/ooda-controller`. A fresh Controller is fine because durable state—not chat history—is the memory.
+
+## I. Dashboard
 
 ```bash
+ooda dashboard
+```
+
+The bundled local Control Room scans OODA-adopted repos under `~/repos` and shows compact project/mission/trace/Git state. It has manual refresh and defaults to a 60-second browser refresh.
+
+For a different project root:
+
+```bash
+OODA_PROJECTS_ROOT=/path/to/repos ooda dashboard
+```
+
+## Shortest version
+
+```bash
+# install once
+cd ~/repos
+git clone https://github.com/mldugom/ooda.git
+cd ooda
+bash install.sh
+
+# adopt one repo
 cd ~/repos/example-app
+ooda init --project-id example-app --project-class software-product
+ooda doctor
+
+# one Controller UI
 grok-safe
 ```
 
 Then:
 
 ```text
-/ooda-controller Re-observe this repo from the latest active work orders/traces and compact project state. ORIENT-001 is complete. What is the best next bounded move?
+/ooda-controller Jump into this repo. Help me think about <question>. Stay controller-sized. If the idea earns work, construct a bounded mission and use an isolated child worker for the deep task when appropriate.
 ```
-
-A fresh Controller session is fine. Durable state, not chat history, is the memory.
-
----
-
-## H. If you already know the bounded implementation task
-
-Do not create an orientation spike just for ceremony.
-
-```bash
-cd ~/repos/example-app
-
-ooda mission \
-  "Implement the approved bounded vertical slice described in the current project docs. Do not broaden into unrelated subsystems." \
-  --role engineer \
-  --profile full-stack \
-  --lenses product-user,reliability-systems \
-  --claim n-a \
-  --id ENG-001
-
-grok-safe
-```
-
-Then in Grok:
-
-```text
-/start
-/ooda .ooda/work-orders/ENG-001.json
-```
-
-After handoff/review:
-
-```bash
-ooda trace \
-  --work-order .ooda/work-orders/ENG-001.json \
-  --result completed \
-  --summary "Approved vertical slice implemented and verified; ready for integration review."
-```
-
----
-
-## I. Optional Control Room
-
-The Control Room is optional and may live in another repository or local checkout:
-
-```bash
-OODA_CONTROL_ROOM_DIR=/path/to/control-room ooda dashboard
-```
-
-or, when you have an accessible clone URL:
-
-```bash
-OODA_CONTROL_ROOM_REPO=<clone-url> ooda dashboard
-```
-
-The dashboard is derived observation state. It does not replace Git, work orders, traces, tests, PRs, or human authority.
-
----
-
-# Shortest version
-
-First-time pip install:
-
-```bash
-python3 -m pip install "git+https://github.com/mldugom/ooda.git"
-ooda setup
-```
-
-Adopt an existing repo once:
-
-```bash
-cd ~/repos/example-app
-ooda init --project-id example-app --project-class software-product
-ooda doctor
-```
-
-Talk to the Controller:
-
-```bash
-grok-safe
-```
-
-```text
-/ooda-controller Jump into this repo. I want to think about <question>. Stay controller-sized; if deep evidence is needed, propose the smallest worker mission.
-```
-
-That is enough to start using OODA.

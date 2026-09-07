@@ -1,41 +1,14 @@
 # OODA
 
-**OODA is a provider-neutral operating system for bounded AI-assisted research, engineering, product work, and consequential decisions.**
+**A provider-neutral control system for bounded AI-assisted research, engineering, product work, and consequential decisions.**
 
 > Think broadly. Orient quickly. Act narrowly. Verify reality. Preserve what matters.
 
-Git/project artifacts remain authoritative. Chat sessions and dashboards are replaceable views.
-
----
+Git/project artifacts are durable truth. Controller chats, child workers, and dashboards are replaceable views.
 
 ## Install
 
-### From GitHub with pip
-
-Once this repository is public:
-
-```bash
-python3 -m pip install "git+https://github.com/mldugom/ooda.git"
-ooda setup
-```
-
-That installs the executable commands:
-
-```text
-ooda
-grok-safe
-```
-
-`ooda setup` then installs the bundled Grok skills and efficiency policy into `~/.grok`:
-
-```text
-/ooda
-/ooda-controller
-```
-
-The Python distribution is named **`ooda-ai`** because the PyPI name `ooda` belongs to an unrelated project. There is no PyPI release yet, so use the GitHub install above rather than `pip install ooda`.
-
-### From a clone
+Recommended:
 
 ```bash
 mkdir -p ~/repos
@@ -45,7 +18,7 @@ cd ooda
 bash install.sh
 ```
 
-The clone installer provides the same everyday surfaces:
+This installs:
 
 ```text
 ooda
@@ -54,40 +27,43 @@ grok-safe
 /ooda-controller
 ```
 
-Then:
+Commands live under `~/.local/bin`. If that directory was not already on `PATH`, the installer updates your shell startup file and prints the `export PATH=...` line needed for the current terminal.
+
+Verify:
 
 ```bash
 ooda help
+grok-safe --help
 ```
 
----
+Pip-from-GitHub also works:
 
-## The commands you actually need
+```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
+```
 
-| Command | What it does | Example |
-|---|---|---|
-| `ooda setup` | Install bundled Grok skills/policy after a pip install. | `ooda setup` |
-| `ooda init` | Adopt or scaffold a repo for OODA. | `ooda init --project-id example-app --project-class software-product` |
-| `ooda doctor` | Check a repo or one OODA JSON contract. | `ooda doctor` |
-| `ooda mission` | Create one bounded worker mission. | `ooda mission "Inspect the current API boundary" --role architect --profile api --claim n-a` |
-| `ooda trace` | Record what happened after a mission. | `ooda trace --work-order .ooda/work-orders/TASK-01.json --result completed --summary "Boundary documented"` |
-| `ooda dashboard` | Open an optional local OODA Control Room checkout. | `ooda dashboard` |
-| `grok-safe` | Launch Grok with OODA's bounded efficiency policy. | `grok-safe` |
+The distribution name is `ooda-ai`; there is no PyPI release yet.
 
-Compatibility aliases remain available but are not normal-use commands:
+## Commands
 
-- `ooda work-order` = `ooda mission`
-- `ooda validate FILE` = deprecated; use `ooda doctor FILE`
+| Command | Purpose |
+|---|---|
+| `ooda setup` | Install bundled Grok skills/policy after pip install. |
+| `ooda init` | Adopt or scaffold a repo. |
+| `ooda doctor` | Validate project/contracts. |
+| `ooda mission` | Create one bounded mission/work order. |
+| `ooda trace` | Record durable mission outcome/feedback. |
+| `ooda dashboard` | Open the bundled local Control Room. |
+| `grok-safe` | Launch Grok with OODA's bounded policy. |
 
-Developer/internal scripts stay under `scripts/`; ordinary users should not need them.
+Compatibility aliases such as `ooda work-order` and `ooda validate` remain but are not normal-use commands.
 
----
-
-## 60-second operating model
+## One Controller, isolated child workers
 
 ```text
 HUMAN + CHATGPT
-raw ideas / strategy / challenge
+raw thought / strategy
         |
         v
  OODA CONTROLLER
@@ -95,56 +71,53 @@ raw ideas / strategy / challenge
         |
         | idea earns work
         v
-   OODA MISSION
+ WORK ORDER / MISSION
  Observe -> Orient -> Decide
         |
         v
-  BOUNDED WORKER
-      Act
+ INLINE CHILD WORKER
+ isolated deep task context
         |
         v
- Git / PR / evidence / handoff
+ evidence / handoff / trace
         |
         v
-      TRACE
- result + verification + next gate
-        |
-        +---------------------> next Observe
-        |
-        v
- HUMAN / CHATGPT REVIEW
+ CONTROLLER RE-OBSERVES
 ```
 
-The Controller chooses **what should happen next**. Workers load the deeper project-specific context required to actually do it.
+A worker does **not** require another terminal window.
 
----
+When Grok supports child agents, `/ooda-controller` may construct a bounded work order and dispatch one child worker inside the same Controller session. The child owns deep code/research/data context; the Controller should receive only the concise result needed to re-orient.
 
-# Typical daily use
+Default to one active child mission at a time. Use separate top-level sessions/worktrees only when duration, concurrency, isolation, or independent review materially justify them.
 
-## 1. Bounce an idea off the Controller
+Keep a Controller open while useful. Restart it whenever context gets large or stale. Durable state—not chat history—is the memory.
 
-From the target repo:
+## Adopt an existing repo
 
 ```bash
+cd ~/repos/my-app
+
+ooda init \
+  --project-id my-app \
+  --project-class software-product
+
+ooda doctor
+
 grok-safe
 ```
 
-Then:
+Then inside Grok:
 
 ```text
-/ooda-controller I think this product may be solving the wrong workflow. Help me decide whether that deserves a product-discovery spike.
+/ooda-controller Jump into this repo. Use only the minimum durable state needed to orient. Help me decide what deserves work next. If deeper evidence or implementation is needed, construct the smallest bounded mission and delegate it rather than absorbing the deep task context yourself.
 ```
 
-The Controller normally ends with one of:
+For existing repos with useful docs, normally do **not** use `--scaffold`.
 
-- `KEEP THINKING`
-- `PROPOSE MISSION`
-- `HUMAN GATE`
-- `NO ACTION`
+## Missions
 
-It does not do deep research/code work itself. If robust routing needs deeper facts, it proposes a small orientation spike first.
-
-## 2. Create a mission
+Direct creation is available when you already know the bounded task:
 
 ```bash
 ooda mission \
@@ -162,41 +135,20 @@ Default output:
 .ooda/work-orders/ARCH-01.json
 ```
 
-Important mission arguments:
+A work order is the durable result of **Observe → Orient → Decide** and the control envelope for **Act**.
 
-| Argument | Meaning | Required? |
-|---|---|---:|
-| objective | One coherent bounded outcome/question. Positional or `--objective`. | yes |
-| `--role` | Who owns the judgment/action. | yes |
-| `--profile` | Expertise needed by that role. | yes |
-| `--claim` | `discovery`, `evidence`, `qualification`, or `n-a`. | yes |
-| `--lenses` | Comma-separated perspectives; normally no more than 3. | no |
-| `--project-id` | Defaults to current directory name. | no |
-| `--id` | Stable mission ID; otherwise generated. | no |
-| `--output` | Defaults to `.ooda/work-orders/<id>.json`. | no |
-| `--max-turns` | Worker turn budget; default 6. | no |
-| `--max-investigation-steps` | Investigation budget; default 8. | no |
-
-The mission is the durable result of **Observe -> Orient -> Decide** and the control envelope for **Act**.
-
-## 3. Execute it
+A standalone worker session remains available when useful:
 
 ```bash
 grok-safe
 ```
-
-Inside Grok:
 
 ```text
 /start
 /ooda .ooda/work-orders/ARCH-01.json
 ```
 
-The worker re-observes current truth, orients under the mission, acts only inside the bounded envelope, verifies the result, checks documentation impact, and hands off through the project's normal lifecycle.
-
-If reality invalidates the mission assumptions, the worker should stop/re-orient rather than efficiently completing the wrong task.
-
-## 4. Record the result
+## Traces
 
 ```bash
 ooda trace \
@@ -205,57 +157,61 @@ ooda trace \
   --summary "Architecture orientation completed; returned the next bounded implementation boundary."
 ```
 
-Default output:
+Trace states:
 
 ```text
-.ooda/traces/ARCH-01.json
+completed
+negative_finding
+blocked
+budget_exhausted
+needs_human_gate
 ```
 
-Trace result states:
+A trace is concise decision provenance and feedback, not chain-of-thought.
 
-- `completed`
-- `negative_finding`
-- `blocked`
-- `budget_exhausted`
-- `needs_human_gate`
+## `grok-safe`
 
-A trace is not chain-of-thought. It is concise decision provenance and feedback for the next loop.
+`grok-safe` finds the Grok CLI from `GROK_BIN`, `~/.grok/bin/grok`, or your shell `PATH`, then adds OODA's bounded execution policy.
 
----
+There is **no default global session-turn cap** because a Controller may remain open across multiple bounded missions. Mission/work-order budgets are the primary bounded unit.
 
-# Adopt an existing repo
-
-If a repository already has useful documentation, add only the thin OODA overlay:
+For a deliberate hard session cap:
 
 ```bash
-cd ~/repos/example-app
-
-ooda init \
-  --project-id example-app \
-  --project-class software-product
-
-ooda doctor
+OODA_GROK_MAX_TURNS=12 grok-safe
 ```
 
-Do **not** use `--scaffold` just because OODA supports it. Existing architecture/process/product documentation should remain authoritative.
+Subagents are enabled so the Controller can use isolated child workers. OODA policy restricts broad fan-out and defaults to one Controller child mission at a time.
 
-Then:
+For a strict session with child agents disabled:
 
 ```bash
-grok-safe
+OODA_GROK_NO_SUBAGENTS=1 grok-safe
 ```
 
-```text
-/ooda-controller Jump into this repo. Use only the minimum durable state required to orient. What deserves attention next? If deeper evidence is required, propose the smallest worker mission rather than doing deep work yourself.
+## Control Room
+
+The dashboard is bundled with OODA; no second repository is required.
+
+```bash
+ooda dashboard
 ```
 
-See `docs/ZERO_TO_GROK.md` for the complete copy/paste flow.
+It opens a local read-only Control Room on `127.0.0.1:8791`, scans OODA-adopted repos under `~/repos`, and reconstructs compact state from `.ooda/project.json`, `PROJECT_STATE.md`, the latest work order/trace, and local Git state.
 
----
+It has **Refresh now** and defaults to a 60-second browser refresh.
 
-# New repo starter pack
+Configuration:
 
-For a brand-new project:
+```bash
+OODA_PROJECTS_ROOT=/path/to/repos ooda dashboard
+OODA_DASHBOARD_PORT=8899 ooda dashboard
+OODA_DASHBOARD_REFRESH_SECONDS=30 ooda dashboard
+```
+
+The dashboard is derived observation state. It does not modify projects, certify results, merge code, or replace Git/project truth.
+
+## New repo starter pack
 
 ```bash
 mkdir -p ~/repos/my-project
@@ -270,183 +226,31 @@ ooda init \
 ooda doctor
 ```
 
-OODA creates only the operating spine:
+OODA scaffolds only the operating spine: `README.md`, `AGENTS.md`, `PROJECT_STATE.md`, `.ooda/project.json`, `.ooda/work-orders/`, `.ooda/traces/`, and `.ooda/README.md`.
 
-| File | Purpose |
-|---|---|
-| `README.md` | Project purpose and entrypoint. |
-| `AGENTS.md` | Standing rules, invariants, authority/safety boundaries. |
-| `PROJECT_STATE.md` | Small current-truth/objective/blocker/next-gate summary. |
-| `.ooda/project.json` | Routing + authority metadata. |
-| `.ooda/work-orders/` | Durable bounded missions. |
-| `.ooda/traces/` | Durable results / negative findings / next gates. |
-| `.ooda/README.md` | Explains the thin OODA overlay. |
+Architecture/domain/process docs are created only when real project complexity earns them.
 
-OODA deliberately does **not** scaffold empty `ARCHITECTURE.md`, `DOMAIN.md`, or `PROCESS.md` files. Those are earned when real work creates durable concepts worth documenting.
-
-Project classes:
-
-- `quantitative-research`
-- `trading-research`
-- `data-ml-system`
-- `software-product`
-- `analytical-product`
-- `infrastructure`
-
----
-
-# Roles, profiles, lenses, claims
-
-Use this decision rule:
+## Routing reference
 
 | Concept | Question |
 |---|---|
+| **Project class** | What broad kind of project is this? |
 | **Role** | Who owns the next decision/action? |
-| **Profile** | What expertise do they need? |
+| **Profile** | What expertise should that role bring? |
 | **Lenses** | What perspectives could materially change orientation? |
 | **Claim** | How strongly will we rely on the result? |
 
-Roles:
+See [`docs/SELECTION_REFERENCE.md`](docs/SELECTION_REFERENCE.md) for exact values and examples.
 
-| Role | Primary job |
-|---|---|
-| `controller` | route / stop / escalate |
-| `researcher` | discover/test what may be true |
-| `product-strategist` | decide what problem/workflow is worth solving |
-| `architect` | design system/experiment/interface |
-| `engineer` | implement bounded work |
-| `validator` | independently challenge correctness/claims |
-| `portfolio-manager` | allocation/correlation/concentration |
-| `trader` | execution/liquidity/timing/slippage |
-| `risk-manager` | tails/ruin/exposure/model/operational risk |
+## Deeper docs
 
-Profiles are extensible expertise labels such as `quantitative-research`, `api`, `browser-extension`, `reliability`, `full-stack`, or project-specific labels such as `ios-swiftui`.
-
-A useful lens pattern is usually:
-
-1. one epistemic lens — `scientific`, `statistical`, `model-risk`, `causal-mechanism`;
-2. one domain lens — `market-microstructure`, `portfolio`, `product-user`, `security-abuse`, `reliability-systems`;
-3. optionally one challenge/opportunity lens — `taleb`, `stanley-lehman`, `value-of-information`, or explicit `boyd` when adaptation itself is the issue.
-
-OODA/Boyd is already the backbone; you do not need to select the `boyd` lens every time.
-
-For the full value tables and trigger questions, see `docs/SELECTION_REFERENCE.md`.
-
----
-
-# Documentation discipline
-
-Documentation is a completion obligation, not another permanent bot.
-
-The active worker asks whether the mission materially changed domain concepts, architecture, process/data/control flow, interfaces, methodology, CLI/configuration, or operator behavior.
-
-If not:
-
-```text
-DOCUMENTATION: none
-```
-
-If yes, update the smallest durable artifact that prevents rediscovery. An Architect reviews structural diagrams/models when warranted; a Validator independently checks consequential documentation when warranted.
-
-See `docs/DOCUMENTATION_STEWARDSHIP.md`.
-
----
-
-# `grok-safe`
-
-`grok-safe` is bundled with OODA. It locates the Grok CLI at `GROK_BIN`, `~/.grok/bin/grok`, or on `PATH`, then launches it with the bundled efficiency policy plus:
-
-```text
---max-turns 6
---no-subagents
-```
-
-Override the turn cap when intentionally needed:
-
-```bash
-OODA_GROK_MAX_TURNS=10 grok-safe
-```
-
-The wrapper does not contain credentials or an xAI API key.
-
----
-
-# Optional Control Room
-
-`ooda dashboard` uses an existing local Control Room checkout when available:
-
-```text
-~/repos/agent-ops-monitor
-```
-
-For another location:
-
-```bash
-OODA_CONTROL_ROOM_DIR=/path/to/control-room ooda dashboard
-```
-
-If no checkout exists, you may provide an accessible repository explicitly:
-
-```bash
-OODA_CONTROL_ROOM_REPO=<clone-url> ooda dashboard
-```
-
-The dashboard is derived observation state. It does not certify, merge, or replace Git/project truth.
-
----
-
-# Fresh ChatGPT conversations
-
-Start with very little context:
-
-```text
-Jump into <repo>. Use OODA. Goal: <current question>.
-```
-
-or:
-
-```text
-Review PR #<n> under OODA. Use current repo truth, not old chat state.
-```
-
-or:
-
-```text
-New project idea: <idea>. OODA it with me. Don't build yet.
-```
-
-The repo/project state is durable memory; chats are working rooms.
-
----
-
-# What OODA deliberately does not automate yet
-
-- automatic consequential dispatch;
-- self-merge;
-- model/research self-certification;
-- live-capital actions;
-- giant central code/context ingestion;
-- autonomous provider selection;
-- always-on scheduling.
-
-Usage earns automation.
-
----
-
-# Deeper reference
-
-- `OODA.md` — doctrine and loop semantics
-- `contracts/WORK_ORDER.md` — mission/work-order contract
-- `contracts/TRACE.md` — feedback/provenance contract
-- `docs/CONTROLLER.md` — thin Controller contract
-- `docs/CONTROLLER_QUICKSTART.md` — Controller usage
-- `docs/SELECTION_REFERENCE.md` — exact roles/profiles/lenses/claims/project classes
-- `docs/ZERO_TO_GROK.md` — zero-to-running end-to-end cheat sheet
-- `docs/ROUTING.md` — routing rationale
-- `docs/DOCUMENTATION_STEWARDSHIP.md` — durable diagrams/domain/process/cheat-sheet rules
-- `docs/CONTEXT_BOOTSTRAP.md` — fresh-chat/repo bootstrap
-- `docs/EXECUTION_MODEL.md` — human + ChatGPT + Controller + worker model
-- `docs/PROJECT_ADOPTION.md` — adding OODA to repos
-- `docs/REPO_WATCHER.md` — future observation collector
+- [`OODA.md`](OODA.md) — doctrine
+- [`docs/CONTROLLER.md`](docs/CONTROLLER.md) — Controller contract
+- [`docs/CONTROLLER_QUICKSTART.md`](docs/CONTROLLER_QUICKSTART.md) — one-window Controller flow
+- [`docs/ZERO_TO_GROK.md`](docs/ZERO_TO_GROK.md) — install-to-running cheat sheet
+- [`docs/SELECTION_REFERENCE.md`](docs/SELECTION_REFERENCE.md) — roles/profiles/lenses/claims/project classes
+- [`docs/DOCUMENTATION_STEWARDSHIP.md`](docs/DOCUMENTATION_STEWARDSHIP.md) — documentation discipline
+- [`contracts/WORK_ORDER.md`](contracts/WORK_ORDER.md) — mission contract
+- [`contracts/TRACE.md`](contracts/TRACE.md) — feedback contract
 
 **If the front door starts feeling complicated again, treat that as an OODA product bug.**

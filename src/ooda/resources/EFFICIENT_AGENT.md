@@ -58,11 +58,13 @@ If the current context is unknown and the session has become long or expensive, 
 ## Agent / workflow discipline
 
 - Do not spawn subagents or workflows for tasks that one agent can perform efficiently.
-- Do not fan out research by default.
-- Use parallel/subagent work only when explicitly requested or when independent workstreams materially reduce time or improve verification.
-- Avoid recursive research loops.
+- The `/ooda-controller` may delegate **one bounded child mission at a time** after the mission/work-order boundary is explicit. Treat this as context isolation, not permission for broad fan-out.
+- A delegated child should receive only the mission contract and minimum project context needed to execute it; the Controller should absorb only a concise result/evidence summary and durable trace/handoff state.
+- Do not fan out research by default. Parallel children require genuinely independent workstreams or explicit operator intent.
+- Avoid recursive research loops or child agents spawning more children merely to increase activity.
 - Avoid repeatedly asking another agent to verify already-established facts.
-- Do not use subagents to circumvent tool-call, Plan-mode, or context limits.
+- Do not use subagents to circumvent tool-call, Plan-mode, authority, or context limits.
+- A separate terminal/window is optional. Prefer an inline child session when the runtime can preserve child context isolation and the mission is bounded; use a separate session/worktree only when isolation, duration, concurrency, or review ergonomics materially justify it.
 
 ## Worktree discipline
 

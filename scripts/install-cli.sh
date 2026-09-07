@@ -38,3 +38,27 @@ EOF
   chmod +x "$SAFE_DST"
   echo "Installed $SAFE_DST"
 fi
+
+case ":${PATH:-}:" in
+  *":$BIN_DIR:"*)
+    ;;
+  *)
+    shell_name="$(basename "${SHELL:-sh}")"
+    case "$shell_name" in
+      zsh) rc_file="$HOME/.zshrc" ;;
+      bash) rc_file="$HOME/.bashrc" ;;
+      *) rc_file="$HOME/.profile" ;;
+    esac
+    path_line="export PATH=\"$BIN_DIR:\$PATH\""
+    touch "$rc_file"
+    if ! grep -Fqx "$path_line" "$rc_file"; then
+      {
+        printf '\n# OODA CLI\n'
+        printf '%s\n' "$path_line"
+      } >> "$rc_file"
+      echo "Added $BIN_DIR to PATH in $rc_file"
+    fi
+    echo "Activate OODA in this shell now with:"
+    echo "  export PATH=\"$BIN_DIR:\$PATH\""
+    ;;
+esac

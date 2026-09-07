@@ -1,15 +1,8 @@
 # OODA Controller Quickstart
 
-## Install / update OODA
+## Install
 
-Pip from GitHub:
-
-```bash
-python3 -m pip install "git+https://github.com/mldugom/ooda.git"
-ooda setup
-```
-
-Or from a clone:
+Clone path:
 
 ```bash
 git clone https://github.com/mldugom/ooda.git
@@ -17,16 +10,16 @@ cd ooda
 bash install.sh
 ```
 
-Both paths provide:
+Or pip from GitHub:
 
-```text
-ooda
-grok-safe
-/ooda
-/ooda-controller
+```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
 ```
 
-## Start a Controller conversation
+Both paths provide `ooda`, `grok-safe`, `/ooda`, and `/ooda-controller` after setup.
+
+## Start one Controller conversation
 
 From a target repo:
 
@@ -40,7 +33,7 @@ Then:
 /ooda-controller
 ```
 
-or provide an initial thought:
+or:
 
 ```text
 /ooda-controller I think this project may be focusing on the wrong user workflow. Help me decide whether this deserves a discovery spike.
@@ -48,15 +41,38 @@ or provide an initial thought:
 
 The Controller does **not** automatically turn every thought into work.
 
-## Typical conversations
+## Preferred one-window flow
 
-### Raw idea / Intake
+```text
+CONTROLLER
+raw thought
+    |
+    v
+PROPOSE / CONSTRUCT MISSION
+    |
+    | execution authorized
+    v
+INLINE CHILD WORKER
+isolated deep context
+    |
+    v
+concise result / evidence / trace
+    |
+    v
+CONTROLLER re-observes
+```
+
+You do not need a separate terminal for every worker. The child remains context-isolated even when it appears nested under the Controller session.
+
+Default to one active child mission at a time. Use separate sessions/worktrees only when duration, concurrency, isolation, or independent review makes them materially useful.
+
+## Raw idea / Intake
 
 ```text
 /ooda-controller What if we add a lightweight browser workflow for this problem?
 ```
 
-Expected outcome may be:
+Possible outcome:
 
 ```text
 KEEP THINKING
@@ -74,32 +90,44 @@ claim: discovery
 objective: <bounded product discovery objective>
 ```
 
-### Robust mission construction
+## Robust mission construction
 
 ```text
 /ooda-controller We have decided to build the first vertical slice. Construct the smallest robust mission for it.
 ```
 
-The Controller should return or create fields for project, objective, role, profile, lenses, claim level, allowed/forbidden scope, verification, budget, stop conditions, authority, documentation impact, and why this move now.
+The Controller should create/propose project, objective, role, profile, lenses, claim level, allowed/forbidden scope, verification, budget, stop conditions, authority, documentation impact, and why this move now.
 
-If it cannot bound the task without deep facts, it should **not** load the entire repo itself. It should identify the missing evidence and propose a short orientation spike first.
+If it cannot bound the task without deep facts, it should dispatch a short orientation child first rather than loading the whole repo itself.
 
 Example:
 
 ```text
-PROPOSE MISSION
-orientation spike:
+orientation child:
   role: architect
   profile: full-stack
   objective: Inspect only the current entrypoints/data flow and return the minimum interface constraints needed to bound the vertical-slice mission.
   output: concise constraints + candidate boundary
 ```
 
-After the spike returns, the Controller constructs the final execution mission.
+After the child returns, the Controller constructs the final execution mission.
 
-This is why OODA does not need a separate permanent work-order-builder bot.
+## Inline execution
 
-### Cross-project control
+Once the mission is explicit and execution is authorized, the Controller may dispatch one child worker directly in the same Grok session.
+
+The child should:
+
+- receive the work order plus minimum task context;
+- own deep code/research/data context;
+- obey mission scope, authority, budget, and stops;
+- verify the result;
+- return a concise handoff/evidence summary;
+- persist useful trace/handoff state before a materially different mission begins.
+
+The Controller should not absorb the child's full transcript.
+
+## Cross-project control
 
 ```text
 /ooda-controller What actually needs my attention right now?
@@ -107,19 +135,11 @@ This is why OODA does not need a separate permanent work-order-builder bot.
 
 Expected answer is a short human-gate / blocked / active-mission view, not repository archaeology.
 
-### Specific project
-
-```text
-/ooda-controller This project is currently collecting evidence. Should we send another worker in or leave it alone?
-```
-
-The Controller checks compact current state. If deep evidence is needed, it proposes an appropriate worker mission rather than doing the research itself.
-
 ## OODA inside the Controller
 
 ```text
 OBSERVE
-read compact current control truth
+compact current control truth
     |
     v
 ORIENT
@@ -131,62 +151,18 @@ KEEP THINKING / PROPOSE MISSION / HUMAN GATE / NO ACTION
     |
     v
 ACT
-construct mission / request orientation spike / surface gate / do nothing
+construct / dispatch mission / surface gate / do nothing
     |
     v
 RE-OBSERVE
-from worker trace, PR, or new human decision
+from child result, trace, PR, or human decision
 ```
 
-It should not make the loop slower by producing ceremonial analysis.
-
-## When a worker is warranted
-
-```text
-CONTROLLER
-    |
-    | proposes/creates mission
-    v
-PROJECT WORKER
-    |
-  grok-safe
-  /start
-  /ooda .ooda/work-orders/<task>.json
-    |
-  /handoff
-    v
-TRACE / HUMAN REVIEW
-    |
-    v
-CONTROLLER re-observes
-```
-
-Keeping the worker separate protects the Controller's small context surface.
-
-## Documentation stewardship
-
-The Controller should include documentation in a mission only when the change is likely to alter durable understanding.
-
-Examples:
-
-- new subsystem/component boundary -> architecture diagram;
-- new domain entities/relationships -> domain model/glossary;
-- new data/process/authority flow -> process/data-flow diagram;
-- new operator/user workflow -> flow + operating guide;
-- new CLI/configuration -> command cheat sheet/examples;
-- new research method/evidence gate -> methodology/validation note.
-
-The executing worker reassesses impact before handoff. An `architect` may review substantial structural documentation; a `validator` may independently audit consequential truth/consistency.
-
-Do not create documentation for every local code change, and do not create a permanent documentation-auditor role.
-
-## What the Controller may read
-
-Normally:
+## What the Controller normally reads
 
 - `.ooda/project.json` / registry metadata;
 - concise project-state summaries;
-- active missions/work orders;
+- active work orders;
 - latest useful traces;
 - human gates;
 - relevant PR state;
@@ -204,12 +180,18 @@ Normally not:
 ## Controller outcomes
 
 - **KEEP THINKING** — stay conversational; do not spend worker resources yet.
-- **PROPOSE MISSION** — one bounded worker mission is worth doing.
+- **PROPOSE MISSION** — one bounded worker mission is worth doing and may be dispatched inline after authorization.
 - **HUMAN GATE** — a human/ChatGPT decision or authorization is required first.
 - **NO ACTION** — let current work/accrual continue; do not create busywork.
 
+## Session durability
+
+Keep the Controller open while it is useful. Restart whenever context becomes large or stale.
+
+The restart is cheap because project state, work orders, traces, Git/PR state, and explicit human decisions are the durable memory.
+
 ## Key boundaries
 
-> **Think enough to route. Delegate anything that needs evidence or implementation.**
+> **Think enough to route. Delegate anything that needs deep evidence or implementation.**
 
-> **When mission construction needs deep facts, dispatch orientation first instead of expanding Controller context.**
+> **One Controller UI does not mean one context. Inline child workers keep deep task context isolated.**
