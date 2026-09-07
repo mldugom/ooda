@@ -20,3 +20,16 @@ jobs:
           python -m pip install .
           ooda help >/dev/null
           python -c "from ooda.dashboard import render_html; print('dashboard import ok')"
+
+  clone-runtime-python38:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+      - name: Clone runtime smoke test
+        run: |
+          PYTHONPATH=src python -m ooda.compat_entrypoint help >/dev/null
+          PYTHONPATH=src GROK_BIN=/bin/true python -m ooda.compat_grok_safe
+          PYTHONPATH=src python -c "from ooda.dashboard import render_html; print('dashboard import ok')"
