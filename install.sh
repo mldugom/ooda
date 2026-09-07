@@ -19,6 +19,9 @@ Everyday commands:
   ooda dashboard
 
 Grok:
+  grok-safe
   /ooda-controller
   /ooda <mission-file>
+
+Pip users run `ooda setup` once to install the Grok skills/policy.
 EOF
