@@ -2,11 +2,26 @@
 
 Projects opt into OODA without reorganizing their existing documentation.
 
-## Minimal project file
+## Install once
 
-Create `.ooda/project.json` in the target project.
+From the OODA repository:
 
-Recommended fields:
+```bash
+bash install.sh
+```
+
+Normal use should then happen through the single `ooda` command plus the two Grok skills `/ooda-controller` and `/ooda`.
+
+## Existing repository — thin overlay only
+
+Create `.ooda/project.json` in the target project:
+
+```bash
+ooda init --project-id <id> --project-class <class>
+ooda doctor
+```
+
+Recommended project contract:
 
 ```json
 {
@@ -14,13 +29,82 @@ Recommended fields:
   "project_id": "example",
   "project_class": "software-product",
   "authority": {"integration_owner": "human", "self_merge": false, "live_capital": false},
-  "state_sources": ["AGENTS.md", "PROJECT_STATE.md"],
+  "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
   "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
   "monitor": {"enabled": false}
 }
 ```
 
 This is a routing contract, not a second giant PROJECT_STATE.
+
+## New repository — minimal OODA-ready scaffold
+
+For a new repo, initialize Git normally and ask OODA to create only the small durable operating spine:
+
+```bash
+mkdir my-project && cd my-project
+git init
+ooda init \
+  --project-id my-project \
+  --project-class software-product \
+  --scaffold
+ooda doctor
+```
+
+`--scaffold` creates, only when missing:
+
+```text
+README.md
+AGENTS.md
+PROJECT_STATE.md
+.ooda/
+  project.json
+  README.md
+  work-orders/
+  traces/
+```
+
+The generated Markdown files are intentionally short:
+
+- `README.md` — purpose and entrypoint;
+- `AGENTS.md` — standing operating/safety rules plus project-specific invariants;
+- `PROJECT_STATE.md` — current objective, current truth, blockers, next gate;
+- `.ooda/README.md` — explains that OODA is a thin overlay, not a second PM system.
+
+Existing docs are never silently overwritten by `--scaffold`. `--force` replaces only `.ooda/project.json`.
+
+After bootstrap, replace placeholders with the project's actual purpose/invariants/current truth before substantial execution.
+
+Do **not** scaffold empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, or similar files just because the project uses OODA. Domain/architecture/process/cheat-sheet documentation is created when real work materially changes a durable mental model. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+
+## Everyday mission flow
+
+Prefer the friendly CLI surface:
+
+```bash
+ooda mission \
+  "<one bounded objective>" \
+  --role <role> \
+  --profile <profile> \
+  --claim <discovery|evidence|qualification|n-a> \
+  [--lenses lens1,lens2,lens3] \
+  [--id TASK-01]
+```
+
+The mission path defaults to `.ooda/work-orders/<id>.json`.
+
+After execution:
+
+```bash
+ooda trace \
+  --work-order .ooda/work-orders/<id>.json \
+  --result <completed|negative_finding|blocked|budget_exhausted|needs_human_gate> \
+  --summary "<truthful concise result>"
+```
+
+The trace path defaults to `.ooda/traces/<work-order-id>.json`.
+
+Use `ooda doctor` for project health and `ooda doctor <json-file>` for individual contract validation. The old `work-order` and `validate` commands remain compatibility aliases only.
 
 ## Project classes
 
@@ -31,7 +115,13 @@ This is a routing contract, not a second giant PROJECT_STATE.
 - `analytical-product`
 - `infrastructure`
 
-Projects may use more specific tags without changing the core classes.
+Projects may use more specific profiles/tags without changing the core classes.
+
+## Context bootstrap
+
+A fresh ChatGPT conversation should normally need only repository + immediate intent. See `docs/CONTEXT_BOOTSTRAP.md` and `docs/CHATGPT_USAGE.md`.
+
+Do not solve session continuity by growing project docs indefinitely. Persist only durable conclusions and current truth.
 
 ## Suggested pilots
 
@@ -49,7 +139,7 @@ Class: `trading-research`
 Default orientation depends on task:
 - researcher / quant-markets for research;
 - engineer / reliability for runtime work;
-- model-risk + reliability + taleb for consequential changes.
+- model-risk + reliability-systems + taleb for consequential changes.
 
 Live-capital authority remains false.
 

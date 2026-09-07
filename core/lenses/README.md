@@ -4,9 +4,11 @@ A lens answers: **what intellectual perspective should shape orientation?**
 
 The controller normally selects no more than three lenses for one bounded action.
 
+OODA itself is always the control doctrine. The `boyd` lens is therefore not mandatory on every task; select it when explicit adaptation, feedback speed, or stale orientation is itself a material concern.
+
 | Lens | Primary question | Typical use |
 |---|---|---|
-| `boyd` | Has our orientation become stale? What feedback changes the next move? | controller, strategy, adaptation |
+| `boyd` | Has our orientation become stale? What feedback changes the next move? | controller, strategy, fast-changing environments |
 | `stanley-lehman` | Is the objective deceptive? What novel stepping stone are we ignoring? | exploration, discovery, product/architecture search |
 | `taleb` | Where is fragility, ruin, nonlinear downside, convexity, optionality, or removable complexity? | risk, portfolios, architecture, experiments |
 | `scientific` | What is the falsifiable claim? What result would reject it? | all research |
@@ -24,7 +26,10 @@ The controller normally selects no more than three lenses for one bounded action
 
 - Lenses do not grant authority.
 - Lenses are not personalities and do not need separate bots.
-- Add a lens only when it changes real decisions repeatedly.
+- Add a lens only when it could materially change the decision, experiment, implementation, or review.
+- A practical default is one epistemic lens + one domain/implementation lens + an optional challenge/opportunity lens.
 - For consequential model qualification, `scientific` + `model-risk` are normally required.
 - For externally deployed apps, `security-abuse` is normally required before release.
 - For real-money trading, `market-microstructure` + `portfolio` + `taleb`/risk review are normally required before live use.
+
+See `docs/ROUTING.md` for the routing procedure and examples.

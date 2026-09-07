@@ -3,23 +3,34 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GROK_HOME_DIR="${GROK_HOME:-$HOME/.grok}"
-SRC="$ROOT/providers/grok/skills/ooda"
-DST="$GROK_HOME_DIR/skills/ooda"
-
-if [ ! -f "$SRC/SKILL.md" ]; then
-  echo "Missing OODA Grok adapter: $SRC/SKILL.md" >&2
-  exit 1
-fi
-
 mkdir -p "$GROK_HOME_DIR/skills"
 
-if [ -e "$DST" ] || [ -L "$DST" ]; then
-  echo "Refusing to replace existing $DST" >&2
-  echo "Remove it deliberately if you want to reinstall." >&2
-  exit 2
-fi
+install_skill() {
+  local name="$1"
+  local src="$ROOT/providers/grok/skills/$name"
+  local dst="$GROK_HOME_DIR/skills/$name"
 
-# One symlink only: OODA stays authoritative in this repository.
-ln -s "$SRC" "$DST"
-echo "Installed /ooda as symlink: $DST -> $SRC"
+  if [ ! -f "$src/SKILL.md" ]; then
+    echo "Missing OODA Grok skill: $src/SKILL.md" >&2
+    return 1
+  fi
+
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    echo "Already installed /$name: $dst -> $src"
+    return 0
+  fi
+
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    echo "Refusing to replace existing $dst" >&2
+    echo "Remove it deliberately if you want to reinstall /$name." >&2
+    return 2
+  fi
+
+  ln -s "$src" "$dst"
+  echo "Installed /$name as symlink: $dst -> $src"
+}
+
+install_skill ooda
+install_skill ooda-controller
+
 echo "Existing Grok lifecycle skills are untouched."

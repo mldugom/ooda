@@ -25,15 +25,18 @@ Add OODA beside the current system.
 
 Changes:
 - OODA exists as its own repo.
-- Pilot projects may add `.ooda/project.json`.
+- Existing projects may add `.ooda/project.json`.
+- New repos may use `ooda init --scaffold` for a minimal operating spine.
+- Fresh ChatGPT sessions bootstrap from narrow durable repo truth instead of giant handoffs.
 - ChatGPT creates `ooda/work-order/v1` before substantial new work.
 - Existing Grok Build executes it manually.
-- Outcome gets an `ooda/trace/v1` record.
+- Outcome gets an `ooda/trace/v1` record when the result has durable value.
 - No existing Grok lifecycle behavior is replaced.
 
 Success criteria:
 - less scope drift;
 - less repeated research;
+- faster fresh-chat/project bootstrap;
 - better distinction between discovery/evidence/qualification;
 - no material slowdown for simple work;
 - useful cross-domain routing for both quant and product/software work.
@@ -47,7 +50,7 @@ Pilot order:
 ## Phase 2 — Thin Grok adapter
 
 After shadow mode is useful:
-- install one `/ooda` controller skill for Grok;
+- use one `/ooda` controller skill for Grok;
 - keep provider-specific details under `providers/grok/`;
 - controller validates work order, current state, authority, and stop conditions;
 - do **not** install the entire OODA repo into `~/.grok`.
@@ -63,23 +66,44 @@ Only after real traces exist:
 
 This phase should be driven by information we actually want to see after real OODA usage.
 
-## Phase 4 — Local supervisor
+## Phase 4 — Repository watcher / observation plane
+
+Automate observation before dispatch or judgment.
+
+A small local process may:
+- poll an allowlist of active `mldugom` GitHub repositories;
+- detect default-branch advances, PR changes, selected state-file changes, and new OODA traces/work orders;
+- keep last-seen SHAs/cursors in a small local state store;
+- update Agent Ops Monitor and surface candidate human-review/orientation events.
+
+It does **not** automatically create consequential tasks, merge code, promote models, or touch live capital/runtime.
+
+See `docs/REPO_WATCHER.md`.
+
+## Phase 5 — Local supervisor
 
 After repeated manual routing patterns are obvious:
 - local supervisor reads project contract + work order;
-- dispatches the configured provider;
+- may consume events from the repo watcher;
+- dispatches the configured provider for explicitly allowed work;
 - enforces budgets and classified stop conditions;
 - collects trace + Git/test evidence;
 - requests human gate for consequential actions.
 
 The supervisor is deterministic control logic, not the chief scientist.
 
-## Phase 5 — Raspberry Pi deployment
+## Phase 6 — Raspberry Pi deployment
 
-The Pi hosts the supervisor, schedules allowed work, stores operational metadata, and updates the monitor.
+The Pi hosts the watcher/supervisor, schedules allowed work, stores operational metadata, and updates the monitor.
 
 ```text
-Lawrence + ChatGPT
+GitHub repos
+      |
+      v
+Pi repo watcher
+      |
+      v
+Lawrence + ChatGPT / OODA Controller
       |
       v
 OODA work order
@@ -98,7 +122,7 @@ OODA trace + Git evidence
 human integration gate
 ```
 
-## Phase 6 — Multi-provider routing
+## Phase 7 — Multi-provider routing
 
 Only after provider-neutral contracts are proven:
 - Grok may remain lead researcher/architect;
