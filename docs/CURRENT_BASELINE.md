@@ -1,53 +1,49 @@
 # Current Stack Baseline
 
-OODA is designed around the current working system rather than pretending it does not exist.
+OODA is designed around an existing working system rather than pretending it does not exist.
 
-## Current manual paradigm
+## Manual paradigm
 
 ```text
-Lawrence + ChatGPT
+HUMAN + CHATGPT
   -> decide a bounded task
-  -> Grok Build in the target repository
+  -> configured worker/provider in the target repository
   -> existing project instructions/lifecycle
   -> tests / research artifacts
   -> branch / PR / handoff
-  -> ChatGPT + Lawrence review
+  -> human + ChatGPT review
   -> explicit merge/promotion decision
 ```
 
-## `grok-skills`
+## Existing agent runtime value to preserve
 
-Current value to preserve outside OODA:
-- narrow `/start` bootstrap;
+Useful existing capabilities may include:
+
+- narrow session bootstrap;
 - bounded lifecycle and handoff conventions;
 - efficiency/context/cost controls;
-- `grok-safe` runtime discipline;
+- safe provider launcher discipline;
 - provider-neutral handoff semantics.
 
-OODA does not require changing or merging new infrastructure into `grok-skills` during V1.
+OODA wraps these capabilities with provider-neutral mission/trace contracts rather than requiring a runtime rewrite.
 
-An experimental GitHub-backed Grok worker/transport exists in the current `grok-skills` development history. OODA V1 does not adopt it automatically. If issue-driven local dispatch proves desirable later, it must be evaluated as a Phase-4 supervisor capability against OODA's provider-neutral contracts.
+## Control Room
 
-## Agent Ops Monitor
+Useful monitor properties:
 
-Current monitor strengths:
 - provider-neutral rendering;
-- objectives/backlog visibility;
-- agent lanes;
+- objective/current-state visibility;
+- agent/worker lanes;
 - human decision queue;
 - Git remains authoritative;
 - monitor does not certify or merge.
 
-Keep this boundary. OODA traces may become a future input; the monitor does not become OODA's controller.
+Keep this boundary. OODA traces may feed a monitor; the monitor does not become OODA's source of truth.
 
 ## Project truth remains local
 
 OODA does not centralize all project knowledge.
 
-Examples:
-- Tenniskal's research state remains in Tenniskal.
-- Crypto-Innout's runtime/research protections remain in Crypto-Innout.
-- LDPS's methodology/history remains in LDPS.
-- IOND's valuation assumptions remain in IOND.
+A research repo keeps its methodology/history locally. A production system keeps its runtime protections locally. A product repo keeps its product/architecture docs locally. An analytical project keeps its assumptions locally.
 
-`.ooda/project.json` only points the controller toward the project's authority/state sources and default constraints.
+`.ooda/project.json` only points the Controller toward the project's authority/state sources and default constraints.
