@@ -24,7 +24,7 @@ def main() -> None:
     grok_bin = _grok_binary()
     if not grok_bin:
         print(
-            "grok-safe: Grok CLI not found. Set GROK_BIN or install Grok at ~/.grok/bin/grok.",
+            "grok-safe: Grok CLI not found. Set GROK_BIN or ensure `grok` is on PATH.",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -43,9 +43,10 @@ def main() -> None:
         policy,
         "--max-turns",
         max_turns,
-        "--no-subagents",
-        *sys.argv[1:],
     ]
+    if os.environ.get("OODA_GROK_NO_SUBAGENTS", "0").lower() in {"1", "true", "yes"}:
+        command.append("--no-subagents")
+    command.extend(sys.argv[1:])
     raise SystemExit(subprocess.call(command))
 
 
