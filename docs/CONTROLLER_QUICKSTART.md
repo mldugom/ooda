@@ -1,21 +1,22 @@
 # OODA Controller Quickstart
 
-## Install / update the Grok skills
+## Install / update OODA
 
 From `~/repos/ooda` on the OODA branch/version you want to use:
 
 ```bash
-./scripts/install-grok.sh
+bash install.sh
 ```
 
-This installs/symlinks both:
+This installs/symlinks:
 
 ```text
+ooda
 /ooda
 /ooda-controller
 ```
 
-If `/ooda` is already the expected symlink, the installer leaves it alone and continues to install `/ooda-controller`.
+The install is idempotent when the expected symlinks already exist. Internal install scripts remain available under `scripts/`, but normal users should not need them.
 
 ## Start a Controller conversation
 
@@ -65,12 +66,12 @@ claim: discovery
 objective: <bounded product discovery objective>
 ```
 
-### Robust work-order construction
+### Robust mission construction
 
 You can ask the Controller to turn an approved idea into an execution contract:
 
 ```text
-/ooda-controller We have decided to build the first browser-extension vertical slice. Construct the smallest robust work order for it.
+/ooda-controller We have decided to build the first browser-extension vertical slice. Construct the smallest robust mission for it.
 ```
 
 The Controller should return or create fields for:
@@ -101,11 +102,11 @@ PROPOSE MISSION
 orientation spike:
   role: architect
   profile: browser-extension
-  objective: Inspect only the current extension entrypoints/data flow and return the minimum interface constraints needed to bound the vertical-slice work order.
+  objective: Inspect only the current extension entrypoints/data flow and return the minimum interface constraints needed to bound the vertical-slice mission.
   output: concise constraints + candidate boundary
 ```
 
-After that spike returns, the Controller constructs the final execution work order.
+After that spike returns, the Controller constructs the final execution mission.
 
 This is why we do not need a separate permanent work-order-builder bot.
 
@@ -143,7 +144,7 @@ KEEP THINKING / PROPOSE MISSION / HUMAN GATE / NO ACTION
     |
     v
 ACT
-construct work order / request orientation spike / surface gate / do nothing
+construct mission / request orientation spike / surface gate / do nothing
     |
     v
 RE-OBSERVE
@@ -154,12 +155,12 @@ It should not make the loop slower by producing ceremonial analysis.
 
 ## When a worker is warranted
 
-The Controller proposes a work order. The worker remains a separate bounded Grok session:
+The Controller proposes a mission. The worker remains a separate bounded Grok session:
 
 ```text
 CONTROLLER
     |
-    | proposes/creates work order
+    | proposes/creates mission
     v
 PROJECT WORKER
     |
@@ -202,7 +203,7 @@ Normally:
 
 - `.ooda/project.json` / registry metadata;
 - concise project-state summaries;
-- active work orders;
+- active missions/work orders;
 - latest useful traces;
 - human gates;
 - relevant PR state;
@@ -228,4 +229,4 @@ Normally not:
 
 > **Think enough to route. Delegate anything that needs evidence or implementation.**
 
-> **When work-order construction needs deep facts, dispatch orientation first instead of expanding Controller context.**
+> **When mission construction needs deep facts, dispatch orientation first instead of expanding Controller context.**
