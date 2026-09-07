@@ -2,6 +2,16 @@
 
 Projects opt into OODA without reorganizing their existing documentation.
 
+## Install once
+
+From the OODA repository:
+
+```bash
+bash install.sh
+```
+
+Normal use should then happen through the single `ooda` command plus the two Grok skills `/ooda-controller` and `/ooda`.
+
 ## Existing repository — thin overlay only
 
 Create `.ooda/project.json` in the target project:
@@ -65,27 +75,36 @@ Existing docs are never silently overwritten by `--scaffold`. `--force` replaces
 
 After bootstrap, replace placeholders with the project's actual purpose/invariants/current truth before substantial execution.
 
-## Documentation grows only when the system earns it
+Do **not** scaffold empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, or similar files just because the project uses OODA. Domain/architecture/process/cheat-sheet documentation is created when real work materially changes a durable mental model. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
 
-The scaffold deliberately does **not** create empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, `API.md`, or other boilerplate files.
+## Everyday mission flow
 
-Those should appear when real work creates durable concepts worth preserving.
+Prefer the friendly CLI surface:
 
-Typical triggers:
+```bash
+ooda mission \
+  "<one bounded objective>" \
+  --role <role> \
+  --profile <profile> \
+  --claim <discovery|evidence|qualification|n-a> \
+  [--lenses lens1,lens2,lens3] \
+  [--id TASK-01]
+```
 
-| Trigger | Durable artifact to consider |
-|---|---|
-| First meaningful subsystem/boundary | `docs/ARCHITECTURE.md` or equivalent diagram/overview |
-| Important domain entities/concepts | domain model/glossary/relationship diagram |
-| Recurring data/process/authority sequence | process/data-flow diagram |
-| Public CLI/config/operator workflow | README cheat sheet / operator guide |
-| Stable interface between components | contract/interface document |
-| Research method/evidence gate becomes reusable | methodology/validation document |
-| Major negative result prevents repeated effort | trace + research-state reference |
+The mission path defaults to `.ooda/work-orders/<id>.json`.
 
-The active worker assesses documentation impact before handoff. An architect can review broad structural documentation; a validator can independently check it when truth/consistency is consequential.
+After execution:
 
-See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+```bash
+ooda trace \
+  --work-order .ooda/work-orders/<id>.json \
+  --result <completed|negative_finding|blocked|budget_exhausted|needs_human_gate> \
+  --summary "<truthful concise result>"
+```
+
+The trace path defaults to `.ooda/traces/<work-order-id>.json`.
+
+Use `ooda doctor` for project health and `ooda doctor <json-file>` for individual contract validation. The old `work-order` and `validate` commands remain compatibility aliases only.
 
 ## Project classes
 
@@ -103,27 +122,6 @@ Projects may use more specific profiles/tags without changing the core classes.
 A fresh ChatGPT conversation should normally need only repository + immediate intent. See `docs/CONTEXT_BOOTSTRAP.md` and `docs/CHATGPT_USAGE.md`.
 
 Do not solve session continuity by growing project docs indefinitely. Persist only durable conclusions and current truth.
-
-## Work-order construction
-
-The OODA Controller normally constructs/proposes work orders from compact durable state.
-
-If it cannot bound a mission correctly without deeper evidence, do **not** expand Controller context to the whole repo. Route a small orientation spike under the appropriate existing role, then construct the final work order from the returned evidence.
-
-```text
-Controller
-  |
-  | enough orientation?
-  +-- yes --> work order
-  |
-  +-- no --> researcher / architect / validator / product-strategist spike
-                    |
-                    v
-              concise evidence
-                    |
-                    v
-                work order
-```
 
 ## Suggested pilots
 
