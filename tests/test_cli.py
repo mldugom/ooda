@@ -2,11 +2,13 @@ import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.cli import cmd_init, validate_project, validate_trace, validate_work_order
+from ooda.cli import cmd_doctor, cmd_init, cmd_work_order, validate_project, validate_trace, validate_work_order
 
 
 class ContractTests(unittest.TestCase):
@@ -62,6 +64,34 @@ class ContractTests(unittest.TestCase):
             )
             self.assertEqual(cmd_init(args), 0)
             self.assertEqual((root / "README.md").read_text(), "existing\n")
+
+    def test_doctor_validates_one_contract_file(self):
+        args = SimpleNamespace(target="examples/work-order.json", path=None)
+        out = StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(cmd_doctor(args), 0)
+        self.assertIn("PASS examples/work-order.json", out.getvalue())
+
+    def test_mission_defaults_output_from_generated_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            args = SimpleNamespace(
+                objective_text="Implement one bounded slice",
+                objective=None,
+                role="engineer",
+                profile="backend",
+                lenses="reliability-systems",
+                claim_level="n-a",
+                project_id="example",
+                id="TEST-01",
+                max_turns=6,
+                max_investigation_steps=8,
+                output=str(root / ".ooda/work-orders/TEST-01.json"),
+            )
+            self.assertEqual(cmd_work_order(args), 0)
+            data = json.loads((root / ".ooda/work-orders/TEST-01.json").read_text())
+            self.assertEqual(data["objective"], "Implement one bounded slice")
+            self.assertEqual(data["id"], "TEST-01")
 
 
 if __name__ == "__main__":
