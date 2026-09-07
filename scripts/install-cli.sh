@@ -4,23 +4,40 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${OODA_BIN_DIR:-$HOME/.local/bin}"
 OODA_DST="$BIN_DIR/ooda"
-OODA_SRC="$ROOT/scripts/ooda"
+OODA_LEGACY_SRC="$ROOT/scripts/ooda"
+OODA_MARKER="# OODA cli source: $ROOT"
 SAFE_DST="$BIN_DIR/grok-safe"
-SAFE_MARKER="# OODA source: $ROOT"
-LEGACY_SAFE_SRC="$ROOT/scripts/grok-safe"
+SAFE_LEGACY_SRC="$ROOT/scripts/grok-safe"
+SAFE_MARKER="# OODA grok-safe source: $ROOT"
+LEGACY_SAFE_MARKER="# OODA source: $ROOT"
 OS_NAME="${OODA_OS_NAME:-$(uname -s)}"
 
 mkdir -p "$BIN_DIR"
 
-if [ -L "$OODA_DST" ] && [ "$(readlink "$OODA_DST")" = "$OODA_SRC" ]; then
-  echo "Already installed $OODA_DST -> $OODA_SRC"
+install_ooda_wrapper() {
+  cat > "$OODA_DST" <<EOF
+#!/usr/bin/env bash
+$OODA_MARKER
+set -euo pipefail
+ROOT="$ROOT"
+PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_entrypoint "\$@"
+EOF
+  chmod +x "$OODA_DST"
+}
+
+if [ -f "$OODA_DST" ] && grep -Fqx "$OODA_MARKER" "$OODA_DST"; then
+  echo "Already installed $OODA_DST"
+elif [ -L "$OODA_DST" ] && [ "$(readlink "$OODA_DST")" = "$OODA_LEGACY_SRC" ]; then
+  rm "$OODA_DST"
+  install_ooda_wrapper
+  echo "Upgraded legacy OODA $OODA_DST"
 elif [ -e "$OODA_DST" ] || [ -L "$OODA_DST" ]; then
   echo "Refusing to replace existing $OODA_DST" >&2
   echo "Remove or move it deliberately, then rerun install." >&2
   exit 2
 else
-  ln -s "$OODA_SRC" "$OODA_DST"
-  echo "Installed $OODA_DST -> $OODA_SRC"
+  install_ooda_wrapper
+  echo "Installed $OODA_DST"
 fi
 
 install_safe_wrapper() {
@@ -29,14 +46,18 @@ install_safe_wrapper() {
 $SAFE_MARKER
 set -euo pipefail
 ROOT="$ROOT"
-PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.grok_safe "\$@"
+PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_grok_safe "\$@"
 EOF
   chmod +x "$SAFE_DST"
 }
 
 if [ -f "$SAFE_DST" ] && grep -Fqx "$SAFE_MARKER" "$SAFE_DST"; then
   echo "Already installed $SAFE_DST"
-elif [ -L "$SAFE_DST" ] && [ "$(readlink "$SAFE_DST")" = "$LEGACY_SAFE_SRC" ]; then
+elif [ -f "$SAFE_DST" ] && grep -Fqx "$LEGACY_SAFE_MARKER" "$SAFE_DST"; then
+  rm "$SAFE_DST"
+  install_safe_wrapper
+  echo "Upgraded legacy OODA $SAFE_DST"
+elif [ -L "$SAFE_DST" ] && [ "$(readlink "$SAFE_DST")" = "$SAFE_LEGACY_SRC" ]; then
   rm "$SAFE_DST"
   install_safe_wrapper
   echo "Upgraded legacy OODA $SAFE_DST"
