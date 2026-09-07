@@ -1,17 +1,68 @@
-import json, sys, unittest
+import json
+import sys
+import tempfile
+import unittest
 from pathlib import Path
+from types import SimpleNamespace
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.cli import validate_project, validate_work_order, validate_trace
+from ooda.cli import cmd_init, validate_project, validate_trace, validate_work_order
+
 
 class ContractTests(unittest.TestCase):
     def test_example_work_order(self):
         self.assertEqual(validate_work_order(json.loads(Path("examples/work-order.json").read_text())), [])
+
     def test_example_trace(self):
         self.assertEqual(validate_trace(json.loads(Path("examples/trace.json").read_text())), [])
+
     def test_project_examples(self):
         for path in Path("examples/projects").glob("*.json"):
-            with self.subTest(path=path): self.assertEqual(validate_project(json.loads(path.read_text())), [])
+            with self.subTest(path=path):
+                self.assertEqual(validate_project(json.loads(path.read_text())), [])
+
     def test_too_many_lenses_fails(self):
-        d=json.loads(Path("examples/work-order.json").read_text()); d["lenses"]=["boyd","scientific","statistical","taleb"]
+        d = json.loads(Path("examples/work-order.json").read_text())
+        d["lenses"] = ["boyd", "scientific", "statistical", "taleb"]
         self.assertTrue(any("three lenses" in e for e in validate_work_order(d)))
-if __name__=="__main__": unittest.main()
+
+    def test_scaffold_creates_minimal_ooda_project_docs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = SimpleNamespace(
+                path=tmp,
+                project_id="example-app",
+                project_class="software-product",
+                scaffold=True,
+                force=False,
+            )
+            self.assertEqual(cmd_init(args), 0)
+            root = Path(tmp)
+            for rel in (
+                ".ooda/project.json",
+                ".ooda/README.md",
+                "README.md",
+                "AGENTS.md",
+                "PROJECT_STATE.md",
+            ):
+                self.assertTrue((root / rel).exists(), rel)
+            self.assertTrue((root / ".ooda/work-orders").is_dir())
+            self.assertTrue((root / ".ooda/traces").is_dir())
+            self.assertEqual(validate_project(json.loads((root / ".ooda/project.json").read_text())), [])
+
+    def test_scaffold_does_not_overwrite_existing_docs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("existing\n")
+            args = SimpleNamespace(
+                path=tmp,
+                project_id="example-app",
+                project_class="software-product",
+                scaffold=True,
+                force=False,
+            )
+            self.assertEqual(cmd_init(args), 0)
+            self.assertEqual((root / "README.md").read_text(), "existing\n")
+
+
+if __name__ == "__main__":
+    unittest.main()
