@@ -8,6 +8,7 @@ OODA_SRC="$ROOT/scripts/ooda"
 SAFE_DST="$BIN_DIR/grok-safe"
 SAFE_MARKER="# OODA source: $ROOT"
 LEGACY_SAFE_SRC="$ROOT/scripts/grok-safe"
+OS_NAME="${OODA_OS_NAME:-$(uname -s)}"
 
 mkdir -p "$BIN_DIR"
 
@@ -55,7 +56,13 @@ case ":${PATH:-}:" in
     shell_name="$(basename "${SHELL:-sh}")"
     case "$shell_name" in
       zsh) rc_file="$HOME/.zshrc" ;;
-      bash) rc_file="$HOME/.bashrc" ;;
+      bash)
+        if [ "$OS_NAME" = "Darwin" ]; then
+          rc_file="$HOME/.bash_profile"
+        else
+          rc_file="$HOME/.bashrc"
+        fi
+        ;;
       *) rc_file="$HOME/.profile" ;;
     esac
     path_line="export PATH=\"$BIN_DIR:\$PATH\""
