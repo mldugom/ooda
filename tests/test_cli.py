@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -6,9 +7,19 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.cli import cmd_doctor, cmd_init, cmd_work_order, validate_project, validate_trace, validate_work_order
+from ooda.cli import (
+    cmd_doctor,
+    cmd_init,
+    cmd_setup,
+    cmd_work_order,
+    parser,
+    validate_project,
+    validate_trace,
+    validate_work_order,
+)
 
 
 class ContractTests(unittest.TestCase):
@@ -92,6 +103,50 @@ class ContractTests(unittest.TestCase):
             data = json.loads((root / ".ooda/work-orders/TEST-01.json").read_text())
             self.assertEqual(data["objective"], "Implement one bounded slice")
             self.assertEqual(data["id"], "TEST-01")
+
+    def test_python_cli_exposes_mission_alias(self):
+        args = parser().parse_args(
+            [
+                "mission",
+                "Inspect one bounded slice",
+                "--role",
+                "architect",
+                "--profile",
+                "backend",
+                "--claim",
+                "n-a",
+            ]
+        )
+        self.assertEqual(args.command, "mission")
+        self.assertEqual(args.objective_text, "Inspect one bounded slice")
+        self.assertEqual(args.role, "architect")
+
+    def test_setup_installs_packaged_grok_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"GROK_HOME": tmp}, clear=False):
+                self.assertEqual(cmd_setup(SimpleNamespace(force=False)), 0)
+            root = Path(tmp)
+            for rel in (
+                "skills/ooda/SKILL.md",
+                "skills/ooda-controller/SKILL.md",
+                "policies/EFFICIENT_AGENT.md",
+            ):
+                self.assertTrue((root / rel).is_file(), rel)
+
+    def test_packaged_skills_match_canonical_provider_files(self):
+        pairs = [
+            (
+                Path("providers/grok/skills/ooda/SKILL.md"),
+                Path("src/ooda/resources/grok/skills/ooda/SKILL.md"),
+            ),
+            (
+                Path("providers/grok/skills/ooda-controller/SKILL.md"),
+                Path("src/ooda/resources/grok/skills/ooda-controller/SKILL.md"),
+            ),
+        ]
+        for canonical, packaged in pairs:
+            with self.subTest(canonical=canonical):
+                self.assertEqual(canonical.read_text(), packaged.read_text())
 
 
 if __name__ == "__main__":

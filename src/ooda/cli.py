@@ -3,8 +3,11 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
+import subprocess
 import sys
 import uuid
+from importlib.resources import files
 from pathlib import Path
 
 ROLES = {
@@ -286,6 +289,86 @@ def cmd_validate(a):
     return _report_validation(Path(a.file))
 
 
+def _resource_text(*parts: str) -> str:
+    return files("ooda").joinpath("resources", *parts).read_text(encoding="utf-8")
+
+
+def _install_text(target: Path, content: str, *, force: bool) -> int:
+    if target.exists() or target.is_symlink():
+        try:
+            existing = target.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            existing = None
+        if existing == content:
+            print(f"ALREADY {target}")
+            return 0
+        if not force:
+            print(f"REFUSE {target} exists and differs; rerun with --force to replace", file=sys.stderr)
+            return 1
+        if target.is_symlink():
+            target.unlink()
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    print(f"INSTALL {target}")
+    return 0
+
+
+def cmd_setup(a):
+    grok_home = Path(os.environ.get("GROK_HOME", str(Path.home() / ".grok"))).expanduser()
+    items = [
+        (
+            grok_home / "skills" / "ooda" / "SKILL.md",
+            _resource_text("grok", "skills", "ooda", "SKILL.md"),
+        ),
+        (
+            grok_home / "skills" / "ooda-controller" / "SKILL.md",
+            _resource_text("grok", "skills", "ooda-controller", "SKILL.md"),
+        ),
+        (
+            grok_home / "policies" / "EFFICIENT_AGENT.md",
+            _resource_text("EFFICIENT_AGENT.md"),
+        ),
+    ]
+
+    failures = sum(_install_text(path, content, force=a.force) for path, content in items)
+    if failures:
+        return 2
+
+    print("OODA Grok skills configured.")
+    print("Use `grok-safe`, then `/ooda-controller` or `/ooda <mission-file>`.")
+    return 0
+
+
+def cmd_dashboard(a):
+    monitor_dir = Path(
+        os.environ.get("OODA_CONTROL_ROOM_DIR", str(Path.home() / "repos" / "agent-ops-monitor"))
+    ).expanduser()
+    script = monitor_dir / "scripts" / "agent-monitor"
+
+    if not script.is_file():
+        repo = os.environ.get("OODA_CONTROL_ROOM_REPO")
+        if not repo:
+            print(
+                "Control Room is optional and is not installed at "
+                f"{monitor_dir}. Set OODA_CONTROL_ROOM_REPO to an accessible clone URL "
+                "or OODA_CONTROL_ROOM_DIR to an existing checkout.",
+                file=sys.stderr,
+            )
+            return 2
+        monitor_dir.parent.mkdir(parents=True, exist_ok=True)
+        rc = subprocess.call(["git", "clone", repo, str(monitor_dir)])
+        if rc:
+            return rc
+
+    return subprocess.call(["bash", str(script)])
+
+
+def cmd_help(_a):
+    parser().print_help()
+    return 0
+
+
 def _add_work_order_arguments(q):
     q.add_argument("objective_text", nargs="?", help="bounded objective; may also be supplied with --objective")
     q.add_argument("--objective", help="compatibility form of the objective")
@@ -302,8 +385,11 @@ def _add_work_order_arguments(q):
 
 
 def parser():
-    p = argparse.ArgumentParser(prog="ooda")
-    subs = p.add_subparsers(required=True)
+    p = argparse.ArgumentParser(prog="ooda", description="Bounded AI work without carrying the whole project in chat")
+    subs = p.add_subparsers(dest="command")
+
+    q = subs.add_parser("help", help="show the everyday command surface")
+    q.set_defaults(func=cmd_help)
 
     q = subs.add_parser("init", help="adopt or scaffold an OODA project")
     q.add_argument("--project-id", required=True)
@@ -318,7 +404,10 @@ def parser():
     q.add_argument("--path", help=argparse.SUPPRESS)
     q.set_defaults(func=cmd_doctor)
 
-    q = subs.add_parser("work-order", help="create one bounded mission contract")
+    q = subs.add_parser("mission", help="create one bounded worker mission")
+    _add_work_order_arguments(q)
+
+    q = subs.add_parser("work-order", help=argparse.SUPPRESS)
     _add_work_order_arguments(q)
 
     q = subs.add_parser("trace", help="record a mission result")
@@ -334,6 +423,13 @@ def parser():
     q.add_argument("--output", help="defaults to .ooda/traces/<work-order-id>.json")
     q.set_defaults(func=cmd_trace)
 
+    q = subs.add_parser("setup", help="install OODA Grok skills and efficiency policy into ~/.grok")
+    q.add_argument("--force", action="store_true", help="replace differing OODA skill/policy files")
+    q.set_defaults(func=cmd_setup)
+
+    q = subs.add_parser("dashboard", help="open an existing optional OODA Control Room checkout")
+    q.set_defaults(func=cmd_dashboard)
+
     q = subs.add_parser("validate", help=argparse.SUPPRESS)
     q.add_argument("file")
     q.set_defaults(func=cmd_validate)
@@ -341,7 +437,11 @@ def parser():
 
 
 def main():
-    args = parser().parse_args()
+    p = parser()
+    args = p.parse_args()
+    if not getattr(args, "command", None):
+        p.print_help()
+        raise SystemExit(0)
     raise SystemExit(args.func(args))
 
 

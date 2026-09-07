@@ -1,29 +1,29 @@
 # ChatGPT Usage
 
-This is the human-facing entrypoint to OODA. Lawrence should not need giant handoffs or long-lived chats to resume work.
+This is the human-facing entrypoint to OODA. You should not need giant handoffs or long-lived chats to resume work.
 
 ## Four default prompts
 
 ### Jump into an existing project
 
 ```text
-Jump into tenniskal. Use OODA. Goal: <goal>.
+Jump into <repo>. Use OODA. Goal: <goal>.
 ```
 
-ChatGPT should bootstrap from durable repo truth, report current orientation, and stay discussion-only unless Lawrence asks to execute.
+ChatGPT should bootstrap from durable repo truth, report current orientation, and stay discussion-only unless the human asks to execute.
 
 ### Resume specific work
 
 ```text
-Continue tenniskal PR #18. Use current repo truth, not old chat state.
+Continue <repo> PR #<n>. Use current repo truth, not old chat state.
 ```
 
 Prefer a PR/issue/branch identifier over pasting large transcripts.
 
-### Review Grok work
+### Review agent work
 
 ```text
-Review crypto-innout PR #31 under OODA.
+Review <repo> PR #<n> under OODA.
 ```
 
 ChatGPT should inspect the actual diff/evidence and challenge scope, correctness, scientific claims, architecture, documentation impact, and authority.
@@ -34,7 +34,7 @@ ChatGPT should inspect the actual diff/evidence and challenge scope, correctness
 New project idea: <idea>. OODA it with me. Do not build yet.
 ```
 
-Stay in free-form Lawrence + ChatGPT exploration until the idea earns execution resources.
+Stay in free-form human + ChatGPT exploration until the idea earns execution resources.
 
 ## Controller relationship
 
@@ -60,8 +60,6 @@ Create one only when:
 
 Do not create missions for ordinary brainstorming.
 
-The friendly CLI form is:
-
 ```bash
 ooda mission \
   "<one bounded objective>" \
@@ -72,39 +70,28 @@ ooda mission \
   [--id TASK-01]
 ```
 
-The underlying durable schema remains `ooda/work-order/v1`; `mission` is the human-facing name.
+The durable schema remains `ooda/work-order/v1`; `mission` is the human-facing name.
 
 ## Conversation hygiene
 
 Use fresh chats aggressively. A conversation is a working room, not permanent project memory.
 
-Good durable state lives in:
+Good durable state lives in Git/GitHub, `AGENTS.md`, `PROJECT_STATE.md` or equivalent, `.ooda/project.json`, PRs/issues, earned domain/architecture/process documentation, research artifacts, and OODA missions/traces.
 
-- Git/GitHub;
-- `AGENTS.md`;
-- `PROJECT_STATE.md` or equivalent;
-- `.ooda/project.json`;
-- PRs/issues;
-- domain/architecture/process documentation when earned;
-- research artifacts;
-- OODA missions/work orders and traces.
-
-Do not preserve context merely because it was expensive to create. Persist the useful conclusion instead.
+Persist useful conclusions rather than retaining context merely because it was expensive to create.
 
 ## Review boundary
 
-Current default:
-
 ```text
-Lawrence + ChatGPT
+HUMAN + CHATGPT
     -> OODA Controller / mission construction
-    -> existing Grok Build worker execution
+    -> bounded worker execution
     -> Git/PR/handoff
-    -> ChatGPT + Lawrence review
+    -> human + ChatGPT review
     -> OODA trace
 ```
 
-Grok does not gain merge, promotion, or live-capital authority merely because a task uses OODA.
+A worker does not gain merge, promotion, or live-capital authority merely because a task uses OODA.
 
 ## Documentation impact during review
 

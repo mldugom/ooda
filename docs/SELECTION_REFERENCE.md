@@ -36,10 +36,10 @@ This is the copy/paste reference for the main OODA descriptors used by `ooda ini
 
 | Value | Meaning | Typical evidence burden | Example |
 |---|---|---|---|
-| `discovery` | Interesting enough to explore; not yet something to rely on. | Cheap falsification, sound exploratory method, clear limitations. | “Trade intensity may lead price changes; test it.” |
+| `discovery` | Interesting enough to explore; not yet something to rely on. | Cheap falsification, sound exploratory method, clear limitations. | “This behavior may predict an outcome; test it.” |
 | `evidence` | Stronger support that should survive meaningful validation. | Reproducibility, realistic assumptions/economics, uncertainty, stronger temporal/generalization checks. | “This signal survives held-out validation and realistic costs.” |
 | `qualification` | Result may be relied upon for consequential use. | Frozen provenance/spec, strong independent/sealed/prospective validation, relevant stress/security/reliability/execution controls, explicit human promotion. | “This model is qualified for the approved production use.” |
-| `n-a` | No empirical/research claim is being promoted. | Engineering/product verification appropriate to the task. | “Implement this iOS navigation flow.” |
+| `n-a` | No empirical/research claim is being promoted. | Engineering/product verification appropriate to the task. | “Implement this navigation flow.” |
 
 **Important:** a worker cannot self-promote `discovery` → `evidence` → `qualification` merely by assertion or green tests.
 
@@ -83,11 +83,11 @@ Project class is repo-level routing metadata. Keep it broad and stable.
 
 | Value | Use for | Examples |
 |---|---|---|
-| `quantitative-research` | Research repos centered on empirical/statistical hypotheses and evidence. | Tenniskal, sports/market factor research, experimental signal research. |
-| `trading-research` | Research tied directly to market execution, trading systems, or trading-specific constraints. | Crypto-Innout. |
+| `quantitative-research` | Research repos centered on empirical/statistical hypotheses and evidence. | Sports factors, demand forecasting research, experimental signal research. |
+| `trading-research` | Research tied directly to market execution, trading systems, or trading-specific constraints. | Market strategy research with fills/costs/liquidity constraints. |
 | `data-ml-system` | Data/ML pipelines, model-serving systems, ML infrastructure/products where the system is central. | Feature/model pipelines, evaluation systems, ML services. |
-| `software-product` | Apps, SaaS, extensions, APIs, user-facing software products. | AutotoxPassport, browser extensions, iOS apps. |
-| `analytical-product` | Decision-support/valuation/analytics products combining analysis with a user-facing output. | IOND valuation/dashboard work. |
+| `software-product` | Apps, SaaS, extensions, APIs, user-facing software products. | Browser extensions, mobile apps, SaaS applications. |
+| `analytical-product` | Decision-support/valuation/analytics products combining analysis with a user-facing output. | Valuation dashboards, scenario-analysis tools. |
 | `infrastructure` | Runtime, deployment, observability, orchestration, platform/control-plane infrastructure. | Agent supervisor, collectors, deployment tooling. |
 
 ---
@@ -135,9 +135,9 @@ For platform-specific expertise not yet in the central list, use a clear project
 
 | Situation | Project class | Role / profile | Lenses | Claim |
 |---|---|---|---|---|
-| Explore an iOS app feature | `software-product` | `product-strategist / ios-swiftui` | `product-user`, `value-of-information` | `discovery` |
-| Design the iOS architecture | `software-product` | `architect / ios-swiftui` | `product-user`, `security-abuse`, `reliability-systems` | `n-a` |
-| Implement bounded iOS feature | `software-product` | `engineer / ios-swiftui` | `product-user`, `reliability-systems` | `n-a` |
+| Explore a mobile app feature | `software-product` | `product-strategist / ios-swiftui` | `product-user`, `value-of-information` | `discovery` |
+| Design mobile architecture | `software-product` | `architect / ios-swiftui` | `product-user`, `security-abuse`, `reliability-systems` | `n-a` |
+| Implement bounded app feature | `software-product` | `engineer / ios-swiftui` | `product-user`, `reliability-systems` | `n-a` |
 | Independent app review | `software-product` | `validator / ios-swiftui` | `security-abuse`, `reliability-systems`, `product-user` | `n-a` |
 | Quant hypothesis spike | `quantitative-research` | `researcher / quantitative-research` | `scientific`, `statistical`, `value-of-information` | `discovery` |
 | Model validation | `quantitative-research` | `validator / statistics` | `model-risk`, `statistical`, `scientific` | `evidence` or `qualification` depending on intended reliance |

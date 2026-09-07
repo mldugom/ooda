@@ -4,29 +4,37 @@ Projects opt into OODA without reorganizing their existing documentation.
 
 ## Install once
 
-From the OODA repository:
+Pip from GitHub:
 
 ```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
+```
+
+Or from a clone:
+
+```bash
+git clone https://github.com/mldugom/ooda.git
+cd ooda
 bash install.sh
 ```
 
-Normal use should then happen through the single `ooda` command plus the two Grok skills `/ooda-controller` and `/ooda`.
+Normal use then happens through `ooda`, `grok-safe`, `/ooda-controller`, and `/ooda`.
 
 ## Existing repository — thin overlay only
 
-Create `.ooda/project.json` in the target project:
-
 ```bash
-ooda init --project-id <id> --project-class <class>
+cd ~/repos/example-project
+ooda init --project-id example-project --project-class software-product
 ooda doctor
 ```
 
-Recommended project contract:
+Recommended project contract shape:
 
 ```json
 {
   "schema": "ooda/project/v1",
-  "project_id": "example",
+  "project_id": "example-project",
   "project_class": "software-product",
   "authority": {"integration_owner": "human", "self_merge": false, "live_capital": false},
   "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
@@ -35,11 +43,11 @@ Recommended project contract:
 }
 ```
 
-This is a routing contract, not a second giant PROJECT_STATE.
+This is a routing contract, not a second giant project-state document.
 
-## New repository — minimal OODA-ready scaffold
+If the repo already has useful architecture/domain/process documentation, do not scaffold replacements. Add only `.ooda/` and preserve the repo's existing durable truth.
 
-For a new repo, initialize Git normally and ask OODA to create only the small durable operating spine:
+## New repository — minimal scaffold
 
 ```bash
 mkdir my-project && cd my-project
@@ -64,22 +72,11 @@ PROJECT_STATE.md
   traces/
 ```
 
-The generated Markdown files are intentionally short:
-
-- `README.md` — purpose and entrypoint;
-- `AGENTS.md` — standing operating/safety rules plus project-specific invariants;
-- `PROJECT_STATE.md` — current objective, current truth, blockers, next gate;
-- `.ooda/README.md` — explains that OODA is a thin overlay, not a second PM system.
-
 Existing docs are never silently overwritten by `--scaffold`. `--force` replaces only `.ooda/project.json`.
 
-After bootstrap, replace placeholders with the project's actual purpose/invariants/current truth before substantial execution.
-
-Do **not** scaffold empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, or similar files just because the project uses OODA. Domain/architecture/process/cheat-sheet documentation is created when real work materially changes a durable mental model. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+Do **not** scaffold empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, or similar files just because the project uses OODA. Those documents are earned when real work materially changes a durable mental model.
 
 ## Everyday mission flow
-
-Prefer the friendly CLI surface:
 
 ```bash
 ooda mission \
@@ -91,7 +88,7 @@ ooda mission \
   [--id TASK-01]
 ```
 
-The mission path defaults to `.ooda/work-orders/<id>.json`.
+Mission output defaults to `.ooda/work-orders/<id>.json`.
 
 After execution:
 
@@ -102,70 +99,39 @@ ooda trace \
   --summary "<truthful concise result>"
 ```
 
-The trace path defaults to `.ooda/traces/<work-order-id>.json`.
+Trace output defaults to `.ooda/traces/<work-order-id>.json`.
 
-Use `ooda doctor` for project health and `ooda doctor <json-file>` for individual contract validation. The old `work-order` and `validate` commands remain compatibility aliases only.
+Use `ooda doctor` for project health and `ooda doctor <json-file>` for individual contract validation.
 
 ## Project classes
 
-- `quantitative-research`
-- `trading-research`
-- `data-ml-system`
-- `software-product`
-- `analytical-product`
-- `infrastructure`
+| Class | Use for |
+|---|---|
+| `quantitative-research` | Statistical/empirical research repos. |
+| `trading-research` | Market research with trading/execution constraints. |
+| `data-ml-system` | ML/data pipelines, evaluation, serving, and model systems. |
+| `software-product` | Apps, SaaS, extensions, APIs, user-facing software. |
+| `analytical-product` | Decision-support, valuation, scenario, analytics products. |
+| `infrastructure` | Runtime, deployment, observability, orchestration/control-plane work. |
 
-Projects may use more specific profiles/tags without changing the core classes.
+See `docs/SELECTION_REFERENCE.md` for routing values and examples.
+
+## Typical software-product routing
+
+1. `product-strategist` + `product-user` + `value-of-information` — establish the smallest useful workflow;
+2. `architect` + relevant software profile + `security-abuse`/`reliability-systems` — design a thin vertical slice;
+3. `engineer` — implement the bounded slice;
+4. `validator` — independently review security/reliability/correctness when warranted.
+
+## Typical research routing
+
+1. `researcher` + appropriate research profile + `scientific`/`statistical` — discovery;
+2. preserve negative findings and selection history;
+3. use `validator` for independent evidence/qualification review;
+4. do not infer production authority from research success.
 
 ## Context bootstrap
 
 A fresh ChatGPT conversation should normally need only repository + immediate intent. See `docs/CONTEXT_BOOTSTRAP.md` and `docs/CHATGPT_USAGE.md`.
 
 Do not solve session continuity by growing project docs indefinitely. Persist only durable conclusions and current truth.
-
-## Suggested pilots
-
-### Tenniskal
-Class: `quantitative-research`
-
-Default orientation:
-- researcher / quantitative-research;
-- scientific + statistical + market-microstructure;
-- Discovery until the stage explicitly advances.
-
-### Crypto-Innout
-Class: `trading-research`
-
-Default orientation depends on task:
-- researcher / quant-markets for research;
-- engineer / reliability for runtime work;
-- model-risk + reliability-systems + taleb for consequential changes.
-
-Live-capital authority remains false.
-
-### IOND
-Class: `analytical-product`
-
-Default orientation:
-- researcher / fundamental-valuation for model work;
-- product-strategist / analytics-product for dashboard/product work;
-- causal-mechanism + model-risk + product-user as needed.
-
-### LDPS
-Class: `quantitative-research`
-
-Use as a methodology/reference source first. Do not make OODA adoption an LDPS-wide refactor.
-
-## SaaS / app / Chrome extension
-
-Class: `software-product`.
-
-Typical routing:
-1. product-strategist + product-user + value-of-information — establish the smallest useful workflow;
-2. architect + full-stack/browser-extension + security-abuse — design a thin vertical slice;
-3. engineer — implement;
-4. validator + security-abuse + reliability-systems — review before release.
-
-OODA should prevent both failure modes:
-- shipping a technically polished product nobody needs;
-- overengineering infrastructure before a vertical slice proves the workflow.

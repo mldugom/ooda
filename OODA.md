@@ -10,7 +10,7 @@ Its purpose is to maximize adaptive learning and useful output while controlling
 
 ### 1. Creative thinking space
 
-Lawrence and ChatGPT may discuss raw thoughts, goals, product ideas, investment theses, strange hypotheses, models, architectures, and cross-domain connections without creating a task.
+The human and ChatGPT may discuss raw thoughts, goals, product ideas, investment theses, strange hypotheses, models, architectures, and cross-domain connections without creating a task.
 
 No work order is required until an idea deserves meaningful execution resources or repository mutation.
 
@@ -155,8 +155,6 @@ It may:
 It should not become the deep researcher or engineer.
 
 If robust work-order construction requires facts outside compact control state, the Controller first dispatches a short orientation spike to a `researcher`, `architect`, `validator`, or other appropriate worker, then constructs the work order from the returned evidence.
-
-This gives us a useful rule:
 
 > **Think enough to route; investigate enough to orient; delegate the expensive context.**
 

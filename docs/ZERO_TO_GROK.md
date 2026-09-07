@@ -1,65 +1,71 @@
 # Zero to Grok with OODA
 
-This is the copy/paste path from a fresh machine/repo checkout to an OODA Controller conversation and, when warranted, a bounded worker mission.
-
-The example uses `mldugom/AutotoxPassport`, an existing iOS product repo. Because it already has substantial documentation, adopt it with the thin `.ooda/` overlay rather than generating starter boilerplate.
+This is the copy/paste path from a fresh machine to an OODA Controller conversation and, when warranted, a bounded worker mission.
 
 ---
 
-## A. First-time OODA install
+## A. First-time install
+
+### Pip from GitHub
+
+Once the repository is public:
+
+```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
+ooda help
+```
+
+This installs:
+
+- `ooda` command;
+- `grok-safe` command;
+- Grok `/ooda` worker skill;
+- Grok `/ooda-controller` Controller skill;
+- bundled Grok efficiency policy.
+
+The distribution name is `ooda-ai`; do not run `pip install ooda`, which is a different project.
+
+### Or install from a clone
 
 ```bash
 mkdir -p ~/repos
 cd ~/repos
-
-git clone git@github.com:mldugom/ooda.git
+git clone https://github.com/mldugom/ooda.git
 cd ooda
 bash install.sh
-
 ooda help
 ```
 
-If your shell cannot find `ooda`, ensure `~/.local/bin` is on `PATH`:
+If a clone install cannot find `ooda`, ensure `~/.local/bin` is on `PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Persist that line in `~/.zshrc` only if your shell does not already include it.
-
-`bash install.sh` installs/symlinks:
-
-- `ooda` CLI;
-- Grok `/ooda` worker skill;
-- Grok `/ooda-controller` Controller skill.
-
 ---
 
-## B. Existing repo is already checked out
+## B. Adopt an existing checked-out repo
 
-Assume this already exists:
+Assume an existing product repo is already at:
 
 ```text
-~/repos/AutotoxPassport
+~/repos/example-app
 ```
 
-Go there:
+If it already has useful README/architecture/process documentation, add only OODA's thin overlay:
 
 ```bash
-cd ~/repos/AutotoxPassport
-```
+cd ~/repos/example-app
 
-Adopt it into OODA:
-
-```bash
 ooda init \
-  --project-id AutotoxPassport \
+  --project-id example-app \
   --project-class software-product
 
 ooda doctor
 ```
 
-Do **not** use `--scaffold` for an existing mature repo unless you explicitly want the missing starter files created. AutotoxPassport already has architecture/process/diagram/product documentation, so the thin overlay is preferable.
+Do **not** use `--scaffold` just because it exists. Use it for a new/empty repo that needs the starter pack, not to compete with existing durable documentation.
 
 This creates:
 
@@ -70,32 +76,32 @@ This creates:
   traces/
 ```
 
-It does not rewrite the application code or existing docs.
+It does not rewrite application code or existing project docs.
 
 ---
 
 ## C. Open Grok and ask a repo-level question
 
-From the target repo directory:
+From the target repo:
 
 ```bash
-cd ~/repos/AutotoxPassport
+cd ~/repos/example-app
 grok-safe
 ```
 
 Then in Grok:
 
 ```text
-/ooda-controller Jump into AutotoxPassport. Use only the minimum durable repo/control state needed to orient. I want to think about <your question>. Do not do deep code archaeology or implementation yourself; if deeper evidence is required, propose the smallest worker/orientation mission.
+/ooda-controller Jump into this repo. Use only the minimum durable repo/control state needed to orient. I want to think about <your question>. Do not do deep code archaeology or implementation yourself; if deeper evidence is required, propose the smallest worker/orientation mission.
 ```
 
-Concrete example:
+Example:
 
 ```text
-/ooda-controller Jump into AutotoxPassport. I want to decide what the highest-value next product/engineering move is for the prototype. Use compact current state only. If you need deeper product or architecture facts, propose the smallest orientation spike rather than loading the whole repo yourself.
+/ooda-controller I want to decide the highest-value next product/engineering move. Use compact current state only. If you need deeper product or architecture facts, propose the smallest orientation spike rather than loading the whole repo yourself.
 ```
 
-The Controller should normally end with one of:
+The Controller normally ends with one of:
 
 ```text
 KEEP THINKING
@@ -104,49 +110,47 @@ HUMAN GATE
 NO ACTION
 ```
 
-The Controller is allowed to help frame raw thoughts and construct missions. It is not the deep researcher/engineer.
-
 ---
 
 ## D. If the Controller needs deeper repo facts
 
-A good Controller response may propose an orientation spike such as:
+A Controller may propose an orientation spike such as:
 
 ```text
 PROPOSE MISSION
 role: architect
-profile: ios-swiftui
+profile: full-stack
 lenses: product-user, reliability-systems
 claim: n-a
-objective: Inspect only the existing architecture, key app entrypoints, and current backlog necessary to identify the smallest coherent next vertical slice. Return concise constraints and recommended boundary; do not implement.
+objective: Inspect only the architecture, key entrypoints, and current durable backlog/state necessary to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement.
 ```
 
-Create that mission from the shell:
+Create it:
 
 ```bash
 ooda mission \
-  "Inspect only the existing architecture, key app entrypoints, and current backlog necessary to identify the smallest coherent next vertical slice. Return concise constraints and recommended boundary; do not implement." \
+  "Inspect only the architecture, key entrypoints, and current durable backlog/state necessary to identify the smallest coherent next vertical slice. Return concise constraints and a recommended boundary; do not implement." \
   --role architect \
-  --profile ios-swiftui \
+  --profile full-stack \
   --lenses product-user,reliability-systems \
   --claim n-a \
-  --id ATP-ORIENT-001
+  --id ORIENT-001
 ```
 
 Default output:
 
 ```text
-.ooda/work-orders/ATP-ORIENT-001.json
+.ooda/work-orders/ORIENT-001.json
 ```
 
 ---
 
 ## E. Execute the bounded worker mission
 
-Start a separate Grok worker session from the same repo:
+Start a separate worker session from the same repo:
 
 ```bash
-cd ~/repos/AutotoxPassport
+cd ~/repos/example-app
 grok-safe
 ```
 
@@ -154,7 +158,7 @@ Then:
 
 ```text
 /start
-/ooda .ooda/work-orders/ATP-ORIENT-001.json
+/ooda .ooda/work-orders/ORIENT-001.json
 ```
 
 The worker should:
@@ -173,32 +177,30 @@ RE-OBSERVE
 /handoff
 ```
 
-Bring the handoff/result back to Lawrence + ChatGPT and/or the Controller for review/reorientation.
+Bring the handoff/result to the human + ChatGPT and/or the Controller for review/reorientation.
 
 ---
 
 ## F. Record the result
 
-Example successful orientation spike:
-
 ```bash
 ooda trace \
-  --work-order .ooda/work-orders/ATP-ORIENT-001.json \
+  --work-order .ooda/work-orders/ORIENT-001.json \
   --result completed \
-  --summary "Architecture/product orientation completed; returned bounded candidate vertical slice and constraints."
+  --summary "Architecture/product orientation completed; returned a bounded candidate vertical slice and constraints."
 ```
 
 Default output:
 
 ```text
-.ooda/traces/ATP-ORIENT-001.json
+.ooda/traces/ORIENT-001.json
 ```
 
-If the spike invalidates the idea instead:
+For a useful negative result:
 
 ```bash
 ooda trace \
-  --work-order .ooda/work-orders/ATP-ORIENT-001.json \
+  --work-order .ooda/work-orders/ORIENT-001.json \
   --result negative_finding \
   --summary "Current architecture/user workflow does not support the proposed slice without a materially broader redesign."
 ```
@@ -207,17 +209,17 @@ ooda trace \
 
 ## G. Ask the Controller to re-orient
 
-Return to your Controller conversation, or start a fresh one:
+Return to the Controller conversation, or start a fresh one:
 
 ```bash
-cd ~/repos/AutotoxPassport
+cd ~/repos/example-app
 grok-safe
 ```
 
 Then:
 
 ```text
-/ooda-controller Re-observe AutotoxPassport from the latest active work orders/traces and compact project state. ATP-ORIENT-001 is complete. What is the best next bounded move?
+/ooda-controller Re-observe this repo from the latest active work orders/traces and compact project state. ORIENT-001 is complete. What is the best next bounded move?
 ```
 
 A fresh Controller session is fine. Durable state, not chat history, is the memory.
@@ -226,20 +228,18 @@ A fresh Controller session is fine. Durable state, not chat history, is the memo
 
 ## H. If you already know the bounded implementation task
 
-You do not need an orientation spike just to obey ceremony.
-
-Example:
+Do not create an orientation spike just for ceremony.
 
 ```bash
-cd ~/repos/AutotoxPassport
+cd ~/repos/example-app
 
 ooda mission \
-  "Implement the approved bounded SwiftUI vertical slice described in the current project docs. Do not broaden scope into unrelated AR, BLE, persistence, or backend work." \
+  "Implement the approved bounded vertical slice described in the current project docs. Do not broaden into unrelated subsystems." \
   --role engineer \
-  --profile ios-swiftui \
+  --profile full-stack \
   --lenses product-user,reliability-systems \
   --claim n-a \
-  --id ATP-ENG-001
+  --id ENG-001
 
 grok-safe
 ```
@@ -248,60 +248,63 @@ Then in Grok:
 
 ```text
 /start
-/ooda .ooda/work-orders/ATP-ENG-001.json
+/ooda .ooda/work-orders/ENG-001.json
 ```
 
 After handoff/review:
 
 ```bash
 ooda trace \
-  --work-order .ooda/work-orders/ATP-ENG-001.json \
+  --work-order .ooda/work-orders/ENG-001.json \
   --result completed \
-  --summary "Approved SwiftUI vertical slice implemented and verified; ready for human/ChatGPT integration review."
+  --summary "Approved vertical slice implemented and verified; ready for integration review."
 ```
 
 ---
 
-## I. Open the Control Room
+## I. Optional Control Room
 
-From anywhere after OODA is installed:
+The Control Room is optional and may live in another repository or local checkout:
 
 ```bash
-ooda dashboard
+OODA_CONTROL_ROOM_DIR=/path/to/control-room ooda dashboard
 ```
 
-The dashboard is a derived observation surface. It does not replace Git, work orders, traces, tests, PRs, or human authority.
+or, when you have an accessible clone URL:
+
+```bash
+OODA_CONTROL_ROOM_REPO=<clone-url> ooda dashboard
+```
+
+The dashboard is derived observation state. It does not replace Git, work orders, traces, tests, PRs, or human authority.
 
 ---
 
-# The shortest version
+# Shortest version
 
-First time only:
+First-time pip install:
 
 ```bash
-cd ~/repos
-git clone git@github.com:mldugom/ooda.git
-cd ooda
-bash install.sh
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
 ```
 
-Adopt existing repo once:
+Adopt an existing repo once:
 
 ```bash
-cd ~/repos/AutotoxPassport
-ooda init --project-id AutotoxPassport --project-class software-product
+cd ~/repos/example-app
+ooda init --project-id example-app --project-class software-product
 ooda doctor
 ```
 
 Talk to the Controller:
 
 ```bash
-cd ~/repos/AutotoxPassport
 grok-safe
 ```
 
 ```text
-/ooda-controller Jump into AutotoxPassport. I want to think about <question>. Stay controller-sized; if deep evidence is needed, propose the smallest worker mission.
+/ooda-controller Jump into this repo. I want to think about <question>. Stay controller-sized; if deep evidence is needed, propose the smallest worker mission.
 ```
 
 That is enough to start using OODA.

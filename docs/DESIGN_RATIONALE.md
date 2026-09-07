@@ -13,6 +13,7 @@ Kenneth Stanley and Joel Lehman's novelty-search work shows why optimization aga
 ## Why Taleb belongs in both research and engineering
 
 Taleb's fragility/convexity framing emphasizes nonlinear response to variability and tail exposure. OODA applies that beyond portfolio management:
+
 - bounded experiments preserve option value;
 - irreversible architectural commitments deserve stronger scrutiny;
 - real-money systems protect against ruin before optimizing expected return;
@@ -22,67 +23,71 @@ Taleb's fragility/convexity framing emphasizes nonlinear response to variability
 
 Stable roles represent accountability. Profiles represent expertise. Lenses represent intellectual perspective.
 
-This avoids multiplying agents for every domain while still supporting:
-- statistics / data science / ML;
-- software / SaaS / browser extensions;
-- valuation / finance;
-- portfolio / execution / risk;
-- AI / agent engineering.
+This avoids multiplying agents for every domain while still supporting statistics/data science/ML, software/products, valuation/finance, portfolio/execution/risk, and AI/agent engineering.
 
 ## Why claim rigor scales
 
-The 2026 revised US model-risk guidance emphasizes validation rigor aligned to model approach, use, and materiality. OODA generalizes that principle without importing bank bureaucracy: a Discovery experiment should be cheap; a model used for consequential allocation or production should receive stronger validation and explicit limitations.
+Modern model-risk guidance emphasizes validation rigor aligned to model approach, use, and materiality. OODA generalizes that principle without importing institutional bureaucracy: a Discovery experiment should be cheap; a model used for consequential allocation or production should receive stronger validation and explicit limitations.
 
 ## Why substrate verification precedes sophistication
 
-Google's Rules of Machine Learning explicitly recommends keeping the first model simple and testing the infrastructure independently from the learning algorithm. This matches the strongest lesson from LDPS: repeated later audits found material issues because earlier generations built sophistication before proving underlying data/transform/pricing truth.
+Google's Rules of Machine Learning recommends keeping early models simple and testing infrastructure independently from the learning algorithm. The broader engineering lesson is the same: sophisticated downstream analysis cannot rescue corrupted data, leaky transforms, broken pricing, stale state, or an unverified runtime substrate.
 
-## Lessons from the existing mldugom repositories
+## General lessons encoded in OODA
 
-### Tenniskal
+### Sequential research
+
 Keep:
-- thin sequential research stages;
-- point-in-time integrity;
-- descriptive association != predictive alpha;
-- pre-registration before outcome/P&L optimization;
-- market economics as a later explicit gate.
 
-### Crypto-Innout
+- thin research stages;
+- point-in-time integrity when temporal data matters;
+- descriptive association != predictive utility;
+- pre-registration/selection accounting when claims warrant it;
+- economics/execution as explicit later gates when relevant.
+
+### Runtime and production systems
+
 Keep:
+
 - research != production;
 - runtime containment;
 - protected artifacts;
 - explicit human integration authority;
-- no real-money execution by implication.
+- no consequential production authority by implication.
 
-### LDPS
+### Validation-heavy research
+
 Keep:
+
 - negative-result memory;
-- walk-forward/sealed validation;
-- placebo/selection accounting where material;
+- chronological/sealed validation when appropriate;
+- placebo/selection accounting when material;
 - deterministic artifacts;
 - standing end-to-end verification.
 
-Do not copy:
+Avoid:
+
 - giant catalogs as a default;
 - documentation sprawl;
 - factories before substrate truth;
 - heavyweight validation for throwaway discovery.
 
-### IOND
+### Analytical products
+
 Keep:
+
 - explicit assumptions;
 - scenario/sensitivity reasoning;
-- reverse valuation questions;
-- honest separation of known cash flows from uncertain options;
-- analytical product output.
+- reverse questions such as "what must be true for this result?";
+- honest separation of known inputs from uncertain options;
+- useful user-facing analytical output.
 
-This proves OODA must support fundamental analysis and product/software work, not only trading systems.
+These lessons are intentionally cross-domain: OODA should support fundamental analysis, research, software/products, infrastructure, and trading systems without becoming specialized to any one of them.
 
 ## Sources
 
 - Air University material reproducing Boyd's OODA model and describing Orientation as the central synthesis/feedback function: https://www.airuniversity.af.edu/Portals/10/AUPress/Books/B_00165_GROTELUESCHEN_THE_HARMON_MEMORIAL_LECTURES_IN_MILITARY_HISTORY_1988_2017.pdf
 - Lehman & Stanley, novelty search / deceptive objectives: https://pubmed.ncbi.nlm.nih.gov/20868264/
 - Taleb on fragility/convex response: https://arxiv.org/abs/1808.00065
-- Federal Reserve SR 26-2 revised model-risk guidance (2026): https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+- Federal Reserve model-risk guidance: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
 - Google Rules of Machine Learning: https://developers.google.com/machine-learning/guides/rules-of-ml/

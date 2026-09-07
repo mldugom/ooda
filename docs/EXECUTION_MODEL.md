@@ -1,13 +1,13 @@
-# Current Execution Model — Lawrence + ChatGPT + OODA Controller + Grok Build
+# Current Execution Model — Human + ChatGPT + OODA Controller + Worker
 
 ## Purpose
 
-OODA does **not** replace the current working Grok execution paradigm. It standardizes the boundary around it and keeps cross-project context small.
+OODA standardizes the boundary around AI-assisted execution while keeping cross-project context small. Grok is the first provider adapter, not OODA's identity.
 
 ## The current loop
 
 ```text
-LAWRENCE + CHATGPT
+HUMAN + CHATGPT
 raw ideas / goals / creative challenge
         |
         v
@@ -21,15 +21,15 @@ raw ideas / goals / creative challenge
  Observe -> Orient -> Decide
         |
         v
- GROK BUILD WORKER
- existing repo + current lifecycle
+ BOUNDED WORKER
+ current provider + project lifecycle
  /start -> /ooda <mission> -> /handoff
         |
         v
  Git branch / PR / evidence
         |
         v
- CHATGPT + LAWRENCE REVIEW
+ HUMAN + CHATGPT REVIEW
         |
      accept / correct / reject
         |
@@ -42,8 +42,8 @@ raw ideas / goals / creative challenge
 
 ## Responsibilities
 
-### Lawrence
-- supplies goals, judgment, preferences, capital/risk authority, and final consequential decisions;
+### Human operator
+- supplies goals, judgment, preferences, risk authority, and final consequential decisions;
 - may change direction at any time;
 - owns human integration authority.
 
@@ -69,8 +69,6 @@ raw ideas / goals / creative challenge
 - contains one objective, routing, scope, verification, budget, stops, and authority;
 - controls Act without becoming a transcript.
 
-Human-facing creation is normally:
-
 ```bash
 ooda mission \
   "<bounded objective>" \
@@ -83,11 +81,11 @@ ooda mission \
 
 The underlying schema remains `ooda/work-order/v1`.
 
-### Grok Build worker
-- current execution provider;
+### Worker
+- current provider-specific execution session;
 - may research, architect, engineer, or validate according to the mission;
 - loads mission-specific deep context that the Controller deliberately avoids;
-- follows project-local rules and existing Grok lifecycle;
+- follows project-local rules and existing lifecycle;
 - re-observes/re-orients when material new facts invalidate assumptions;
 - reports documentation impact before handoff;
 - does not gain merge, promotion, or capital authority from OODA.
@@ -101,8 +99,6 @@ The underlying schema remains `ooda/work-order/v1`.
 - feeds the next Observe step;
 - is not a transcript or private chain-of-thought.
 
-Human-facing creation is normally:
-
 ```bash
 ooda trace \
   --work-order .ooda/work-orders/<id>.json \
@@ -111,22 +107,21 @@ ooda trace \
 ```
 
 ### OODA Control Room
-- display/freshness/audit-index layer;
-- `ooda dashboard` opens it locally;
+- optional display/freshness/audit-index layer;
 - not a source of truth, certifier, dispatcher, or merge authority.
 
 ## Session pattern
 
 1. Discuss freely with ChatGPT and/or the Controller.
 2. When ready to act, construct one mission.
-3. Start one Grok worker session in the target project.
-4. Use the project's existing `/start` behavior.
-5. Run `/ooda <mission-file>`.
+3. Start one bounded worker session in the target project.
+4. Use the provider/project's existing start behavior when applicable.
+5. Run the OODA worker adapter with the mission.
 6. Worker executes one substantial bounded work unit.
 7. Worker verifies and assesses documentation impact.
-8. Worker uses the project's current `/handoff` convention.
-9. ChatGPT/Lawrence review.
-10. Persist a concise trace.
+8. Worker hands off through the project's normal convention.
+9. Human + ChatGPT review.
+10. Persist a concise trace when it has durable value.
 11. Controller re-observes and recommends the next loop only when useful.
 
 ## Correction loops
@@ -150,6 +145,6 @@ See `docs/DOCUMENTATION_STEWARDSHIP.md`.
 - live trading/capital actions;
 - giant central context ingestion;
 - autonomous provider routing;
-- Raspberry Pi scheduling.
+- always-on scheduling.
 
-Those are future control-plane capabilities. They must consume the same mission/trace contracts after the manual process proves them.
+Those are future control-plane capabilities. They should consume the same mission/trace contracts after the manual process proves them.
