@@ -18,7 +18,10 @@ Everyday commands:
   ooda trace ...
   ooda dashboard
 
-Grok:
+Grok launcher:
+  grok-safe
+
+Grok skills:
   /ooda-controller
   /ooda <mission-file>
 EOF
