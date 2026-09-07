@@ -207,12 +207,18 @@ def cmd_doctor(a):
 
 
 def cmd_work_order(a):
+    objective = getattr(a, "objective", None) or getattr(a, "objective_text", None)
+    if not objective:
+        print("FAIL objective is required", file=sys.stderr)
+        return 2
+
     lenses = [x.strip() for x in a.lenses.split(",") if x.strip()]
+    work_order_id = a.id or f"ooda-{dt.datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6]}"
     data = {
         "schema": "ooda/work-order/v1",
-        "id": a.id or f"ooda-{dt.datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6]}",
+        "id": work_order_id,
         "project_id": a.project_id or Path.cwd().name,
-        "objective": a.objective,
+        "objective": objective,
         "role": a.role,
         "profile": a.profile,
         "lenses": lenses,
@@ -241,7 +247,7 @@ def cmd_work_order(a):
         for error in errors:
             print(f"FAIL {error}", file=sys.stderr)
         return 2
-    target = Path(a.output)
+    target = Path(a.output or f".ooda/work-orders/{work_order_id}.json")
     dump(target, data)
     print(target)
     return 0
@@ -269,7 +275,7 @@ def cmd_trace(a):
         "economics": {"turns": None, "tool_calls": None, "cost_usd": None},
         "next_gate": "Human/ChatGPT review",
     }
-    target = Path(a.output)
+    target = Path(a.output or f".ooda/traces/{work_order['id']}.json")
     dump(target, data)
     print(target)
     return 0
@@ -281,16 +287,17 @@ def cmd_validate(a):
 
 
 def _add_work_order_arguments(q):
-    q.add_argument("--objective", required=True)
+    q.add_argument("objective_text", nargs="?", help="bounded objective; may also be supplied with --objective")
+    q.add_argument("--objective", help="compatibility form of the objective")
     q.add_argument("--role", required=True, choices=sorted(ROLES))
     q.add_argument("--profile", required=True)
     q.add_argument("--lenses", default="")
-    q.add_argument("--claim-level", required=True, choices=sorted(CLAIMS))
+    q.add_argument("--claim", "--claim-level", dest="claim_level", required=True, choices=sorted(CLAIMS))
     q.add_argument("--project-id")
     q.add_argument("--id")
     q.add_argument("--max-turns", type=int, default=6)
     q.add_argument("--max-investigation-steps", type=int, default=8)
-    q.add_argument("--output", required=True)
+    q.add_argument("--output", help="defaults to .ooda/work-orders/<id>.json")
     q.set_defaults(func=cmd_work_order)
 
 
@@ -317,13 +324,14 @@ def parser():
     q = subs.add_parser("trace", help="record a mission result")
     q.add_argument("--work-order", required=True)
     q.add_argument(
-        "--result-state",
+        "--result", "--result-state",
+        dest="result_state",
         required=True,
         choices=["completed", "negative_finding", "blocked", "budget_exhausted", "needs_human_gate"],
     )
     q.add_argument("--summary", required=True)
     q.add_argument("--provider", default="grok")
-    q.add_argument("--output", required=True)
+    q.add_argument("--output", help="defaults to .ooda/traces/<work-order-id>.json")
     q.set_defaults(func=cmd_trace)
 
     q = subs.add_parser("validate", help=argparse.SUPPRESS)
