@@ -35,17 +35,16 @@ def main() -> None:
         .joinpath("EFFICIENT_AGENT.md")
         .read_text(encoding="utf-8")
     )
-    max_turns = os.environ.get("OODA_GROK_MAX_TURNS", "6")
 
-    command = [
-        grok_bin,
-        "--rules",
-        policy,
-        "--max-turns",
-        max_turns,
-    ]
+    command = [grok_bin, "--rules", policy]
+
+    max_turns = os.environ.get("OODA_GROK_MAX_TURNS")
+    if max_turns:
+        command.extend(["--max-turns", max_turns])
+
     if os.environ.get("OODA_GROK_NO_SUBAGENTS", "0").lower() in {"1", "true", "yes"}:
         command.append("--no-subagents")
+
     command.extend(sys.argv[1:])
     raise SystemExit(subprocess.call(command))
 
