@@ -7,6 +7,7 @@ OODA_DST="$BIN_DIR/ooda"
 OODA_SRC="$ROOT/scripts/ooda"
 SAFE_DST="$BIN_DIR/grok-safe"
 SAFE_MARKER="# OODA source: $ROOT"
+LEGACY_SAFE_SRC="$ROOT/scripts/grok-safe"
 
 mkdir -p "$BIN_DIR"
 
@@ -21,13 +22,7 @@ else
   echo "Installed $OODA_DST -> $OODA_SRC"
 fi
 
-if [ -f "$SAFE_DST" ] && grep -Fqx "$SAFE_MARKER" "$SAFE_DST"; then
-  echo "Already installed $SAFE_DST"
-elif [ -e "$SAFE_DST" ] || [ -L "$SAFE_DST" ]; then
-  echo "Refusing to replace existing $SAFE_DST" >&2
-  echo "Remove or move it deliberately, then rerun install." >&2
-  exit 2
-else
+install_safe_wrapper() {
   cat > "$SAFE_DST" <<EOF
 #!/usr/bin/env bash
 $SAFE_MARKER
@@ -36,6 +31,20 @@ ROOT="$ROOT"
 PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.grok_safe "\$@"
 EOF
   chmod +x "$SAFE_DST"
+}
+
+if [ -f "$SAFE_DST" ] && grep -Fqx "$SAFE_MARKER" "$SAFE_DST"; then
+  echo "Already installed $SAFE_DST"
+elif [ -L "$SAFE_DST" ] && [ "$(readlink "$SAFE_DST")" = "$LEGACY_SAFE_SRC" ]; then
+  rm "$SAFE_DST"
+  install_safe_wrapper
+  echo "Upgraded legacy OODA $SAFE_DST"
+elif [ -e "$SAFE_DST" ] || [ -L "$SAFE_DST" ]; then
+  echo "Refusing to replace existing $SAFE_DST" >&2
+  echo "Remove or move it deliberately, then rerun install." >&2
+  exit 2
+else
+  install_safe_wrapper
   echo "Installed $SAFE_DST"
 fi
 
