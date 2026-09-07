@@ -74,77 +74,77 @@ def project_scaffold(project_id: str) -> dict[str, str]:
 
 
 def validate_project(d):
-    e = []
+    errors = []
     if d.get("schema") != "ooda/project/v1":
-        e.append("schema must be ooda/project/v1")
+        errors.append("schema must be ooda/project/v1")
     if not d.get("project_id"):
-        e.append("project_id is required")
+        errors.append("project_id is required")
     if d.get("project_class") not in PROJECT_CLASSES:
-        e.append("unknown project_class")
+        errors.append("unknown project_class")
     if not isinstance(d.get("authority"), dict):
-        e.append("authority object is required")
-    return e
+        errors.append("authority object is required")
+    return errors
 
 
 def validate_work_order(d):
-    e = []
+    errors = []
     if d.get("schema") != "ooda/work-order/v1":
-        e.append("schema must be ooda/work-order/v1")
-    for k in ("id", "project_id", "objective", "role", "profile", "claim_level"):
-        if not d.get(k):
-            e.append(f"{k} is required")
+        errors.append("schema must be ooda/work-order/v1")
+    for key in ("id", "project_id", "objective", "role", "profile", "claim_level"):
+        if not d.get(key):
+            errors.append(f"{key} is required")
     if d.get("role") not in ROLES:
-        e.append("unknown role")
+        errors.append("unknown role")
     if d.get("claim_level") not in CLAIMS:
-        e.append("unknown claim_level")
-    ls = d.get("lenses") or []
-    if not isinstance(ls, list):
-        e.append("lenses must be a list")
+        errors.append("unknown claim_level")
+    lenses = d.get("lenses") or []
+    if not isinstance(lenses, list):
+        errors.append("lenses must be a list")
     else:
-        u = [x for x in ls if x not in LENSES]
-        if u:
-            e.append("unknown lenses: " + ", ".join(u))
-        if len(ls) > 3:
-            e.append("normally no more than three lenses per bounded action")
+        unknown = [x for x in lenses if x not in LENSES]
+        if unknown:
+            errors.append("unknown lenses: " + ", ".join(unknown))
+        if len(lenses) > 3:
+            errors.append("normally no more than three lenses per bounded action")
     if not isinstance(d.get("authority"), dict):
-        e.append("authority object is required")
-    return e
+        errors.append("authority object is required")
+    return errors
 
 
 def validate_trace(d):
-    e = []
+    errors = []
     if d.get("schema") != "ooda/trace/v1":
-        e.append("schema must be ooda/trace/v1")
+        errors.append("schema must be ooda/trace/v1")
     if not d.get("work_order_id"):
-        e.append("work_order_id is required")
+        errors.append("work_order_id is required")
     if not d.get("project_id"):
-        e.append("project_id is required")
+        errors.append("project_id is required")
     if not isinstance(d.get("ooda"), dict):
-        e.append("ooda object is required")
+        errors.append("ooda object is required")
     if not isinstance(d.get("result"), dict):
-        e.append("result object is required")
-    return e
+        errors.append("result object is required")
+    return errors
 
 
-def validate_file(path):
-    d = load(path)
-    s = d.get("schema")
-    if s == "ooda/project/v1":
-        return validate_project(d)
-    if s == "ooda/work-order/v1":
-        return validate_work_order(d)
-    if s == "ooda/trace/v1":
-        return validate_trace(d)
-    return [f"unknown schema: {s!r}"]
+def validate_file(path: Path):
+    data = load(path)
+    schema = data.get("schema")
+    if schema == "ooda/project/v1":
+        return validate_project(data)
+    if schema == "ooda/work-order/v1":
+        return validate_work_order(data)
+    if schema == "ooda/trace/v1":
+        return validate_trace(data)
+    return [f"unknown schema: {schema!r}"]
 
 
 def cmd_init(a):
     base = Path(a.path)
-    t = base / ".ooda" / "project.json"
-    if t.exists() and not a.force:
-        print(f"Refusing to overwrite {t}; use --force", file=sys.stderr)
+    target = base / ".ooda" / "project.json"
+    if target.exists() and not a.force:
+        print(f"Refusing to overwrite {target}; use --force", file=sys.stderr)
         return 2
-    d = {
+    data = {
         "schema": "ooda/project/v1",
         "project_id": a.project_id,
         "project_class": a.project_class,
@@ -157,43 +157,65 @@ def cmd_init(a):
         "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
         "monitor": {"enabled": False},
     }
-    dump(t, d)
+    dump(target, data)
     (base / ".ooda" / "work-orders").mkdir(parents=True, exist_ok=True)
     (base / ".ooda" / "traces").mkdir(parents=True, exist_ok=True)
-    print(t)
+    print(target)
     if a.scaffold:
         for rel, content in project_scaffold(a.project_id).items():
             print(write_if_missing(base / rel, content))
     return 0
 
 
-def cmd_doctor(a):
-    b = Path(a.path)
-    p = b / ".ooda" / "project.json"
-    if not p.exists():
-        print(f"MISSING {p}", file=sys.stderr)
-        return 2
-    e = validate_file(p)
-    if e:
-        [print(f"FAIL {x}") for x in e]
+def _report_validation(path: Path) -> int:
+    try:
+        errors = validate_file(path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"FAIL {path}: {exc}", file=sys.stderr)
         return 1
-    print(f"PASS {p}")
-    for rel in ("AGENTS.md", "PROJECT_STATE.md", "README.md", ".ooda/README.md"):
-        q = b / rel
-        print(("FOUND " if q.exists() else "INFO  ") + str(q))
+    if errors:
+        for error in errors:
+            print(f"FAIL {path}: {error}")
+        return 1
+    print(f"PASS {path}")
     return 0
 
 
+def cmd_doctor(a):
+    explicit = getattr(a, "target", None) or getattr(a, "path", None) or "."
+    target = Path(explicit)
+    if target.is_file():
+        return _report_validation(target)
+
+    project = target / ".ooda" / "project.json"
+    if not project.exists():
+        print(f"MISSING {project}", file=sys.stderr)
+        return 2
+    rc = _report_validation(project)
+    if rc:
+        return rc
+
+    for rel in ("AGENTS.md", "PROJECT_STATE.md", "README.md", ".ooda/README.md"):
+        path = target / rel
+        print(("FOUND " if path.exists() else "INFO  ") + str(path))
+
+    contract_errors = 0
+    for pattern in (".ooda/work-orders/*.json", ".ooda/traces/*.json"):
+        for path in sorted(target.glob(pattern)):
+            contract_errors += int(_report_validation(path) != 0)
+    return 1 if contract_errors else 0
+
+
 def cmd_work_order(a):
-    ls = [x.strip() for x in a.lenses.split(",") if x.strip()]
-    d = {
+    lenses = [x.strip() for x in a.lenses.split(",") if x.strip()]
+    data = {
         "schema": "ooda/work-order/v1",
         "id": a.id or f"ooda-{dt.datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6]}",
         "project_id": a.project_id or Path.cwd().name,
         "objective": a.objective,
         "role": a.role,
         "profile": a.profile,
-        "lenses": ls,
+        "lenses": lenses,
         "claim_level": a.claim_level,
         "scope": {"allowed": [], "forbidden": []},
         "verification": [],
@@ -214,69 +236,51 @@ def cmd_work_order(a):
             "may_spend_real_money": False,
         },
     }
-    e = validate_work_order(d)
-    if e:
-        [print(f"FAIL {x}", file=sys.stderr) for x in e]
+    errors = validate_work_order(data)
+    if errors:
+        for error in errors:
+            print(f"FAIL {error}", file=sys.stderr)
         return 2
-    t = Path(a.output)
-    dump(t, d)
-    print(t)
+    target = Path(a.output)
+    dump(target, data)
+    print(target)
     return 0
 
 
 def cmd_trace(a):
-    wo = load(Path(a.work_order))
-    e = validate_work_order(wo)
-    if e:
-        [print(f"FAIL work order: {x}", file=sys.stderr) for x in e]
+    work_order = load(Path(a.work_order))
+    errors = validate_work_order(work_order)
+    if errors:
+        for error in errors:
+            print(f"FAIL work order: {error}", file=sys.stderr)
         return 2
-    d = {
+    data = {
         "schema": "ooda/trace/v1",
-        "work_order_id": wo["id"],
-        "project_id": wo["project_id"],
+        "work_order_id": work_order["id"],
+        "project_id": work_order["project_id"],
         "provider": a.provider,
-        "role": wo["role"],
-        "profile": wo["profile"],
-        "lenses": wo.get("lenses", []),
-        "claim_level": wo["claim_level"],
+        "role": work_order["role"],
+        "profile": work_order["profile"],
+        "lenses": work_order.get("lenses", []),
+        "claim_level": work_order["claim_level"],
         "ooda": {"observe": "", "orient": "", "decide": "", "act": ""},
         "result": {"state": a.result_state, "summary": a.summary},
         "verification": {"status": "not_recorded", "tests": [], "artifacts": []},
         "economics": {"turns": None, "tool_calls": None, "cost_usd": None},
         "next_gate": "Human/ChatGPT review",
     }
-    t = Path(a.output)
-    dump(t, d)
-    print(t)
+    target = Path(a.output)
+    dump(target, data)
+    print(target)
     return 0
 
 
 def cmd_validate(a):
-    e = validate_file(Path(a.file))
-    if e:
-        [print(f"FAIL {x}") for x in e]
-        return 1
-    print("PASS")
-    return 0
+    print("INFO `ooda validate` is kept for compatibility; prefer `ooda doctor FILE`.", file=sys.stderr)
+    return _report_validation(Path(a.file))
 
 
-def parser():
-    p = argparse.ArgumentParser(prog="ooda")
-    s = p.add_subparsers(required=True)
-
-    q = s.add_parser("init")
-    q.add_argument("--project-id", required=True)
-    q.add_argument("--project-class", required=True, choices=sorted(PROJECT_CLASSES))
-    q.add_argument("--path", default=".")
-    q.add_argument("--scaffold", action="store_true", help="create minimal OODA-ready project docs when missing")
-    q.add_argument("--force", action="store_true", help="replace .ooda/project.json only; scaffold docs are never overwritten")
-    q.set_defaults(func=cmd_init)
-
-    q = s.add_parser("doctor")
-    q.add_argument("--path", default=".")
-    q.set_defaults(func=cmd_doctor)
-
-    q = s.add_parser("work-order")
+def _add_work_order_arguments(q):
     q.add_argument("--objective", required=True)
     q.add_argument("--role", required=True, choices=sorted(ROLES))
     q.add_argument("--profile", required=True)
@@ -289,7 +293,28 @@ def parser():
     q.add_argument("--output", required=True)
     q.set_defaults(func=cmd_work_order)
 
-    q = s.add_parser("trace")
+
+def parser():
+    p = argparse.ArgumentParser(prog="ooda")
+    subs = p.add_subparsers(required=True)
+
+    q = subs.add_parser("init", help="adopt or scaffold an OODA project")
+    q.add_argument("--project-id", required=True)
+    q.add_argument("--project-class", required=True, choices=sorted(PROJECT_CLASSES))
+    q.add_argument("--path", default=".")
+    q.add_argument("--scaffold", action="store_true", help="create minimal OODA-ready project docs when missing")
+    q.add_argument("--force", action="store_true", help="replace .ooda/project.json only; scaffold docs are never overwritten")
+    q.set_defaults(func=cmd_init)
+
+    q = subs.add_parser("doctor", help="check a project or one OODA JSON contract")
+    q.add_argument("target", nargs="?", help="project directory or OODA JSON file; default: current directory")
+    q.add_argument("--path", help=argparse.SUPPRESS)
+    q.set_defaults(func=cmd_doctor)
+
+    q = subs.add_parser("work-order", help="create one bounded mission contract")
+    _add_work_order_arguments(q)
+
+    q = subs.add_parser("trace", help="record a mission result")
     q.add_argument("--work-order", required=True)
     q.add_argument(
         "--result-state",
@@ -301,15 +326,15 @@ def parser():
     q.add_argument("--output", required=True)
     q.set_defaults(func=cmd_trace)
 
-    q = s.add_parser("validate")
+    q = subs.add_parser("validate", help=argparse.SUPPRESS)
     q.add_argument("file")
     q.set_defaults(func=cmd_validate)
     return p
 
 
 def main():
-    a = parser().parse_args()
-    raise SystemExit(a.func(a))
+    args = parser().parse_args()
+    raise SystemExit(args.func(args))
 
 
 if __name__ == "__main__":
