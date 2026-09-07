@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooda-ai"
-version = "0.2.0"
+version = "0.2.1"
 description = "Provider-neutral OODA control system for bounded AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,7 +15,7 @@ Homepage = "https://github.com/mldugom/ooda"
 Repository = "https://github.com/mldugom/ooda"
 
 [project.scripts]
-ooda = "ooda.cli:main"
+ooda = "ooda.entrypoint:main"
 grok-safe = "ooda.grok_safe:main"
 
 [tool.setuptools]
