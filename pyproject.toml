@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooda-ai"
-version = "0.1.0"
-description = "Provider-neutral OODA operating system for bounded AI-assisted work"
+version = "0.2.0"
+description = "Provider-neutral OODA control system for bounded AI-assisted work"
 readme = "README.md"
-requires-python = ">=3.11"
-authors = [{name = "mldugom"}]
+requires-python = ">=3.10"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/mldugom/ooda"
+Repository = "https://github.com/mldugom/ooda"
 
 [project.scripts]
 ooda = "ooda.cli:main"
@@ -22,4 +25,8 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-ooda = ["GROK_SAFE.md"]
+ooda = [
+  "resources/EFFICIENT_AGENT.md",
+  "resources/grok/skills/ooda/SKILL.md",
+  "resources/grok/skills/ooda-controller/SKILL.md",
+]

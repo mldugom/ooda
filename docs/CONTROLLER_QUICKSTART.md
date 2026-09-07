@@ -2,40 +2,48 @@
 
 ## Install / update OODA
 
-From `~/repos/ooda` on the OODA branch/version you want to use:
+Pip from GitHub:
 
 ```bash
+python3 -m pip install "git+https://github.com/mldugom/ooda.git"
+ooda setup
+```
+
+Or from a clone:
+
+```bash
+git clone https://github.com/mldugom/ooda.git
+cd ooda
 bash install.sh
 ```
 
-This installs/symlinks:
+Both paths provide:
 
 ```text
 ooda
+grok-safe
 /ooda
 /ooda-controller
 ```
 
-The install is idempotent when the expected symlinks already exist. Internal install scripts remain available under `scripts/`, but normal users should not need them.
-
 ## Start a Controller conversation
 
-Start Grok using the same bounded runtime you already use:
+From a target repo:
 
 ```bash
 grok-safe
 ```
 
-Then invoke:
+Then:
 
 ```text
 /ooda-controller
 ```
 
-or provide an initial thought directly:
+or provide an initial thought:
 
 ```text
-/ooda-controller I think Tenniskal may be over-focusing on trade intensity. Help me decide whether this deserves a new research spike.
+/ooda-controller I think this project may be focusing on the wrong user workflow. Help me decide whether this deserves a discovery spike.
 ```
 
 The Controller does **not** automatically turn every thought into work.
@@ -45,10 +53,10 @@ The Controller does **not** automatically turn every thought into work.
 ### Raw idea / Intake
 
 ```text
-/ooda-controller What if we add a browser extension that records prediction-market snapshots while I browse?
+/ooda-controller What if we add a lightweight browser workflow for this problem?
 ```
 
-Expected Controller outcome:
+Expected outcome may be:
 
 ```text
 KEEP THINKING
@@ -68,32 +76,13 @@ objective: <bounded product discovery objective>
 
 ### Robust mission construction
 
-You can ask the Controller to turn an approved idea into an execution contract:
-
 ```text
-/ooda-controller We have decided to build the first browser-extension vertical slice. Construct the smallest robust mission for it.
+/ooda-controller We have decided to build the first vertical slice. Construct the smallest robust mission for it.
 ```
 
-The Controller should return or create fields for:
+The Controller should return or create fields for project, objective, role, profile, lenses, claim level, allowed/forbidden scope, verification, budget, stop conditions, authority, documentation impact, and why this move now.
 
-```text
-project
-objective
-role
-profile
-lenses
-claim level
-allowed scope
-forbidden scope
-verification
-budget
-stop conditions
-authority
-documentation impact
-why this move now
-```
-
-If it cannot bound the task without deep facts, it should **not** load the entire repo itself. It should say what evidence is missing and propose a short orientation spike first.
+If it cannot bound the task without deep facts, it should **not** load the entire repo itself. It should identify the missing evidence and propose a short orientation spike first.
 
 Example:
 
@@ -101,14 +90,14 @@ Example:
 PROPOSE MISSION
 orientation spike:
   role: architect
-  profile: browser-extension
-  objective: Inspect only the current extension entrypoints/data flow and return the minimum interface constraints needed to bound the vertical-slice mission.
+  profile: full-stack
+  objective: Inspect only the current entrypoints/data flow and return the minimum interface constraints needed to bound the vertical-slice mission.
   output: concise constraints + candidate boundary
 ```
 
-After that spike returns, the Controller constructs the final execution mission.
+After the spike returns, the Controller constructs the final execution mission.
 
-This is why we do not need a separate permanent work-order-builder bot.
+This is why OODA does not need a separate permanent work-order-builder bot.
 
 ### Cross-project control
 
@@ -121,14 +110,12 @@ Expected answer is a short human-gate / blocked / active-mission view, not repos
 ### Specific project
 
 ```text
-/ooda-controller Crypto-Innout is accruing data. Should we send another worker in or leave it alone?
+/ooda-controller This project is currently collecting evidence. Should we send another worker in or leave it alone?
 ```
 
-The Controller checks compact current state. If deep evidence is needed to answer, it proposes a `researcher`, `validator`, or other worker mission rather than doing the research itself.
+The Controller checks compact current state. If deep evidence is needed, it proposes an appropriate worker mission rather than doing the research itself.
 
 ## OODA inside the Controller
-
-The Controller uses OODA compactly:
 
 ```text
 OBSERVE
@@ -155,8 +142,6 @@ It should not make the loop slower by producing ceremonial analysis.
 
 ## When a worker is warranted
 
-The Controller proposes a mission. The worker remains a separate bounded Grok session:
-
 ```text
 CONTROLLER
     |
@@ -182,7 +167,7 @@ Keeping the worker separate protects the Controller's small context surface.
 
 The Controller should include documentation in a mission only when the change is likely to alter durable understanding.
 
-Examples that often deserve a documentation target:
+Examples:
 
 - new subsystem/component boundary -> architecture diagram;
 - new domain entities/relationships -> domain model/glossary;
@@ -191,11 +176,9 @@ Examples that often deserve a documentation target:
 - new CLI/configuration -> command cheat sheet/examples;
 - new research method/evidence gate -> methodology/validation note.
 
-The executing worker reassesses impact before handoff.
+The executing worker reassesses impact before handoff. An `architect` may review substantial structural documentation; a `validator` may independently audit consequential truth/consistency.
 
-For broad structural changes, an `architect` may review the structure/diagram. For consequential consistency checks, a `validator` may audit the documentation against implementation/evidence.
-
-Do not create documentation for every local code change, and do not create a permanent documentation-auditor role. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+Do not create documentation for every local code change, and do not create a permanent documentation-auditor role.
 
 ## What the Controller may read
 
@@ -222,7 +205,7 @@ Normally not:
 
 - **KEEP THINKING** — stay conversational; do not spend worker resources yet.
 - **PROPOSE MISSION** — one bounded worker mission is worth doing.
-- **HUMAN GATE** — Lawrence/ChatGPT must review or authorize something first.
+- **HUMAN GATE** — a human/ChatGPT decision or authorization is required first.
 - **NO ACTION** — let current work/accrual continue; do not create busywork.
 
 ## Key boundaries

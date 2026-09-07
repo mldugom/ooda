@@ -1,0 +1,17 @@
+{
+  "schema": "ooda/project/v1",
+  "project_id": "example-quant-research",
+  "project_class": "quantitative-research",
+  "authority": {
+    "integration_owner": "human",
+    "self_merge": false,
+    "live_capital": false
+  },
+  "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
+  "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
+  "research": {
+    "point_in_time": "required_when_temporal",
+    "default_claim_level": "discovery"
+  },
+  "monitor": {"enabled": false}
+}

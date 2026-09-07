@@ -1,15 +1,13 @@
-# OODA Control Room / Agent Ops Boundary
+# OODA Control Room Boundary
 
-The existing `mldugom/agent-ops-monitor` repository is being repurposed as the **OODA Control Room** rather than replaced.
-
-It remains a separate repository and a read-only coordination view. OODA owns the doctrine/contracts; the monitor repo owns the lightweight HTML observation surface.
+A Control Room is an **optional read-only coordination view**. OODA owns doctrine/contracts; a dashboard implementation owns rendering and freshness.
 
 ## OODA owns
 
 - operating doctrine;
 - Controller contract;
 - roles/profiles/lenses;
-- work-order contract;
+- work-order/mission contract;
 - run trace;
 - budget/stop/authority semantics;
 - future collector/supervisor semantics.
@@ -22,18 +20,18 @@ It remains a separate repository and a read-only coordination view. OODA owns th
 - scientific and production artifacts;
 - concise current-state documents.
 
-## OODA Control Room owns
+## A Control Room owns
 
 - rendering;
 - freshness;
 - cross-project portfolio view;
 - current objective / OODA stage visibility;
-- active work-order / worker visibility;
+- active mission / worker visibility;
 - claim-level visibility;
 - human decision queue;
-- purpose-built control charts/tables.
+- useful control charts/tables.
 
-It must not become the authority merely because it can display OODA state.
+It must not become authority merely because it can display OODA state.
 
 ## Controller-sized fields
 
@@ -44,7 +42,7 @@ The preferred cross-project state is intentionally small:
 - OODA stage;
 - role / profile / lenses;
 - claim level;
-- active work order;
+- active mission;
 - provider/worker when known;
 - branch/PR when relevant;
 - latest trace/result;
@@ -53,22 +51,14 @@ The preferred cross-project state is intentionally small:
 
 Detailed code, raw datasets, research histories, and full agent transcripts stay out of Controller context.
 
-## Current first pass
-
-The monitor repo now has an OODA-oriented renderer on `chatgpt/ooda-control-room-v1` that keeps compatibility with existing `agent-ops-monitor/v1` and `v2` snapshots.
-
-Existing snapshots are mapped into a best-effort OODA view. Exporters may add an optional `ooda` overlay to provide exact role/profile/lenses/claim/work-order/trace/gate state.
-
-This is intentionally observation-first. The dashboard does not dispatch workers yet.
-
 ## Future collector
 
-After real OODA work orders/traces exist, a small collector should derive the Control Room snapshot from:
+A small collector may derive Control Room state from:
 
 ```text
 .ooda/project.json
 PROJECT_STATE.md
-active work orders
+active missions
 latest useful traces
 Git / PR state
 human gates
@@ -81,6 +71,10 @@ OODA Control Room
 ```
 
 The dashboard cache/snapshot is disposable and rebuildable. It is not a second source of project truth.
+
+## Public package behavior
+
+`ooda dashboard` is optional. It uses an existing checkout at `OODA_CONTROL_ROOM_DIR`, or an explicitly configured `OODA_CONTROL_ROOM_REPO` clone URL. OODA does not require a dashboard to use the Controller, missions, traces, or `grok-safe`.
 
 ## Design rule
 

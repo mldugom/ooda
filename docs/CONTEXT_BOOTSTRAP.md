@@ -2,7 +2,7 @@
 
 OODA chats are disposable working rooms. Durable project truth lives in repositories, PRs, committed state files, research artifacts, and OODA work orders/traces.
 
-The bootstrap contract exists so Lawrence can enter a new ChatGPT conversation with very little context and still recover the right project state quickly.
+The bootstrap contract exists so a human can enter a new ChatGPT conversation with very little context and still recover the right project state quickly.
 
 ## Minimal input
 
@@ -15,21 +15,21 @@ For an existing project, the human should usually provide only:
 Examples:
 
 ```text
-Jump into mldugom/tenniskal. Goal: decide the next R6E move. Use OODA. Do not execute yet.
+Jump into example-org/research-project. Goal: decide the next research move. Use OODA. Do not execute yet.
 ```
 
 ```text
-Review crypto-innout PR #31 under OODA.
+Review example-app PR #31 under OODA.
 ```
 
 ```text
-Jump into IOND. Revisit the Nscale credit-risk problem.
+Jump into analytics-project. Revisit the current valuation/model-risk question.
 ```
 
 For a new idea:
 
 ```text
-New project idea: a Chrome extension that analyzes prediction-market pages. OODA it with me. Do not build yet.
+New project idea: a browser extension that analyzes a workflow while I browse. OODA it with me. Do not build yet.
 ```
 
 ## Bootstrap behavior
@@ -78,12 +78,12 @@ If material work exists only on the user's machine and is not committed/pushed, 
 
 ```text
 LOCAL STATE
-repo: crypto-innout
-branch: grok/r1d5
+repo: example-project
+branch: agent/fix-recovery
 HEAD: abc123
 dirty: yes
 task: repair duplicate writer recovery
-tests: 47 focused green
+tests: focused suite green
 important: not pushed yet
 ```
 

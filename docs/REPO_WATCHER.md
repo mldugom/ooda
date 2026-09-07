@@ -1,8 +1,8 @@
 # Future Repository Watcher
 
-A future OODA control-plane component may continuously observe `mldugom` repositories, commits, PRs, and selected project-state changes.
+A future OODA control-plane component may continuously observe an operator-configured allowlist of repositories, commits, PRs, and selected project-state changes.
 
-This is intentionally **not** part of OODA V1.1 execution. First prove the manual contracts.
+This is intentionally **not** part of the initial OODA execution path. First prove the manual contracts.
 
 ## Purpose
 
@@ -12,7 +12,7 @@ The watcher should answer:
 - which projects have stale or conflicting durable state?;
 - which PRs or branches need human/ChatGPT review?;
 - which OODA missions completed, stalled, or changed orientation?;
-- which project should the controller consider next?
+- which project should the Controller consider next?
 
 It should not silently decide consequential work, merge code, promote models, or trade capital.
 
@@ -32,7 +32,7 @@ GitHub repositories
        +--------+---------+
        |                  |
        v                  v
-Agent Ops Monitor     OODA Controller
+   Control Room       OODA Controller
  display/freshness    candidate next moves
        |                  |
        +--------+---------+
@@ -42,20 +42,18 @@ Agent Ops Monitor     OODA Controller
 
 ## Recommended first implementation
 
-For the Raspberry Pi/local-supervisor phase, prefer simple GitHub API polling over a public webhook service:
+For a local always-on host, prefer simple GitHub API polling over a public webhook service:
 
-1. keep a configured allowlist of active `mldugom` repositories;
+1. keep a configured allowlist of active repositories;
 2. poll repository HEADs, open PRs, and recent commits at a modest interval;
 3. store only cursors/last-seen SHAs and normalized events;
 4. fetch project state files only when their SHA changes;
 5. emit monitor state and candidate alerts;
 6. require human/ChatGPT approval before dispatching new consequential work.
 
-Polling is less elegant than webhooks but fits a private local Pi without requiring an internet-exposed receiver. Webhooks can replace polling later if a stable public endpoint becomes worthwhile.
+Polling is less elegant than webhooks but fits a private local host without requiring an internet-exposed receiver. Webhooks can replace polling later if a stable endpoint becomes worthwhile.
 
 ## What it should watch first
-
-Keep V1 of the watcher narrow:
 
 - default-branch HEAD changes;
 - open/updated PRs;
@@ -70,7 +68,7 @@ Do not begin by indexing every file or every commit diff across every repository
 
 ```json
 {
-  "repo": "mldugom/tenniskal",
+  "repo": "example-org/example-project",
   "kind": "default_branch_advanced",
   "old_sha": "...",
   "new_sha": "...",
@@ -83,7 +81,7 @@ Do not begin by indexing every file or every commit diff across every repository
 
 Watcher authority is observation only by default.
 
-A later controller may recommend or dispatch low-consequence work only after repeated manual usage proves the routing rules. Merge, model promotion, live runtime changes, and capital deployment remain explicit authority gates.
+A later Controller may recommend or dispatch low-consequence work only after repeated manual usage proves the routing rules. Merge, model promotion, live runtime changes, and capital deployment remain explicit authority gates.
 
 ## Principle
 
