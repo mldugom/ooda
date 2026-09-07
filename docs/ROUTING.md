@@ -27,6 +27,33 @@ OODA itself is always the backbone. Do not select `boyd` merely to prove that OO
 
 If two roles seem equally primary, the task is probably too broad. Split the work unless the second role is only a review perspective.
 
+## Documentation is not a separate role
+
+Documentation is a completion concern attached to the role that owns the work.
+
+- `engineer` / `researcher` / other active worker: first documentation-impact assessment;
+- `architect`: structure/diagram/domain/process review when substantial conceptual boundaries changed;
+- `validator`: independent truth/consistency audit when documentation accuracy is consequential;
+- `controller`: decides whether documentation belongs inside the current work order or a small follow-up mission.
+
+Do not add `documentation-auditor`, `diagram-bot`, or similar permanent roles merely to enforce documentation hygiene. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+
+## Work-order construction is a Controller capability
+
+Do not add a permanent work-order-construction bot by default.
+
+The Controller should construct robust work orders from compact durable control state. If it lacks the domain/code/research evidence required to bound the task correctly, it should request a short orientation spike under an existing role and then build the work order from the returned evidence.
+
+Examples:
+
+- uncertain product problem -> `product-strategist` spike;
+- unknown architecture boundary -> `architect` spike;
+- missing empirical fact -> `researcher` spike;
+- questionable prior implementation/claim -> `validator` spike;
+- narrow technical feasibility uncertainty -> `engineer` spike.
+
+This keeps the Controller context-light without weakening planning quality.
+
 ## Step 2 — choose the profile by expertise
 
 Profiles are not authority roles. They specialize a role without creating another bot.
@@ -99,6 +126,8 @@ Add only when useful:
 | SaaS architecture | architect / full-stack | product-user + security-abuse + reliability-systems |
 | Chrome extension implementation | engineer / browser-extension | security-abuse + product-user + reliability-systems |
 | Independent app release review | validator / full-stack | security-abuse + reliability-systems + product-user |
+| New subsystem/domain/process documentation after implementation | architect / matching domain profile | reliability-systems or product-user as relevant; add another lens only if it changes the model |
+| Independent documentation/diagram truth check | validator / matching domain profile | choose lenses matching the risk being verified |
 
 ## Claim levels
 
@@ -109,4 +138,4 @@ Add only when useful:
 
 ## Routing principle
 
-**Choose the role by accountability. Choose the profile by expertise. Choose lenses by what could materially change the decision.**
+**Choose the role by accountability. Choose the profile by expertise. Choose lenses by what could materially change the decision. Use existing roles for planning/documentation review instead of growing a bot taxonomy.**
