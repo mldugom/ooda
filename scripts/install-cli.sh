@@ -3,21 +3,27 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${OODA_BIN_DIR:-$HOME/.local/bin}"
-DST="$BIN_DIR/ooda"
-SRC="$ROOT/scripts/ooda"
-
 mkdir -p "$BIN_DIR"
 
-if [ -L "$DST" ] && [ "$(readlink "$DST")" = "$SRC" ]; then
-  echo "Already installed $DST -> $SRC"
-  exit 0
-fi
+install_link() {
+  local name="$1"
+  local src="$2"
+  local dst="$BIN_DIR/$name"
 
-if [ -e "$DST" ] || [ -L "$DST" ]; then
-  echo "Refusing to replace existing $DST" >&2
-  echo "Remove or move it deliberately, then rerun install." >&2
-  exit 2
-fi
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    echo "Already installed $dst -> $src"
+    return 0
+  fi
 
-ln -s "$SRC" "$DST"
-echo "Installed $DST -> $SRC"
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    echo "Refusing to replace existing $dst" >&2
+    echo "Remove or move it deliberately, then rerun install." >&2
+    return 2
+  fi
+
+  ln -s "$src" "$dst"
+  echo "Installed $dst -> $src"
+}
+
+install_link ooda "$ROOT/scripts/ooda"
+install_link grok-safe "$ROOT/scripts/grok-safe"
