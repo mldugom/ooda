@@ -71,11 +71,114 @@ Execute only the chosen move. Verify the result. Persist the minimum durable evi
 
 An action may be a research experiment, architecture decision, product prototype, code change, model validation, portfolio analysis, execution study, or risk review.
 
+Act also includes a **documentation-impact check**: if the work materially changed how the domain, architecture, process, interfaces, operator workflow, research method, commands, or authority should be understood, update the smallest durable artifact that prevents future confusion.
+
+## OODA is embedded in the operating system
+
+OODA should appear in the way work is selected and verified, not as decorative terminology.
+
+### Repository level
+
+Durable project state supports **Observe**:
+
+- `.ooda/project.json` — routing/authority hints;
+- `PROJECT_STATE.md` — concise current truth and next gate;
+- `AGENTS.md` — standing invariants/authority;
+- stable domain/architecture/process documentation — durable orientation substrate;
+- Git/PR/tests/artifacts — execution evidence.
+
+### Work-order level
+
+A work order is the compact output of **Observe → Orient → Decide** and the envelope for **Act**:
+
+```text
+current truth
+    ↓
+role/profile/lenses
+    ↓
+one bounded objective
+    ↓
+scope + verification + budget + stops + authority
+```
+
+The contract should be explicit enough to prevent drift but not so verbose that constructing it becomes the work.
+
+### Worker level
+
+The worker runs the loop inside the mission:
+
+```text
+observe current task truth
+        ↓
+orient to uncertainty/risk
+        ↓
+decide next bounded tactic
+        ↓
+act + verify
+        ↓
+new observation
+```
+
+When a major new fact invalidates the mission's assumptions or authority envelope, the worker stops and returns for re-orientation instead of blindly completing the original plan.
+
+### Trace level
+
+The trace is the feedback edge into the next loop. It records concise Observe / Orient / Decide / Act provenance, verification, result, documentation impact when material, and the next human/control gate.
+
 ## Loop speed
 
 OODA is not a ceremonial waterfall. Tiny obvious work may compress the loop. High-uncertainty or consequential work may re-observe and re-orient several times before action.
 
 The goal is not merely to cycle faster. It is to maintain a more accurate orientation and make better bounded moves.
+
+Faster OODA does **not** mean filling out more forms faster. It means:
+
+- current state is cheap to reconstruct;
+- orientation uses only the context that can change the decision;
+- missions are small enough to produce feedback quickly;
+- surprising evidence triggers re-orientation early;
+- useful results/negative findings are persisted so the next loop starts ahead.
+
+## Controller and worker separation
+
+The OODA Controller keeps portfolio/context overhead small.
+
+It may:
+
+- accept raw thoughts;
+- decide whether an idea deserves worker resources;
+- propose/construct bounded work orders;
+- select role/profile/lenses/claim level;
+- surface blockers/human gates;
+- re-orient from worker traces.
+
+It should not become the deep researcher or engineer.
+
+If robust work-order construction requires facts outside compact control state, the Controller first dispatches a short orientation spike to a `researcher`, `architect`, `validator`, or other appropriate worker, then constructs the work order from the returned evidence.
+
+This gives us a useful rule:
+
+> **Think enough to route; investigate enough to orient; delegate the expensive context.**
+
+## Documentation stewardship
+
+Documentation is part of durable orientation.
+
+The purpose is not to document activity. It is to preserve explanations that reduce future context cost and prevent incorrect mental models.
+
+Material candidates include:
+
+- domain models and glossaries;
+- architecture/component diagrams;
+- data/process/authority flows;
+- interfaces/contracts;
+- command/configuration cheat sheets;
+- research methodology and evidence gates;
+- stable negative findings.
+
+The active worker first assesses documentation impact. An `architect` should review structure when boundaries/flows changed materially. A `validator` may independently audit documentation when accuracy is consequential or the conceptual change is broad.
+
+Do not create a permanent documentation-auditor role. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
 
 ## Operating principles
 
@@ -93,6 +196,8 @@ The goal is not merely to cycle faster. It is to maintain a more accurate orient
 12. **Usage earns automation. Automation does not precede understanding.**
 13. **Git and project evidence remain authoritative; dashboards are views.**
 14. **Human/Integration Owner authority cannot be implied from green tests or agent confidence.**
+15. **Substantial conceptual change deserves a documentation-impact check before handoff.**
+16. **The action is not operationally complete until useful feedback can enter the next loop.**
 
 ## Intellectual foundations
 
