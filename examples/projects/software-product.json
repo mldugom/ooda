@@ -1,0 +1,25 @@
+{
+  "schema": "ooda/project/v1",
+  "project_id": "example-product",
+  "project_class": "software-product",
+  "authority": {
+    "integration_owner": "human",
+    "self_merge": false,
+    "production_release_requires_gate": true
+  },
+  "state_sources": [
+    "AGENTS.md",
+    "README.md"
+  ],
+  "execution": {
+    "current_provider": "grok",
+    "existing_lifecycle": "preserve"
+  },
+  "product": {
+    "vertical_slice_first": true,
+    "security_review_before_external_release": true
+  },
+  "monitor": {
+    "enabled": false
+  }
+}

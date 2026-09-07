@@ -1,0 +1,35 @@
+{
+  "schema": "ooda/trace/v1",
+  "work_order_id": "example-001",
+  "project_id": "tenniskal",
+  "provider": "grok",
+  "role": "researcher",
+  "profile": "quantitative-research",
+  "lenses": [
+    "scientific",
+    "statistical",
+    "market-microstructure"
+  ],
+  "claim_level": "discovery",
+  "ooda": {
+    "observe": "Current R6D state verified; no outcomes authorized.",
+    "orient": "Lead/lag must avoid contemporaneous overlap and book-mechanics artifacts.",
+    "decide": "Test lagged trade intensity first because it has the highest information value.",
+    "act": "Ran the bounded study and persisted report/tests."
+  },
+  "result": {
+    "state": "completed",
+    "summary": "No predictive lift; do not revisit without new evidence."
+  },
+  "verification": {
+    "status": "passed",
+    "tests": [],
+    "artifacts": []
+  },
+  "economics": {
+    "turns": null,
+    "tool_calls": null,
+    "cost_usd": null
+  },
+  "next_gate": "Human/ChatGPT review."
+}

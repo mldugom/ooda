@@ -1,0 +1,48 @@
+{
+  "schema": "ooda/work-order/v1",
+  "id": "example-001",
+  "project_id": "tenniskal",
+  "objective": "Test one non-overlapping lead/lag hypothesis before outcome modeling.",
+  "role": "researcher",
+  "profile": "quantitative-research",
+  "lenses": [
+    "scientific",
+    "statistical",
+    "market-microstructure"
+  ],
+  "claim_level": "discovery",
+  "scope": {
+    "allowed": [
+      "research/**",
+      "reports/**",
+      "tests/**"
+    ],
+    "forbidden": [
+      "live execution",
+      "outcome/P&L optimization outside the authorized stage"
+    ]
+  },
+  "verification": [
+    "point-in-time cutoffs preserved",
+    "non-overlap invariant verified",
+    "result persisted whether positive or negative"
+  ],
+  "budget": {
+    "max_turns": 6,
+    "max_investigation_steps": 8
+  },
+  "stop_conditions": [
+    "current durable state conflicts with task assumptions",
+    "required data is not available point-in-time",
+    "task requires modifying a protected subsystem",
+    "objective materially changes",
+    "budget is exhausted",
+    "qualification claim would be required to continue"
+  ],
+  "authority": {
+    "may_merge": false,
+    "may_promote_model": false,
+    "may_modify_live_runtime": false,
+    "may_spend_real_money": false
+  }
+}
