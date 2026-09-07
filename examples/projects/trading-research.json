@@ -1,0 +1,19 @@
+{
+  "schema": "ooda/project/v1",
+  "project_id": "example-trading-research",
+  "project_class": "trading-research",
+  "authority": {
+    "integration_owner": "human",
+    "self_merge": false,
+    "live_capital": false,
+    "live_runtime_change_requires_gate": true
+  },
+  "state_sources": ["AGENTS.md", "PROJECT_STATE.md", "README.md"],
+  "execution": {"current_provider": "grok", "existing_lifecycle": "preserve"},
+  "research": {
+    "point_in_time": "required",
+    "default_claim_level": "discovery",
+    "research_not_production": true
+  },
+  "monitor": {"enabled": false}
+}
