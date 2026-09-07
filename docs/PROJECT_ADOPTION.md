@@ -65,6 +65,28 @@ Existing docs are never silently overwritten by `--scaffold`. `--force` replaces
 
 After bootstrap, replace placeholders with the project's actual purpose/invariants/current truth before substantial execution.
 
+## Documentation grows only when the system earns it
+
+The scaffold deliberately does **not** create empty `ARCHITECTURE.md`, `DOMAIN.md`, `PROCESS.md`, `API.md`, or other boilerplate files.
+
+Those should appear when real work creates durable concepts worth preserving.
+
+Typical triggers:
+
+| Trigger | Durable artifact to consider |
+|---|---|
+| First meaningful subsystem/boundary | `docs/ARCHITECTURE.md` or equivalent diagram/overview |
+| Important domain entities/concepts | domain model/glossary/relationship diagram |
+| Recurring data/process/authority sequence | process/data-flow diagram |
+| Public CLI/config/operator workflow | README cheat sheet / operator guide |
+| Stable interface between components | contract/interface document |
+| Research method/evidence gate becomes reusable | methodology/validation document |
+| Major negative result prevents repeated effort | trace + research-state reference |
+
+The active worker assesses documentation impact before handoff. An architect can review broad structural documentation; a validator can independently check it when truth/consistency is consequential.
+
+See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+
 ## Project classes
 
 - `quantitative-research`
@@ -81,6 +103,27 @@ Projects may use more specific profiles/tags without changing the core classes.
 A fresh ChatGPT conversation should normally need only repository + immediate intent. See `docs/CONTEXT_BOOTSTRAP.md` and `docs/CHATGPT_USAGE.md`.
 
 Do not solve session continuity by growing project docs indefinitely. Persist only durable conclusions and current truth.
+
+## Work-order construction
+
+The OODA Controller normally constructs/proposes work orders from compact durable state.
+
+If it cannot bound a mission correctly without deeper evidence, do **not** expand Controller context to the whole repo. Route a small orientation spike under the appropriate existing role, then construct the final work order from the returned evidence.
+
+```text
+Controller
+  |
+  | enough orientation?
+  +-- yes --> work order
+  |
+  +-- no --> researcher / architect / validator / product-strategist spike
+                    |
+                    v
+              concise evidence
+                    |
+                    v
+                work order
+```
 
 ## Suggested pilots
 
