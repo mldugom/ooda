@@ -147,7 +147,10 @@ def _timeline_html(project: Dict[str, Any]) -> str:
             "</div>"
         )
     if len(timeline) > len(latest):
-        rows.append(f'<div class="timeline-more">Showing latest {len(latest)} of {len(timeline)} material decisions · <code>ooda view --all</code> for full history</div>')
+        rows.append(
+            f'<div class="timeline-more">Showing latest {len(latest)} of {len(timeline)} material decisions · '
+            '<code>ooda view --all</code> for full history</div>'
+        )
     return "".join(rows)
 
 
@@ -209,9 +212,33 @@ def render_html(projects: List[Dict[str, Any]], refresh_seconds: int, root: Path
     review = sum(p.get("stage") == "review" for p in projects)
     blocked = sum(p.get("controller") == "blocked" for p in projects)
     auto = f'<meta http-equiv="refresh" content="{refresh_seconds}">' if refresh_seconds > 0 else ""
-    cards = "".join(_project_card(p) for p in projects)
-    if not cards:
-        cards = '<div class="empty-room">No OODA-adopted projects found under this projects root.</div>'
+
+    tabs: List[str] = []
+    panels: List[str] = []
+    for idx, project in enumerate(projects):
+        name = str(project.get("project_id") or f"project-{idx + 1}")
+        active_cls = " active" if idx == 0 else ""
+        tabs.append(
+            f'<button class="project-tab{active_cls}" data-project-tab="{idx}" '
+            f'data-project-name="{_e(name)}" role="tab" aria-selected="{"true" if idx == 0 else "false"}" '
+            f'onclick="showProject({idx}, this.dataset.projectName)">'
+            f'<span>{_e(name)}</span><small>{_e(project.get("stage") or "orient")}</small></button>'
+        )
+        panels.append(
+            f'<div class="project-panel{active_cls}" data-project-panel="{idx}" role="tabpanel">'
+            f'{_project_card(project)}</div>'
+        )
+
+    if projects:
+        project_area = (
+            '<div class="project-tabs" role="tablist" aria-label="Projects">'
+            + "".join(tabs)
+            + '</div><div class="project-panels">'
+            + "".join(panels)
+            + "</div>"
+        )
+    else:
+        project_area = '<div class="empty-room">No OODA-adopted projects found under this projects root.</div>'
 
     return f"""<!doctype html>
 <html>
@@ -221,24 +248,52 @@ def render_html(projects: List[Dict[str, Any]], refresh_seconds: int, root: Path
 {auto}
 <title>OODA Control Room</title>
 <style>
-:root{{--bg:#0f1115;--panel:#171a20;--panel2:#1d2129;--ink:#eef2f7;--muted:#98a2b3;--rule:#2b313b;--accent:#7db4ff;--good:#7fd0a5;--warn:#e6c47a;--shadow:0 18px 50px rgba(0,0,0,.28)}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}}
-main{{max-width:1680px;margin:auto;padding:24px}}h1,h2,p{{margin:0}}h1{{font-size:31px}}h2{{font-size:25px}}small{{color:var(--muted);font-size:11px}}code{{background:#252a33;border:1px solid var(--rule);padding:1px 5px;border-radius:5px}}
-.hero{{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:16px}}.hero p{{color:var(--muted);margin-top:5px}}.eyebrow,.section-label{{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--muted)}}
-button{{background:var(--panel2);color:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer}}
-.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}}.kpi{{background:var(--panel);border:1px solid var(--rule);border-radius:11px;padding:12px 14px}}.kpi b{{display:block;font-size:23px}}
-.project-card{{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:18px;margin:14px 0;box-shadow:var(--shadow)}}.project-title{{display:flex;justify-content:space-between;gap:20px}}.project-title p{{color:var(--muted);margin-top:4px;max-width:1000px}}
-.state-badges{{white-space:nowrap}}.badge{{display:inline-block;border:1px solid var(--rule);background:var(--panel2);border-radius:999px;padding:4px 9px;margin-left:5px;text-transform:uppercase;font-size:10px;font-weight:800}}
-.gate-band{{margin-top:14px;border-left:3px solid var(--warn);background:#211f19;padding:10px 12px;border-radius:8px}}.gate-band small,.gate-band b{{display:block}}.gate-band b{{margin-top:2px}}
-.summary-context{{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.7fr);gap:10px;margin:10px 0 16px}}.stakeholder,.context-card{{background:var(--panel2);border:1px solid var(--rule);border-radius:9px;padding:11px 12px}}.stakeholder small,.stakeholder b{{display:block}}.stakeholder b{{margin-top:3px}}
-.context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.05em}}.context-foot{{font-size:11px;color:var(--muted);margin-top:5px}}.context-bar{{height:8px;background:#0d0f12;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:8px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}.context-unavailable .context-bar i{{background:#343a45}}
-.section-label{{margin:12px 0 7px}}.loop{{display:grid;grid-template-columns:minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr);gap:5px;align-items:stretch}}.loop-step{{border:1px solid var(--rule);background:var(--panel2);border-radius:9px;padding:10px}}.loop-step small,.loop-step b,.loop-step span{{display:block}}.loop-step b{{font-size:12px;margin:2px 0}}.loop-step span{{font-size:11px;color:var(--muted)}}.loop-step.current{{outline:2px solid var(--accent);background:#182334}}.loop-step.current b{{color:#b8d7ff}}.loop-arrow{{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}}
-.cockpit-grid{{display:grid;grid-template-columns:minmax(280px,.72fr) minmax(0,1.7fr);gap:12px;margin-top:14px}}.pane{{border:1px solid var(--rule);background:var(--panel2);border-radius:10px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--rule)}}.pane-head span{{font-size:11px;color:var(--muted)}}
-.ladder{{padding:8px 12px}}.ladder-row{{display:grid;grid-template-columns:25px 1fr;gap:7px;padding:6px 0;border-bottom:1px solid #252a33}}.ladder-row:last-child{{border-bottom:0}}.ladder-row.provisional{{color:var(--muted)}}.ladder-row.current{{color:#d8e9ff}}.marker{{font-weight:900}}.current-tag{{display:inline-block;margin-left:7px;font-size:9px;border:1px solid var(--accent);color:#b8d7ff;padding:1px 5px;border-radius:99px;vertical-align:2px}}
-.timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:90px minmax(170px,.9fr) minmax(190px,1.15fr) minmax(190px,1.15fr);gap:10px;padding:8px 10px;border-bottom:1px solid #252a33;min-width:760px}}.timeline-head{{font-size:10px;color:var(--muted);background:#15181e;letter-spacing:.06em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
-.empty-state,.empty-room{{padding:18px;color:var(--muted)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:16px;border-top:1px solid var(--rule);padding-top:10px;margin-top:12px;color:var(--muted);font-size:11px}}.meta-strip b{{color:var(--ink)}}
-@media(max-width:1000px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.summary-context,.cockpit-grid{{grid-template-columns:1fr}}.loop{{display:flex;overflow:auto}}.loop-step{{min-width:180px}}.loop-arrow{{min-width:20px}}.hero,.project-title{{align-items:start;flex-direction:column}}}}
+:root{{--bg:#f4eedc;--paper:#fffdf7;--paper2:#f8f3e8;--ink:#24211d;--muted:#756d62;--rule:#d7ccb7;--accent:#4c78a8;--accent-soft:#e9f0f7;--gate:#f4ebd6;--danger:#f5e5e0;--shadow:0 8px 24px rgba(64,49,28,.08)}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}}
+main{{max-width:1500px;margin:auto;padding:26px 28px 40px}}
+h1,h2,p{{margin:0}}h1,h2{{font-family:Georgia,"Times New Roman",serif;font-weight:700}}h1{{font-size:34px;letter-spacing:-.02em}}h2{{font-size:27px}}
+small{{color:var(--muted);font-size:11px}}code{{background:#eee6d7;border:1px solid var(--rule);padding:1px 5px;border-radius:4px}}
+.hero{{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:15px}}.hero p{{color:var(--muted);margin-top:5px}}.eyebrow,.section-label{{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--muted)}}
+button{{font:inherit}}
+.hero button{{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:8px 11px;font-weight:700;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.03)}}.hero>div:last-child{{display:grid;justify-items:end;gap:3px}}
+.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}}.kpi{{background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:11px 13px;box-shadow:0 2px 8px rgba(64,49,28,.04)}}.kpi b{{display:block;font:700 23px/1.1 Georgia,"Times New Roman",serif;margin-top:2px}}
+.project-tabs{{display:flex;gap:0;overflow:auto;border-bottom:2px solid var(--ink);margin:4px 0 0}}.project-tab{{appearance:none;background:transparent;color:var(--muted);border:0;border-top:3px solid transparent;padding:10px 17px 9px;cursor:pointer;text-align:left;min-width:150px}}.project-tab span,.project-tab small{{display:block}}.project-tab span{{font-weight:800;font-size:14px;color:inherit}}.project-tab small{{font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}}.project-tab:hover{{background:rgba(255,253,247,.52);color:var(--ink)}}.project-tab.active{{background:var(--paper);color:var(--ink);border-top-color:var(--accent)}}.project-tab.active small{{color:var(--accent);font-weight:800}}
+.project-panel{{display:none}}.project-panel.active{{display:block}}
+.project-card{{background:var(--paper);border:1px solid var(--rule);border-top:0;border-radius:0 0 10px 10px;padding:19px;box-shadow:var(--shadow)}}.project-title{{display:flex;justify-content:space-between;gap:20px}}.project-title p{{color:var(--muted);margin-top:4px;max-width:1000px}}
+.state-badges{{white-space:nowrap}}.badge{{display:inline-block;border:1px solid var(--rule);background:var(--paper2);border-radius:999px;padding:3px 8px;margin-left:5px;text-transform:uppercase;font-size:9px;font-weight:800;letter-spacing:.04em}}
+.gate-band{{margin-top:14px;border-left:4px solid #b7904b;background:var(--gate);padding:10px 12px}}.gate-band small,.gate-band b{{display:block}}.gate-band b{{margin-top:2px;font-size:15px}}
+.summary-context{{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.7fr);gap:10px;margin:10px 0 16px}}.stakeholder,.context-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:11px 12px}}.stakeholder small,.stakeholder b{{display:block}}.stakeholder b{{margin-top:3px}}
+.context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.05em}}.context-foot{{font-size:11px;color:var(--muted);margin-top:5px}}.context-bar{{height:7px;background:#e7decd;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:8px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}.context-unavailable .context-bar i{{background:#c9beaa}}
+.section-label{{margin:12px 0 7px}}.loop{{display:grid;grid-template-columns:minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr) 25px minmax(150px,1fr);gap:5px;align-items:stretch}}.loop-step{{border:1px solid var(--rule);background:var(--paper2);border-radius:7px;padding:10px}}.loop-step small,.loop-step b,.loop-step span{{display:block}}.loop-step b{{font-size:12px;margin:2px 0}}.loop-step span{{font-size:11px;color:var(--muted)}}.loop-step.current{{border:2px solid var(--accent);background:var(--accent-soft);padding:9px}}.loop-step.current b{{color:#2f5f8f}}.loop-arrow{{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}}
+.cockpit-grid{{display:grid;grid-template-columns:minmax(280px,.72fr) minmax(0,1.7fr);gap:12px;margin-top:14px}}.pane{{border:1px solid var(--rule);background:var(--paper);border-radius:8px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--rule);background:var(--paper2)}}.pane-head span{{font-size:11px;color:var(--muted)}}
+.ladder{{padding:8px 12px}}.ladder-row{{display:grid;grid-template-columns:25px 1fr;gap:7px;padding:6px 0;border-bottom:1px solid #ebe2d2}}.ladder-row:last-child{{border-bottom:0}}.ladder-row.provisional{{color:var(--muted)}}.ladder-row.current{{color:#2f5f8f;background:linear-gradient(90deg,var(--accent-soft),transparent);margin:0 -12px;padding:7px 12px}}.marker{{font-weight:900}}.current-tag{{display:inline-block;margin-left:7px;font-size:9px;border:1px solid var(--accent);color:#2f5f8f;background:#f4f8fc;padding:1px 5px;border-radius:99px;vertical-align:2px}}
+.timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:90px minmax(170px,.9fr) minmax(190px,1.15fr) minmax(190px,1.15fr);gap:10px;padding:8px 10px;border-bottom:1px solid #ebe2d2;min-width:760px}}.timeline-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.06em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
+.empty-state,.empty-room{{padding:18px;color:var(--muted);background:var(--paper);border:1px solid var(--rule)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:16px;border-top:1px solid var(--rule);padding-top:10px;margin-top:12px;color:var(--muted);font-size:11px}}.meta-strip b{{color:var(--ink)}}
+@media(max-width:1000px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.summary-context,.cockpit-grid{{grid-template-columns:1fr}}.loop{{display:flex;overflow:auto}}.loop-step{{min-width:180px}}.loop-arrow{{min-width:20px}}.hero,.project-title{{align-items:start;flex-direction:column}}.project-tabs{{margin-top:8px}}.project-tab{{min-width:135px}}}}
 </style>
+<script>
+function showProject(index, name) {{
+  document.querySelectorAll('[data-project-panel]').forEach(function(el, i) {{
+    el.classList.toggle('active', i === index);
+  }});
+  document.querySelectorAll('[data-project-tab]').forEach(function(el, i) {{
+    var active = i === index;
+    el.classList.toggle('active', active);
+    el.setAttribute('aria-selected', active ? 'true' : 'false');
+  }});
+  try {{ localStorage.setItem('ooda.activeProject', name || ''); }} catch (e) {{}}
+}}
+window.addEventListener('DOMContentLoaded', function() {{
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-project-tab]'));
+  if (!tabs.length) return;
+  var saved = '';
+  try {{ saved = localStorage.getItem('ooda.activeProject') || ''; }} catch (e) {{}}
+  var idx = tabs.findIndex(function(tab) {{ return tab.dataset.projectName === saved; }});
+  if (idx < 0) idx = 0;
+  showProject(idx, tabs[idx].dataset.projectName);
+}});
+</script>
 </head>
 <body>
 <main>
@@ -259,7 +314,7 @@ button{{background:var(--panel2);color:var(--ink);border:1px solid var(--rule);b
     <div class="kpi"><small>Human gates / review</small><b>{review}</b></div>
     <div class="kpi"><small>Blocked</small><b>{blocked}</b></div>
   </div>
-  {cards}
+  {project_area}
 </main>
 </body>
 </html>"""
