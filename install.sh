@@ -16,20 +16,15 @@ Everyday commands:
   ooda doctor
   ooda mission ...
   ooda trace ...
-  ooda tui
   ooda dashboard
 
-Grok:
+Grok — active reference provider:
   grok-safe
   /ooda-controller
   /ooda <mission-file>
 
-DeepSeek (experimental / unqualified until project orientation checks pass):
-  npm install -g --prefix "$HOME/.local" codewhale
-  ooda setup deepseek
-  ooda doctor --provider deepseek
-  ooda tui
-  deepseek-safe       # native CodeWhale TUI, useful for debugging
+DeepSeek / CodeWhale is parked and unqualified.
+See docs/BACKLOG.md before revisiting that provider lane.
 
 Pip users run `ooda setup` once to install the Grok skills/policy.
 EOF
