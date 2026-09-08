@@ -9,10 +9,10 @@ from ooda.control_room import _session_context, render_html
 
 
 class ControlRoomTests(unittest.TestCase):
-    def _project(self, repo: Path):
+    def _project(self, repo: Path, project_id="tenniskal"):
         return {
             "repo": repo,
-            "project_id": "tenniskal",
+            "project_id": project_id,
             "objective": "Preregister R7 without outcome access",
             "stage": "review",
             "claim": "evidence",
@@ -59,6 +59,37 @@ class ControlRoomTests(unittest.TestCase):
         self.assertIn("provider UI", page)
         self.assertNotIn("SESSION COST", page)
         self.assertNotIn("$", page)
+
+    def test_project_tabs_replace_vertical_project_stack(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            one = root / "tenniskal"
+            two = root / "crypto-innout"
+            (one / ".ooda").mkdir(parents=True)
+            (two / ".ooda").mkdir(parents=True)
+            page = render_html(
+                [self._project(one, "tenniskal"), self._project(two, "crypto-innout")],
+                15,
+                root,
+            )
+
+        self.assertIn('class="project-tabs"', page)
+        self.assertIn('data-project-name="tenniskal"', page)
+        self.assertIn('data-project-name="crypto-innout"', page)
+        self.assertEqual(page.count('class="project-panel active"'), 1)
+        self.assertIn("localStorage.setItem('ooda.activeProject'", page)
+
+    def test_editorial_style_is_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            page = render_html([self._project(repo)], 15, Path(tmp))
+
+        self.assertIn("--bg:#f4eedc", page)
+        self.assertIn("--paper:#fffdf7", page)
+        self.assertIn("Georgia", page)
+        self.assertIn("--accent:#4c78a8", page)
+        self.assertNotIn("--bg:#0f1115", page)
 
     def test_optional_context_telemetry_renders_percent(self):
         with tempfile.TemporaryDirectory() as tmp:
