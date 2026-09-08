@@ -5,7 +5,7 @@ import sys
 
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "dashboard":
-        from .dashboard import launch
+        from .dashboard_launcher import launch
 
         del sys.argv[1]
         raise SystemExit(launch())
