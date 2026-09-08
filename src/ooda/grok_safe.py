@@ -95,7 +95,7 @@ def _configure_ooda_status_line() -> None:
     )
     if changed:
         print(
-            f"grok-safe: configured OODA Grok status line (refresh {refresh}s). Restart Grok to load it.",
+            f"grok-safe: configured OODA Grok status line (refresh {refresh}s).",
             file=sys.stderr,
         )
 
