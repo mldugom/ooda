@@ -1,6 +1,6 @@
 # Provider Flavors
 
-Status: **implemented provider boundary with one reference flavor (Grok) and one experimental/unqualified flavor (DeepSeek).**
+Status: **implemented provider boundary with Grok as the sole active reference flavor. DeepSeek/CodeWhale is parked and unqualified.**
 
 OODA core remains provider-neutral. A provider flavor adapts terminal execution, model selection, child isolation, permissions, telemetry, and provider-native skills without redefining project truth or authority.
 
@@ -46,7 +46,7 @@ A flavor may define launch/setup, provider-native skills, bounded child isolatio
 
 A flavor may **not** redefine work-order meaning, TRACE semantics, claim levels, human integration authority, merge/model-promotion/capital gates, objective-ladder semantics, project truth sources, or completed/current/provisional meaning.
 
-## Grok flavor — reference
+## Grok flavor — active reference
 
 Current reference behavior:
 
@@ -57,33 +57,15 @@ Grok Build TUI
   -> concise result / TRACE
 ```
 
-`grok-safe` remains the reference launcher. The supported Grok command status line exposes current project orientation and writes provider telemetry when Grok supplies it.
+`grok-safe` is the active launcher. The supported Grok command status line exposes current project orientation and writes provider telemetry when Grok supplies it.
 
-## DeepSeek flavor — experimental / unqualified
+## DeepSeek / CodeWhale — parked experiment
 
-OODA 0.4 adds a direct DeepSeek path with no Claude or other inference provider in the loop:
+OODA 0.4 briefly implemented a direct DeepSeek path using CodeWhale as the runner and V4 Pro / V4 Flash as the intended Controller/worker split. Dogfooding exposed enough runner churn, UI mismatch, telemetry ambiguity, and maintenance surface that the experiment was parked before provider qualification completed.
 
-```text
-DeepSeek-TUI
-  -> DeepSeek V4 Pro Controller
-  -> one DeepSeek V4 Flash bounded child
-  -> concise result / TRACE
-```
+The implementation remains in-tree as dormant experimental material; normal operator entrypoints fail closed while it is parked. It is **not** a supported or qualified flavor.
 
-DeepSeek-TUI is a community-maintained terminal runner listed in DeepSeek's official `awesome-deepseek-agent` integration documentation. It is not the official DeepSeek Harness. OODA uses it here because the current runner exposes the skills, sandbox, subagent, model-selection, and turn-hook capabilities needed by the existing OODA contract. DeepSeek's official Harness remains developer preview and is not the 0.4 execution dependency.
-
-Commands:
-
-```bash
-ooda setup deepseek
-ooda doctor --provider deepseek
-deepseek-safe
-```
-
-Controller default model: `deepseek-v4-pro`.
-Bounded child default model: `deepseek-v4-flash`.
-
-DeepSeek remains **UNQUALIFIED** until it passes the frozen Tenniskal and Crypto-Innout orientation cases plus one Pro -> Flash child delegation. Implementation alone is not qualification. See [`DEEPSEEK.md`](DEEPSEEK.md).
+See [`DEEPSEEK.md`](DEEPSEEK.md) for the archived experiment summary and [`BACKLOG.md`](BACKLOG.md) for re-entry criteria.
 
 ## Provider telemetry contract
 
@@ -104,30 +86,9 @@ Rules:
 - telemetry must never become project authority;
 - a telemetry failure must not break the provider terminal.
 
-Grok supplies a provider-metered session cost through its supported status payload, but the Grok Build account-level Extra Usage balance is not exposed there; OODA does not scrape it.
+Grok supplies provider/session telemetry through its supported status payload. Grok Build account-level Extra Usage balance is not exposed there, so OODA does not scrape it.
 
-DeepSeek-TUI can supply turn/session telemetry. When it supplies a session-cost value OODA labels it as an estimate. DeepSeek's documented `/user/balance` endpoint can supply actual account balance when `DEEPSEEK_API_KEY` is available to the OODA process; balance calls are cached.
-
-## Model-tier routing
-
-Model tier is execution economics, not doctrine.
-
-Current DeepSeek default:
-
-```text
-V4 Pro
-  -> Controller orientation
-  -> consequential research design
-  -> validation when needed
-
-V4 Flash
-  -> bounded implementation
-  -> code archaeology
-  -> tests
-  -> documentation / mechanical work
-```
-
-A mission may deliberately choose Pro for a worker when the work requires it. The work-order contract, not model brand, determines scope and authority.
+The parked DeepSeek experiment demonstrated that account-balance access and runner telemetry are separate concerns; if revisited, each field must retain explicit provenance rather than being presented as equivalent billing truth.
 
 ## Qualification principle
 
@@ -168,6 +129,6 @@ At minimum:
 
 ## Current decision
 
-**Grok remains the qualified reference. DeepSeek is now implemented as the second experimental flavor and must earn qualification through repository-specific read-only tests.**
+**Grok is the sole active reference flavor. DeepSeek/CodeWhale is parked in the backlog.**
 
-Do not build a broad provider matrix until dogfooding shows another provider is worth the additional adapter surface.
+Do not reopen a broad provider matrix until provider diversity is again the highest-value constraint and a second flavor can meet the backlog re-entry criteria without destabilizing the working Grok path.
