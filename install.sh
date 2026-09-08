@@ -23,5 +23,11 @@ Grok:
   /ooda-controller
   /ooda <mission-file>
 
+DeepSeek (experimental / unqualified until project orientation checks pass):
+  npm install -g deepseek-tui
+  ooda setup deepseek
+  ooda doctor --provider deepseek
+  deepseek-safe
+
 Pip users run `ooda setup` once to install the Grok skills/policy.
 EOF
