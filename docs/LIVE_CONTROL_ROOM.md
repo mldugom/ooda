@@ -13,6 +13,10 @@ For every adopted repo with `.ooda/project.json`, the Control Room renders:
 - the latest material decision pivots (`TIME | DECISION | SO WHAT | BIGGER IDEA`);
 - Git/controller/mission freshness metadata.
 
+Multiple projects are shown as tabs rather than stacked full-height cockpits. The selected project is remembered across the 15-second auto-refresh when browser local storage is available.
+
+The Control Room follows OODA's default editorial/FiveThirtyEight-inspired visual language: warm cream page, off-white surfaces, serif display headings, restrained blue emphasis, thin warm rules, and evidence-first tables. See [`STYLE_GUIDE.md`](STYLE_GUIDE.md).
+
 The default browser refresh is 15 seconds. Override it with `OODA_DASHBOARD_REFRESH_SECONDS`.
 
 ## Session context telemetry
