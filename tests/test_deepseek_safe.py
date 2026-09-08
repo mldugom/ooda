@@ -16,7 +16,7 @@ class DeepSeekSafeTests(unittest.TestCase):
             captured["env"] = dict(env or {})
             return 0
 
-        with mock.patch.object(deepseek_safe, "_deepseek_binary", return_value="/usr/bin/deepseek"), mock.patch.object(
+        with mock.patch.object(deepseek_safe, "_deepseek_binary", return_value="/usr/bin/codewhale"), mock.patch.object(
             deepseek_safe, "_skills_ready", return_value=True
         ), mock.patch.object(deepseek_safe.subprocess, "call", side_effect=fake_call), mock.patch.object(
             sys, "argv", ["deepseek-safe"]
@@ -30,15 +30,21 @@ class DeepSeekSafeTests(unittest.TestCase):
 
     def test_defaults_controller_to_v4_pro(self):
         captured = self._run()
-        self.assertEqual(captured["command"], ["/usr/bin/deepseek"])
+        self.assertEqual(captured["command"], ["/usr/bin/codewhale"])
         self.assertEqual(captured["env"]["DEEPSEEK_MODEL"], "deepseek-v4-pro")
 
     def test_preserves_explicit_model(self):
         captured = self._run({"DEEPSEEK_MODEL": "deepseek-v4-flash"})
         self.assertEqual(captured["env"]["DEEPSEEK_MODEL"], "deepseek-v4-flash")
 
+    def test_prefers_codewhale_then_legacy_deepseek(self):
+        with mock.patch.object(deepseek_safe.shutil, "which", side_effect=lambda name: "/bin/codewhale" if name == "codewhale" else "/bin/deepseek"):
+            self.assertEqual(deepseek_safe._deepseek_binary(), "/bin/codewhale")
+        with mock.patch.object(deepseek_safe.shutil, "which", side_effect=lambda name: None if name == "codewhale" else "/bin/deepseek"):
+            self.assertEqual(deepseek_safe._deepseek_binary(), "/bin/deepseek")
+
     def test_requires_installed_ooda_skills(self):
-        with mock.patch.object(deepseek_safe, "_deepseek_binary", return_value="/usr/bin/deepseek"), mock.patch.object(
+        with mock.patch.object(deepseek_safe, "_deepseek_binary", return_value="/usr/bin/codewhale"), mock.patch.object(
             deepseek_safe, "_skills_ready", return_value=False
         ), mock.patch.object(sys, "argv", ["deepseek-safe"]):
             with self.assertRaises(SystemExit) as ctx:

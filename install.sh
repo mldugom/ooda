@@ -24,7 +24,7 @@ Grok:
   /ooda <mission-file>
 
 DeepSeek (experimental / unqualified until project orientation checks pass):
-  npm install -g deepseek-tui
+  npm install -g --prefix "$HOME/.local" codewhale
   ooda setup deepseek
   ooda doctor --provider deepseek
   deepseek-safe

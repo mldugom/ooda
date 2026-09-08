@@ -102,7 +102,7 @@ def configure_hook(config_path: Path, command: str) -> Tuple[bool, Optional[str]
         lines.extend(["[hooks]", "enabled = true"])
         enabled = True
     elif enabled is False:
-        warning = "DeepSeek hooks are globally disabled; OODA telemetry is installed but will not fire until [hooks] enabled=true."
+        warning = "CodeWhale hooks are globally disabled; OODA telemetry is installed but will not fire until [hooks] enabled=true."
 
     if lines and lines[-1].strip():
         lines.append("")
@@ -139,8 +139,38 @@ def _ooda_binary() -> Optional[str]:
     return shutil.which("ooda")
 
 
+def _runner_binary() -> Optional[str]:
+    explicit = os.environ.get("OODA_DEEPSEEK_BIN")
+    if explicit:
+        return explicit
+    return shutil.which("codewhale") or shutil.which("deepseek")
+
+
+def _primary_home() -> Path:
+    explicit = os.environ.get("CODEWHALE_HOME") or os.environ.get("DEEPSEEK_HOME")
+    if explicit:
+        return Path(explicit).expanduser()
+    return Path.home() / ".codewhale"
+
+
+def _candidate_homes() -> List[Path]:
+    homes: List[Path] = []
+    for value in (
+        os.environ.get("CODEWHALE_HOME"),
+        os.environ.get("DEEPSEEK_HOME"),
+        str(Path.home() / ".codewhale"),
+        str(Path.home() / ".deepseek"),
+    ):
+        if not value:
+            continue
+        path = Path(value).expanduser()
+        if path not in homes:
+            homes.append(path)
+    return homes
+
+
 def setup_deepseek(force: bool = False) -> int:
-    home = Path(os.environ.get("DEEPSEEK_HOME", str(Path.home() / ".deepseek"))).expanduser()
+    home = _primary_home()
     items = [
         (
             home / "skills" / "ooda" / "SKILL.md",
@@ -157,7 +187,7 @@ def setup_deepseek(force: bool = False) -> int:
 
     ooda_bin = _ooda_binary()
     if not ooda_bin:
-        print("WARN OODA executable not found; skipping DeepSeek telemetry hook configuration.", file=sys.stderr)
+        print("WARN OODA executable not found; skipping CodeWhale telemetry hook configuration.", file=sys.stderr)
     else:
         config = home / "config.toml"
         changed, warning = configure_hook(config, f"{ooda_bin} deepseek-telemetry")
@@ -165,26 +195,31 @@ def setup_deepseek(force: bool = False) -> int:
         if warning:
             print("WARN " + warning, file=sys.stderr)
 
-    print("OODA DeepSeek skills configured.")
+    print("OODA DeepSeek skills configured for CodeWhale.")
     print("Controller model: deepseek-v4-pro; delegated child model: deepseek-v4-flash.")
     print("Use `deepseek-safe`, then invoke the `ooda-controller` skill.")
     return 0
 
 
 def doctor_deepseek() -> int:
-    binary = shutil.which("deepseek")
+    binary = _runner_binary()
     if not binary:
-        print("FAIL deepseek binary not found")
+        print("FAIL CodeWhale binary not found (legacy `deepseek` is also accepted)")
         return 2
-    print(f"PASS deepseek binary: {binary}")
+    print(f"PASS DeepSeek runner: {binary}")
 
-    home = Path(os.environ.get("DEEPSEEK_HOME", str(Path.home() / ".deepseek"))).expanduser()
     missing = []
     for name in ("ooda", "ooda-controller"):
-        path = home / "skills" / name / "SKILL.md"
-        if path.is_file():
-            print(f"PASS skill: {path}")
+        found = None
+        for home in _candidate_homes():
+            path = home / "skills" / name / "SKILL.md"
+            if path.is_file():
+                found = path
+                break
+        if found:
+            print(f"PASS skill: {found}")
         else:
+            path = _primary_home() / "skills" / name / "SKILL.md"
             print(f"FAIL skill missing: {path}")
             missing.append(path)
 
@@ -198,7 +233,7 @@ def doctor_deepseek() -> int:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        print(f"WARN deepseek doctor --json unavailable: {exc}")
+        print(f"WARN CodeWhale doctor --json unavailable: {exc}")
         result = None
 
     if result is not None and result.returncode == 0:
@@ -224,6 +259,6 @@ def doctor_deepseek() -> int:
         else:
             print("WARN DeepSeek account balance endpoint did not return a usable balance")
     else:
-        print("INFO DEEPSEEK_API_KEY is not exported; saved DeepSeek auth may still work, but OODA cannot query account balance directly.")
+        print("INFO DEEPSEEK_API_KEY is not exported; saved CodeWhale auth may still work, but OODA cannot query account balance directly.")
 
     return 2 if missing else 0
