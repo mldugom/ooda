@@ -16,6 +16,7 @@ Everyday commands:
   ooda doctor
   ooda mission ...
   ooda trace ...
+  ooda tui
   ooda dashboard
 
 Grok:
@@ -27,7 +28,8 @@ DeepSeek (experimental / unqualified until project orientation checks pass):
   npm install -g --prefix "$HOME/.local" codewhale
   ooda setup deepseek
   ooda doctor --provider deepseek
-  deepseek-safe
+  ooda tui
+  deepseek-safe       # native CodeWhale TUI, useful for debugging
 
 Pip users run `ooda setup` once to install the Grok skills/policy.
 EOF

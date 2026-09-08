@@ -5,16 +5,16 @@ Status: **experimental / unqualified** until it passes OODA's frozen Tenniskal a
 OODA 0.4 adds a direct DeepSeek execution flavor without Claude or another inference provider in the loop.
 
 ```text
-OODA core
+OODA TUI / OODA core
    |
-CodeWhale runner
+CodeWhale app-server runtime
    |
 DeepSeek V4 Pro Controller
    |
 DeepSeek V4 Flash bounded child
 ```
 
-The community DeepSeek-TUI project was renamed to **CodeWhale** in 2026; the legacy `deepseek-tui` npm package is deprecated. CodeWhale remains a DeepSeek-capable terminal agent with skills, sandboxing, subagents, hooks, and direct DeepSeek provider support. OODA uses CodeWhale for this experimental terminal flavor. The official DeepSeek Harness remains a separate developer-preview option and is not the OODA 0.4 runner.
+The community DeepSeek-TUI project was renamed to **CodeWhale** in 2026; the legacy `deepseek-tui` npm package is deprecated. CodeWhale remains a DeepSeek-capable agent runtime with skills, sandboxing, subagents, hooks, and direct DeepSeek provider support. OODA uses CodeWhale as the hidden execution engine for this experimental provider flavor. The official DeepSeek Harness remains a separate developer-preview option and is not the OODA 0.4 runner.
 
 ## Install
 
@@ -25,7 +25,7 @@ npm install -g --prefix "$HOME/.local" codewhale
 codewhale --version
 ```
 
-OODA's launcher remains named `deepseek-safe` because the **provider flavor is DeepSeek** even though the terminal harness is CodeWhale.
+OODA's compatibility launcher remains named `deepseek-safe` because the **provider flavor is DeepSeek** even though the harness is CodeWhale.
 
 Keep provider credentials local. OODA never asks you to commit a DeepSeek API key into a project file. If you want OODA to show the actual DeepSeek account balance, export the key in your shell so OODA can call DeepSeek's documented `/user/balance` endpoint:
 
@@ -42,38 +42,52 @@ ooda setup deepseek
 ooda doctor --provider deepseek
 ```
 
-Launch from an adopted project:
+## Launch
+
+Preferred OODA-native surface:
 
 ```bash
 cd ~/repos/tenniskal
+ooda tui
+```
+
+`ooda tui` starts `codewhale app-server --stdio` underneath and owns the visible terminal experience. No listener port is required. The OODA terminal implements `/ooda-controller` and `/ooda` directly and keeps the DeepSeek thread persistent across turns.
+
+The native CodeWhale TUI remains available for provider-level debugging:
+
+```bash
 deepseek-safe
 ```
 
 `ooda setup deepseek` writes current configuration and skills under `~/.codewhale/`. OODA also recognizes legacy `~/.deepseek/` skill/config state so an existing pre-rebrand install does not immediately break.
 
-Inside CodeWhale, activate the `ooda-controller` skill. The Controller should remain on `deepseek-v4-pro`. For one bounded isolated worker, the Controller delegates to `deepseek-v4-flash` using CodeWhale's subagent mechanism and collects only the compact result needed to re-orient.
+The Controller should remain on `deepseek-v4-pro`. For one bounded isolated worker, the Controller delegates to `deepseek-v4-flash` using CodeWhale's subagent mechanism and collects only the compact result needed to re-orient.
+
+See [`OODA_TUI.md`](OODA_TUI.md) for the terminal cockpit and slash-command contract.
 
 ## Telemetry
 
-`ooda setup deepseek` installs a non-fatal `turn_end` hook. The hook writes only derived provider/session telemetry to:
+`ooda setup deepseek` installs a non-fatal `turn_end` hook for the native CodeWhale TUI. The hook writes only derived provider/session telemetry to:
 
 ```text
 .ooda/session-telemetry.json
 ```
 
+The OODA-native `app-server --stdio` path does not rely on that hook. It reads durable project state directly and queries the provider balance when `DEEPSEEK_API_KEY` is available. Context/session-cost fields remain `n/a` when the stdio runtime does not expose authoritative usage; OODA does not invent token counts or cost estimates.
+
 The Control Room may show:
 
 - provider and model;
-- current conversation/context tokens against the model context;
+- current conversation/context tokens when structured telemetry exists;
 - session tokens when the runner reports them;
 - runner session-cost estimate when supplied;
 - actual DeepSeek account balance when `DEEPSEEK_API_KEY` is available to OODA.
 
-CodeWhale's session cost is labeled as an estimate (`~$`) because runner pricing metadata can lag provider billing. DeepSeek's `/user/balance` value is shown separately as account balance. Missing telemetry remains unknown; OODA does not turn missing values into zero.
+CodeWhale's native-TUI session cost is labeled as an estimate (`~$`) because runner pricing metadata can lag provider billing. DeepSeek's `/user/balance` value is shown separately as account balance. Missing telemetry remains unknown; OODA does not turn missing values into zero.
 
-The hook does not open a port. The only listener remains the optional local Control Room (`ooda dashboard`, default `127.0.0.1:8792`). Balance checks are outbound HTTPS requests and are cached for ten minutes.
+The TUI does not open a port. The only listener remains the optional local Control Room (`ooda dashboard`, default `127.0.0.1:8792`). Balance checks are outbound HTTPS requests.
 
-If the user's CodeWhale config explicitly has `[hooks] enabled=false`, OODA installs its hook definition but does not silently enable all hooks. `ooda setup deepseek` warns instead.
+If the user's CodeWhale config explicitly has `[hooks] enabled=false`, OODA installs its native-TUI hook definition but does not silently enable all hooks. `ooda setup deepseek` warns instead.
 
 ## Qualification gate
 
