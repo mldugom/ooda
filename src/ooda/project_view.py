@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 SCHEMA = "ooda/project-view/v1"
 STATUSES = {"completed", "current", "provisional"}
@@ -17,8 +18,8 @@ def _read_json(path: Path) -> dict:
     return data
 
 
-def validate_project_view(data: dict) -> list[str]:
-    errors: list[str] = []
+def validate_project_view(data: dict) -> List[str]:
+    errors: List[str] = []
     if data.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA}")
     if not data.get("project_id"):
@@ -70,11 +71,11 @@ def load_project_view(repo: Path) -> dict:
     return data if not validate_project_view(data) else {}
 
 
-def _wrap_cell(value: str, width: int) -> list[str]:
+def _wrap_cell(value: str, width: int) -> List[str]:
     words = value.split()
     if not words:
         return [""]
-    lines: list[str] = []
+    lines: List[str] = []
     current = words[0]
     for word in words[1:]:
         candidate = f"{current} {word}"
@@ -87,7 +88,7 @@ def _wrap_cell(value: str, width: int) -> list[str]:
     return lines
 
 
-def _timeline_table(entries: list[dict]) -> str:
+def _timeline_table(entries: List[dict]) -> str:
     widths = (14, 34, 50, 50)
     headers = ("TIME", "DECISION", "SO WHAT", "BIGGER IDEA")
     out = [
@@ -118,12 +119,13 @@ def render_text(data: dict, *, limit: int = DEFAULT_LIMIT) -> str:
     if errors:
         raise ValueError("; ".join(errors))
 
-    ladder_lines: list[str] = []
-    for item in data["objective_ladder"]:
+    ladder_lines: List[str] = []
+    ladder = data["objective_ladder"]
+    for i, item in enumerate(ladder):
         status = item["status"]
         marker = {"completed": "✓", "current": "● CURRENT", "provisional": "○"}[status]
         ladder_lines.append(f"{marker} {item['label']}")
-        if item is not data["objective_ladder"][-1]:
+        if i < len(ladder) - 1:
             ladder_lines.append("    ↓")
 
     timeline = data.get("timeline", [])
@@ -144,7 +146,7 @@ def render_text(data: dict, *, limit: int = DEFAULT_LIMIT) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="ooda view", description="Render the durable OODA project view.")
     parser.add_argument("path", nargs="?", default=".", help="Project repository path (default: current directory)")
     parser.add_argument("--all", action="store_true", help="Show the full timeline instead of the latest entries")
