@@ -75,7 +75,7 @@ def launch() -> int:
         env["OODA_DASHBOARD_PORT"] = str(port)
         env["OODA_PROJECTS_ROOT"] = str(root)
         subprocess.Popen(
-            [sys.executable, "-m", "ooda.dashboard", "--serve"],
+            [sys.executable, "-m", "ooda.control_room", "--serve"],
             stdout=log,
             stderr=log,
             start_new_session=True,
