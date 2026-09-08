@@ -16,11 +16,21 @@ def main() -> None:
         del sys.argv[1]
         raise SystemExit(view_main(sys.argv[1:]))
 
+    if len(sys.argv) > 1 and sys.argv[1] == "statusline":
+        from .grok_statusline import main as statusline_main
+
+        del sys.argv[1]
+        raise SystemExit(statusline_main(sys.argv[1:]))
+
     if len(sys.argv) > 1 and sys.argv[1] == "help":
         from .cli import parser
 
         parser().print_help()
-        print("\nAdditional bundled command:\n  view       render objective ladder, decision timeline, and stakeholder summary")
+        print(
+            "\nAdditional bundled commands:\n"
+            "  view       render objective ladder, decision timeline, and stakeholder summary\n"
+            "  statusline render the Grok-native OODA status line (normally invoked by Grok)"
+        )
         raise SystemExit(0)
 
     from .cli import main as cli_main
