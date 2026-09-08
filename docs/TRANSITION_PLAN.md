@@ -8,7 +8,7 @@ The migration rule is: **do not destabilize a working system to prove the future
 |---|---|
 | 0 — Existing workflow preserved | **active / preserved** |
 | 1 — OODA shadow/manual mode | **implemented and dogfooded** |
-| 2 — Thin provider adapters | **Grok reference flavor implemented; second provider intentionally deferred** |
+| 2 — Thin provider adapters | **Grok reference flavor implemented; second provider parked/deferred** |
 | 3 — Control Room integration | **implemented** |
 | 4 — Repository watcher / observation plane | **deferred** |
 | 5 — Local deterministic supervisor | **deferred** |
@@ -56,7 +56,9 @@ The current Grok flavor supplies:
 - bounded one-child-at-a-time execution guidance;
 - project-view maintenance/rendering behavior.
 
-A second provider is intentionally not implemented yet. The provider-flavor boundary and qualification plan are documented in `docs/PROVIDER_FLAVORS.md`.
+A DeepSeek/CodeWhale second-provider experiment was implemented briefly in OODA 0.4 and then parked after dogfooding exposed runner churn, UI/runtime mismatch, telemetry ambiguity, and extra maintenance surface before qualification completed. Its code is retained as dormant experimental material, but Grok is again the sole active reference flavor.
+
+The provider-flavor boundary and qualification plan are documented in `docs/PROVIDER_FLAVORS.md`; the parked DeepSeek lane and re-entry criteria are recorded in `docs/BACKLOG.md`.
 
 A future adapter should validate current state, authority, and stop conditions without copying the whole OODA repo into hidden runtime state.
 
@@ -138,6 +140,8 @@ Only after provider-neutral contracts are proven and a second provider is actual
 - lower-cost providers may handle high-volume bounded work;
 - provider selection is a policy decision, not a project rewrite;
 - provider qualification should replay frozen read-only project-orientation cases before consequential work is delegated.
+
+The DeepSeek/CodeWhale experiment is the current concrete backlog item for this phase, not active implementation. See `docs/BACKLOG.md` before reopening it.
 
 See `docs/PROVIDER_FLAVORS.md`.
 
