@@ -253,7 +253,8 @@ def _efficiency_chart(project: Dict[str, Any]) -> str:
         return (
             '<div class="chart-empty"><b>No exact mission economics yet.</b><span>'
             'The chart starts when work orders carry <code>created_at</code> and traces carry '
-            '<code>completed_at</code> + exact/recorded <code>cost_usd</code>. OODA does not infer these from file mtimes.'</span></div>'
+            '<code>completed_at</code> + exact/recorded <code>cost_usd</code>. OODA does not infer these from file mtimes.'
+            '</span></div>'
         )
 
     width, height = 560, 220
