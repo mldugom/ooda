@@ -91,9 +91,22 @@ ooda view --json
 
 A user can also ask `/ooda-controller` for `timeline`, `show timeline`, or `where are we`; when the artifact exists, the Controller should render or summarize this same durable object rather than replaying old chat history.
 
-## Dashboard
+OODA does not patch or scrape the provider's terminal chrome. In Grok, the native TUI and Workflow/subagent panel remain Grok-owned; OODA supplies the durable state and Controller/worker behavior rendered within that terminal session.
 
-The OODA Control Room reads the same `.ooda/project-view.json`. The stakeholder summary is shown on the project card and the ladder/recent timeline are available as an expandable project view.
+## Browser Control Room
+
+The bundled `ooda dashboard` Control Room reads the same `.ooda/project-view.json`.
+
+For the selected project it shows:
+
+- current stakeholder summary;
+- current human/next gate;
+- the live OODA loop;
+- the full visible objective ladder;
+- the latest material timeline pivots;
+- Git/controller/mission freshness metadata.
+
+Multiple projects are presented as horizontal tabs rather than stacked full project cockpits. The selected project persists across refresh when browser local storage is available.
 
 There is no second dashboard-specific history.
 
