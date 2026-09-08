@@ -44,16 +44,17 @@ def main() -> None:
         parser().print_help()
         print(
             "\nAdditional bundled commands:\n"
-            "  view                     render objective ladder, decision timeline, and stakeholder summary\n"
-            "  setup deepseek           install OODA DeepSeek skills + telemetry hook\n"
+            "  view                        render objective ladder, decision timeline, and stakeholder summary\n"
+            "  setup deepseek              install OODA DeepSeek skills + telemetry hook\n"
             "  doctor --provider deepseek  check DeepSeek runner, skills, sandbox, and balance access\n"
-            "  statusline               render the Grok-native OODA status line (normally invoked by Grok)"
+            "  trace ... --cost-usd N      optionally record exact/known mission cost for feedback-efficiency chart\n"
+            "  statusline                  render the Grok-native OODA status line (normally invoked by Grok)"
         )
         raise SystemExit(0)
 
-    from .cli import main as cli_main
+    from .contract_runtime import run_cli
 
-    cli_main()
+    run_cli()
 
 
 if __name__ == "__main__":
