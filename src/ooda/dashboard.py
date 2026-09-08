@@ -83,6 +83,10 @@ def _collect_project(repo: Path) -> dict:
     work_path, work = _latest_json(repo / ".ooda" / "work-orders")
     trace_path, trace = _latest_json(repo / ".ooda" / "traces")
     state_path = repo / "PROJECT_STATE.md"
+    view_path = repo / ".ooda" / "project-view.json"
+    view = _read_json(view_path)
+    if view.get("schema") != "ooda/project-view/v1":
+        view = {}
     git = _git_state(repo)
 
     objective = _section(state_path, "Current objective") or "No current objective recorded"
@@ -113,7 +117,7 @@ def _collect_project(repo: Path) -> dict:
         controller = "active"
 
     freshness_source = max(
-        [p for p in (project_path, work_path, trace_path, state_path) if p and p.exists()],
+        [p for p in (project_path, work_path, trace_path, state_path, view_path) if p and p.exists()],
         key=lambda p: p.stat().st_mtime,
         default=project_path,
     )
@@ -121,6 +125,10 @@ def _collect_project(repo: Path) -> dict:
         updated = time.strftime("%Y-%m-%d %H:%M", time.localtime(freshness_source.stat().st_mtime))
     except OSError:
         updated = "—"
+
+    ladder = view.get("objective_ladder") if isinstance(view.get("objective_ladder"), list) else []
+    timeline = view.get("timeline") if isinstance(view.get("timeline"), list) else []
+    stakeholder_summary = view.get("stakeholder_summary") if isinstance(view.get("stakeholder_summary"), str) else ""
 
     return {
         "repo": repo,
@@ -142,6 +150,9 @@ def _collect_project(repo: Path) -> dict:
         "head": git["head"],
         "dirty": git["dirty"],
         "updated": updated,
+        "objective_ladder": ladder,
+        "timeline": timeline,
+        "stakeholder_summary": stakeholder_summary,
     }
 
 
@@ -159,6 +170,54 @@ def discover_projects(root: Path) -> list[dict]:
 def _pill(value: str) -> str:
     cls = "".join(ch if ch.isalnum() else "-" for ch in value.lower()).strip("-")
     return f'<span class="pill p-{_e(cls)}">{_e(value)}</span>'
+
+
+def _project_view_html(project: dict) -> str:
+    ladder = project.get("objective_ladder") or []
+    timeline = project.get("timeline") or []
+    if not ladder and not timeline:
+        return ""
+
+    ladder_bits: list[str] = []
+    for item in ladder:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status") or "provisional")
+        marker = {"completed": "✓", "current": "●", "provisional": "○"}.get(status, "○")
+        label = item.get("label") or ""
+        ladder_bits.append(
+            f'<div class="ladder-step s-{_e(status)}"><span>{marker}</span><b>{_e(label)}</b></div>'
+        )
+
+    latest = [item for item in timeline[-5:] if isinstance(item, dict)]
+    timeline_bits = [
+        '<div class="timeline-row timeline-head"><b>TIME</b><b>DECISION</b><b>SO WHAT</b><b>BIGGER IDEA</b></div>'
+    ]
+    for item in latest:
+        timeline_bits.append(
+            '<div class="timeline-row">'
+            f'<span>{_e(item.get("at", ""))}</span>'
+            f'<span>{_e(item.get("decision", ""))}</span>'
+            f'<span>{_e(item.get("so_what", ""))}</span>'
+            f'<span>{_e(item.get("bigger_idea", ""))}</span>'
+            '</div>'
+        )
+
+    return f"""
+      <details class="narrative">
+        <summary>Project view · {len(timeline)} material decision{'s' if len(timeline) != 1 else ''}</summary>
+        <div class="narrative-grid">
+          <div>
+            <div class="eyebrow">OBJECTIVE LADDER</div>
+            <div class="ladder">{''.join(ladder_bits) or '<span class="muted">No ladder recorded</span>'}</div>
+          </div>
+          <div>
+            <div class="eyebrow">RECENT DECISION TIMELINE</div>
+            <div class="timeline-mini">{''.join(timeline_bits) if latest else '<span class="muted">No pivots recorded</span>'}</div>
+          </div>
+        </div>
+      </details>
+    """
 
 
 def render_html(projects: list[dict], refresh_seconds: int, root: Path) -> str:
@@ -184,6 +243,11 @@ def render_html(projects: list[dict], refresh_seconds: int, root: Path) -> str:
               <td>{_e(p['updated'])}</td>
             </tr>
             """
+        )
+        stakeholder = (
+            f'<div class="stakeholder"><small>CURRENT STAKEHOLDER SUMMARY</small><b>{_e(p["stakeholder_summary"])}</b></div>'
+            if p.get("stakeholder_summary")
+            else ""
         )
         cards.append(
             f"""
@@ -214,6 +278,8 @@ def render_html(projects: list[dict], refresh_seconds: int, root: Path) -> str:
                 <span>→</span>
                 <div><small>NEXT GATE</small><b>{_e(p['next_gate'])}</b></div>
               </div>
+              {stakeholder}
+              {_project_view_html(p)}
             </section>
             """
         )
@@ -249,8 +315,12 @@ button{{border:1px solid var(--rule);border-radius:8px;background:var(--paper);p
 .project{{padding:18px;margin:14px 0}}.project-head{{display:flex;justify-content:space-between;gap:20px}}.project-head p{{color:var(--muted);margin-top:5px;max-width:900px}}.eyebrow{{font-size:10px;letter-spacing:.15em;font-weight:800;color:var(--muted);margin-bottom:5px}}
 .facts{{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:15px 0}}.facts>div{{border-top:1px solid var(--rule);padding-top:9px}}.facts b,.facts span{{display:block}}
 .lane{{display:flex;align-items:stretch;gap:8px;overflow:auto;border-top:1px solid var(--rule);padding-top:14px}}.lane>div{{min-width:180px;flex:1;background:#f8f3e8;border:1px solid #e5dac7;border-radius:9px;padding:10px}}.lane>span{{align-self:center;color:var(--muted)}}
+.stakeholder{{margin-top:14px;padding:12px 14px;background:#f8f3e8;border:1px solid #e5dac7;border-radius:9px}}.stakeholder b{{display:block;font-size:15px;margin-top:3px}}
+.narrative{{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px}}.narrative summary{{cursor:pointer;font-weight:800}}.narrative-grid{{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.8fr);gap:20px;margin-top:12px}}
+.ladder{{display:grid;gap:5px}}.ladder-step{{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:start;padding:5px 0}}.ladder-step.s-provisional{{color:var(--muted)}}.ladder-step.s-current b{{text-decoration:underline;text-underline-offset:3px}}
+.timeline-mini{{border:1px solid #e5dac7;border-radius:8px;overflow:hidden}}.timeline-row{{display:grid;grid-template-columns:100px minmax(140px,.8fr) minmax(180px,1.2fr) minmax(180px,1.2fr);gap:10px;padding:8px 10px;border-top:1px solid #eee5d6}}.timeline-row:first-child{{border-top:0}}.timeline-head{{font-size:10px;color:var(--muted);letter-spacing:.06em;background:#f8f3e8}}.timeline-row span{{min-width:0}}
 .empty{{text-align:center;padding:28px;color:var(--muted)}}code{{background:#eee6d7;padding:2px 5px;border-radius:4px}}
-@media(max-width:900px){{main{{padding:16px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.facts{{grid-template-columns:1fr 1fr}}.hero{{align-items:start;flex-direction:column}}}}
+@media(max-width:900px){{main{{padding:16px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.facts{{grid-template-columns:1fr 1fr}}.hero{{align-items:start;flex-direction:column}}.narrative-grid{{grid-template-columns:1fr}}.timeline-mini{{overflow:auto}}.timeline-row{{min-width:760px}}}}
 </style>
 </head>
 <body>
