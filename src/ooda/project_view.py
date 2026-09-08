@@ -90,7 +90,7 @@ def _wrap_cell(value: str, width: int) -> List[str]:
 
 def _timeline_table(entries: List[dict]) -> str:
     widths = (14, 34, 50, 50)
-    headers = ("TIME", "DECISION", "SO WHAT", "BIGGER IDEA")
+    headers = ("TIME", "DECISION", "IMMEDIATE CONSEQUENCE", "PROGRAM IMPACT")
     out = [
         "  ".join(h.ljust(w) for h, w in zip(headers, widths)),
         "  ".join(("─" * w) for w in widths),
