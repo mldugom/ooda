@@ -26,7 +26,7 @@ It is a derived orientation surface. `PROJECT_STATE.md`, work orders, traces, Gi
       "at": "2026-09-08",
       "decision": "Freeze the candidate hypothesis set",
       "so_what": "The next predictive test cannot add features after seeing results.",
-      "bigger_idea": "The research program is moving from exploration into controlled testing."
+      "bigger_idea": "The research program moves from exploration into controlled testing; outcome-driven feature redesign remains unauthorized."
     }
   ],
   "stakeholder_summary": "The candidate hypotheses are frozen. The next consequential question is whether they survive the controlled predictive test."
@@ -49,16 +49,26 @@ There must be exactly one `current` rung.
 
 The timeline is not an activity log. Add a row only when the project's mental model, priority, evidence interpretation, gate, or authorized direction materially changes.
 
-The columns are intentionally stakeholder-facing:
+The durable JSON field names remain stable, while human-facing labels are intentionally clearer:
 
-| Field | Question |
-|---|---|
-| `at` | When did the material pivot happen? |
-| `decision` | What did we choose or change? |
-| `so_what` | What immediate practical consequence follows? |
-| `bigger_idea` | How does that consequence affect the larger research/product/business objective? |
+| JSON field | Display label | Question |
+|---|---|---|
+| `at` | `TIME` | When did the material pivot happen? |
+| `decision` | `DECISION` | What concrete dataset/model/experiment/gate/system decision changed? |
+| `so_what` | `IMMEDIATE CONSEQUENCE` | What changes operationally or scientifically now? |
+| `bigger_idea` | `PROGRAM IMPACT` | What does this enable, rule out, or change in the larger objective? |
 
-Write `so_what` and `bigger_idea` in plain language. Name the concrete dataset, model, experiment, gate, feature family, system, or user decision whenever possible. Avoid vague phrases such as “it worked”, “the idea”, or “the next step” when the actual noun is available.
+Write each row like a data scientist briefing a CTO: simple enough to scan, specific enough to act on. Name the concrete dataset, model, experiment, gate, feature family, system, or user decision. Include the decisive number or constraint when it materially drove the pivot. When authority matters, state what the decision still does **not** authorize.
+
+Example:
+
+Bad:
+
+> R6 worked and we can move forward.
+
+Better:
+
+> **DECISION:** Freeze five R7 market-state hypotheses. **IMMEDIATE CONSEQUENCE:** R7 may test only the frozen intensity, acceleration, and staleness definitions; no features may be added after outcomes are joined. **PROGRAM IMPACT:** Tenniskal moves from exploratory market-state discovery to preregistered predictive testing; ROI search remains unauthorized.
 
 Do not add rows for shell commands, file reads, ordinary tests, routine worker chatter, or every intermediate implementation detail.
 
@@ -82,16 +92,14 @@ From an adopted project:
 ooda view
 ```
 
-By default this renders the objective ladder, the latest eight decision pivots, and the current stakeholder summary.
+By default this renders the objective ladder, the latest eight decision pivots, and the current stakeholder summary. The timeline displays `IMMEDIATE CONSEQUENCE` and `PROGRAM IMPACT` while preserving the existing JSON field names.
 
 ```bash
 ooda view --all
 ooda view --json
 ```
 
-A user can also ask `/ooda-controller` for `timeline`, `show timeline`, or `where are we`; when the artifact exists, the Controller should render or summarize this same durable object rather than replaying old chat history.
-
-OODA does not patch or scrape the provider's terminal chrome. In Grok, the native TUI and Workflow/subagent panel remain Grok-owned; OODA supplies the durable state and Controller/worker behavior rendered within that terminal session.
+A user can also ask the provider Controller for `timeline`, `show timeline`, or `where are we`; when the artifact exists, the Controller should render or summarize this same durable object rather than replaying old chat history.
 
 ## Browser Control Room
 
@@ -99,14 +107,16 @@ The bundled `ooda dashboard` Control Room reads the same `.ooda/project-view.jso
 
 For the selected project it shows:
 
-- current stakeholder summary;
-- current human/next gate;
-- the live OODA loop;
+- current stakeholder summary and human/next gate;
+- a compact OODA phase rail rather than five large phase tiles;
+- `NOW | WAITING ON / GATE | NEXT IF CURRENT GATE PASSES`;
 - the full visible objective ladder;
 - the latest material timeline pivots;
+- provider/model/context/cost/balance telemetry when available;
+- Feedback-loop Efficiency when exact mission economics/timing exist;
 - Git/controller/mission freshness metadata.
 
-Multiple projects are presented as horizontal tabs rather than stacked full project cockpits. The selected project persists across refresh when browser local storage is available.
+Multiple projects are presented in a left sidebar. The selected project persists across refresh when browser local storage is available.
 
 There is no second dashboard-specific history.
 
