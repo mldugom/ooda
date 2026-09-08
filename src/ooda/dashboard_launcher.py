@@ -12,7 +12,7 @@ import webbrowser
 from pathlib import Path
 
 
-DEFAULT_PORT = 8791
+DEFAULT_PORT = 8792
 PORT_SEARCH_SPAN = 20
 
 
