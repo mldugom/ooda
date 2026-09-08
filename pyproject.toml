@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooda-ai"
-version = "0.3.1"
+version = "0.3.2"
 description = "Provider-neutral OODA control system for bounded AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,7 +19,7 @@ ooda = "ooda.entrypoint:main"
 grok-safe = "ooda.grok_safe:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = "src"
 
 [tool.setuptools.packages.find]
 where = ["src"]
