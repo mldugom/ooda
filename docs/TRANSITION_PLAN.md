@@ -2,6 +2,21 @@
 
 The migration rule is: **do not destabilize a working system to prove the future one.**
 
+## Current status
+
+| Phase | Status |
+|---|---|
+| 0 — Existing workflow preserved | **active / preserved** |
+| 1 — OODA shadow/manual mode | **implemented and dogfooded** |
+| 2 — Thin provider adapters | **Grok reference flavor implemented; second provider intentionally deferred** |
+| 3 — Control Room integration | **implemented** |
+| 4 — Repository watcher / observation plane | **deferred** |
+| 5 — Local deterministic supervisor | **deferred** |
+| 6 — Always-on local host | **deferred** |
+| 7 — Multi-provider routing | **design documented; implementation deferred** |
+
+Deferred phases are not missing release blockers. They should be commissioned only when real operating evidence makes them the highest-value next OODA product slice.
+
 ## Phase 0 — Existing workflow preserved
 
 ```text
@@ -15,57 +30,65 @@ HUMAN + CHATGPT
 
 No OODA dependency is required for existing work to continue.
 
-## Phase 1 — OODA shadow/manual mode
+## Phase 1 — OODA shadow/manual mode — implemented
 
-Add OODA beside the current system:
+Current OODA supports:
 
-- existing projects may add `.ooda/project.json`;
-- new repos may use `ooda init --scaffold` for a minimal operating spine;
-- fresh ChatGPT sessions bootstrap from narrow durable repo truth instead of giant handoffs;
-- substantial new work gets an `ooda/work-order/v1` mission;
-- the configured provider executes it;
-- useful outcomes get an `ooda/trace/v1` record;
-- project-local lifecycle behavior remains authoritative.
+- `.ooda/project.json` adoption;
+- `ooda init --scaffold` for a minimal operating spine;
+- narrow durable bootstrap for fresh sessions;
+- provider-neutral `ooda/work-order/v1` missions;
+- `ooda/trace/v1` feedback records;
+- `.ooda/project-view.json` for the human objective ladder, material decision timeline, and stakeholder summary;
+- project-local lifecycle and authority remaining authoritative.
 
-Success criteria:
+The dogfooded operating model is one Controller session plus isolated bounded child workers where the provider supports them.
 
-- less scope drift;
-- less repeated research;
-- faster fresh-chat/project bootstrap;
-- better distinction between discovery/evidence/qualification;
-- no material slowdown for simple work;
-- useful cross-domain routing for research, software, product, and infrastructure.
-
-## Phase 2 — Thin provider adapters
+## Phase 2 — Thin provider adapters — Grok reference implemented
 
 Provider details stay under `providers/` while missions/traces remain provider-neutral.
 
-The adapter should validate current state, authority, and stop conditions without copying the whole OODA repo into hidden runtime state.
+The current Grok flavor supplies:
 
-## Phase 3 — Control Room integration
+- `grok-safe` launcher discipline;
+- packaged `/ooda-controller` and `/ooda` skills;
+- workflow/subagent availability checks;
+- bounded one-child-at-a-time execution guidance;
+- project-view maintenance/rendering behavior.
 
-Only after real traces exist:
+A second provider is intentionally not implemented yet. The provider-flavor boundary and qualification plan are documented in `docs/PROVIDER_FLAVORS.md`.
 
-- the optional Control Room consumes derived OODA fields such as role, profile, lenses, claim level, cycle state, cost, verification, stop reason, and human gate;
-- the dashboard remains read-only with Git/project evidence authoritative;
-- displayed fields should be driven by information actually proven useful during real OODA usage.
+A future adapter should validate current state, authority, and stop conditions without copying the whole OODA repo into hidden runtime state.
 
-## Phase 4 — Repository watcher / observation plane
+## Phase 3 — Control Room integration — implemented
+
+The bundled read-only `ooda dashboard` now consumes derived OODA state and shows:
+
+- stakeholder summary and current human/next gate;
+- live OODA loop;
+- objective ladder and recent material pivots;
+- Git/controller/mission freshness;
+- optional provider context telemetry;
+- project tabs with selected-project persistence.
+
+The Control Room remains read-only with Git/project evidence authoritative. `ooda view` remains the compact canonical shell renderer.
+
+## Phase 4 — Repository watcher / observation plane — deferred
 
 Automate observation before dispatch or judgment.
 
-A small local process may:
+A future small local process may:
 
 - poll an allowlist of repositories;
 - detect default-branch advances, PR changes, selected state-file changes, and new OODA traces/work orders;
 - keep last-seen SHAs/cursors in a small local state store;
-- update a Control Room and surface candidate human-review/orientation events.
+- update the Control Room and surface candidate human-review/orientation events.
 
 It does **not** automatically create consequential tasks, merge code, promote models, or touch live capital/runtime.
 
 See `docs/REPO_WATCHER.md`.
 
-## Phase 5 — Local deterministic supervisor
+## Phase 5 — Local deterministic supervisor — deferred
 
 After repeated manual routing patterns are obvious:
 
@@ -78,9 +101,9 @@ After repeated manual routing patterns are obvious:
 
 The supervisor is deterministic control logic, not the chief scientist.
 
-## Phase 6 — Always-on local host
+## Phase 6 — Always-on local host — deferred
 
-A small local host may run the watcher/supervisor, schedules allowed work, stores operational metadata, and updates the Control Room.
+A future small local host may run the watcher/supervisor, schedule allowed work, store operational metadata, and update the Control Room.
 
 ```text
 GitHub repos
@@ -107,13 +130,16 @@ OODA trace + Git evidence
 human integration gate
 ```
 
-## Phase 7 — Multi-provider routing
+## Phase 7 — Multi-provider routing — design documented, implementation deferred
 
-Only after provider-neutral contracts are proven:
+Only after provider-neutral contracts are proven and a second provider is actually needed:
 
 - different providers may own architecture/research/implementation according to policy;
 - lower-cost providers may handle high-volume bounded work;
-- provider selection is a policy decision, not a project rewrite.
+- provider selection is a policy decision, not a project rewrite;
+- provider qualification should replay frozen read-only project-orientation cases before consequential work is delegated.
+
+See `docs/PROVIDER_FLAVORS.md`.
 
 ## Explicitly not migrated automatically
 
