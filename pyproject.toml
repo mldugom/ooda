@@ -19,7 +19,7 @@ ooda = "ooda.entrypoint:main"
 grok-safe = "ooda.grok_safe:main"
 
 [tool.setuptools]
-package-dir = "src"
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
