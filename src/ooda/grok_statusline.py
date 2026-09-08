@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .provider_telemetry import record_grok_payload
+
 STATUS_HEADER = "[ui.status_line]"
 DEFAULT_REFRESH_SECONDS = 600
 
@@ -216,6 +218,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
+    try:
+        record_grok_payload(payload)
+    except Exception:
+        # Telemetry is optional and must never break Grok's status line.
+        pass
     sys.stdout.write(render(payload))
     return 0
 
