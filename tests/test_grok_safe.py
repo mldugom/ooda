@@ -19,14 +19,15 @@ class GrokSafeTests(unittest.TestCase):
         clean_keys = {"OODA_GROK_NO_SUBAGENTS": "", "OODA_GROK_MAX_TURNS": ""}
         clean_keys.update(env or {})
         with patch.object(grok_safe, "_grok_binary", return_value="/usr/bin/grok"):
-            with patch.object(grok_safe.subprocess, "call", side_effect=fake_call):
-                with patch.object(sys, "argv", ["grok-safe"]):
-                    with patch.dict(os.environ, clean_keys, clear=False):
-                        for key, value in list(clean_keys.items()):
-                            if value == "":
-                                os.environ.pop(key, None)
-                        with self.assertRaises(SystemExit) as ctx:
-                            grok_safe.main()
+            with patch.object(grok_safe, "_warn_if_workflows_disabled"):
+                with patch.object(grok_safe.subprocess, "call", side_effect=fake_call):
+                    with patch.object(sys, "argv", ["grok-safe"]):
+                        with patch.dict(os.environ, clean_keys, clear=False):
+                            for key, value in list(clean_keys.items()):
+                                if value == "":
+                                    os.environ.pop(key, None)
+                            with self.assertRaises(SystemExit) as ctx:
+                                grok_safe.main()
         self.assertEqual(ctx.exception.code, 0)
         return captured["command"]
 
@@ -44,6 +45,29 @@ class GrokSafeTests(unittest.TestCase):
         command = self._command({"OODA_GROK_MAX_TURNS": "12"})
         idx = command.index("--max-turns")
         self.assertEqual(command[idx + 1], "12")
+
+    def test_workflows_disabled_detection(self):
+        text = """
+[models]
+default = "grok-4.6"
+
+[workflows]
+enabled = false
+
+[privacy]
+privacy_banner_acked = "x"
+"""
+        self.assertTrue(grok_safe._workflows_explicitly_disabled(text))
+        self.assertFalse(grok_safe._workflows_explicitly_disabled(text.replace("false", "true")))
+
+    def test_workflows_disabled_ignores_other_enabled_keys(self):
+        text = """
+[other]
+enabled = false
+[workflows]
+# enabled = false
+"""
+        self.assertFalse(grok_safe._workflows_explicitly_disabled(text))
 
 
 if __name__ == "__main__":

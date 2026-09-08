@@ -31,14 +31,42 @@ Normally load only:
 
 1. project registry / `.ooda/project.json` metadata;
 2. concise current-state summaries such as `PROJECT_STATE.md`;
-3. active OODA work orders;
-4. latest useful OODA trace per project;
-5. unresolved human gates;
-6. branch / PR status relevant to active missions;
-7. freshness / blocker state;
-8. the user's current raw thought or control question.
+3. optional human-facing `.ooda/project-view.json` when present;
+4. active OODA work orders;
+5. latest useful OODA trace per project;
+6. unresolved human gates;
+7. branch / PR status relevant to active missions;
+8. freshness / blocker state;
+9. the user's current raw thought or control question.
 
 Do not recursively inspect source trees, datasets, long research histories, raw logs, full PR diffs, or the web unless the task is specifically to bootstrap missing control state and the minimum lookup is necessary. If deeper evidence is needed, propose/dispatch a bounded worker mission instead.
+
+## Human-facing project view
+
+`.ooda/project-view.json` is an optional compact orientation surface for projects where the operator benefits from remembering **why the project changed direction**, not just the latest machine state.
+
+When it exists, treat it as derived human context, not as authority over project state, evidence, Git, work orders, or traces.
+
+It contains three linked views:
+
+1. **Objective ladder** — the current theory of how the project reaches its larger objective.
+   - `completed` = sufficiently established/completed to move on;
+   - `current` = the question or gate being actively resolved;
+   - `provisional` = downstream hypothesis/plan only, subject to reorder, replacement, skipping, or abandonment.
+   - There must be exactly one `current` rung. Never treat provisional rungs as authorized future missions.
+
+2. **Decision timeline** — only material mental pivots, not commands or activity logs.
+   - columns are `TIME | DECISION | SO WHAT | BIGGER IDEA`;
+   - `DECISION` says what was chosen or changed;
+   - `SO WHAT` says the immediate practical consequence;
+   - `BIGGER IDEA` connects that consequence to the current research/product/business objective.
+   - Write for a business stakeholder. Name the concrete dataset, model, experiment, gate, feature family, or decision whenever possible. Avoid vague relative pronouns such as “it”, “this”, “the idea”, or “the next step” when the actual noun is available.
+
+3. **Current stakeholder summary** — normally one or two plain-English sentences answering: where are we now, what have we learned, and what is the next consequential question?
+
+When the user says `timeline`, `show timeline`, `where are we`, or asks for the larger research path, render the project view directly when present. The shell command `ooda view` renders the same durable object outside the Controller session.
+
+When a material decision, program-level reorientation, research gate, or integration gate changes project truth, update an existing `.ooda/project-view.json` with the smallest useful change: usually one timeline row, any needed ladder-marker change, and a refreshed stakeholder summary. Do not add rows for routine commands, file reads, tests, or worker chatter. Do not create or maintain a project view when it would be pure ceremony.
 
 ## OODA behavior
 
@@ -50,6 +78,14 @@ Use the loop explicitly but compactly:
 - **ACT:** construct/propose a work order, dispatch one bounded child mission when authorized, request an orientation spike, surface a gate, or intentionally do nothing.
 
 Then re-observe from returned traces/evidence instead of accumulating deep project context.
+
+For material worker results, separate:
+
+- **RESULT** — factual/technical finding;
+- **SO WHAT** — immediate implication in plain language;
+- **BIGGER IDEA** — how the result changes or advances the larger project objective.
+
+Do not force these blocks for trivial administrative output, but use them for research, product, architecture, validation, and consequential engineering decisions.
 
 ## Three operating modes
 
@@ -161,6 +197,8 @@ Return a compact control view:
 - human gate;
 - recommended next control action.
 
+When `.ooda/project-view.json` exists and the operator asks for orientation rather than only machine status, also show the current ladder rung, latest material timeline pivot, and current stakeholder summary instead of replaying old chat history.
+
 Prioritize human gates, blocked missions, stale state, and completed work awaiting integration before proposing new work.
 
 ## Routing rules
@@ -215,7 +253,7 @@ By default the Controller may not:
 
 ## Session durability
 
-Your Controller chat/session is disposable. Durable memory is reconstructed from project state, work orders, traces, Git/PR state, and explicit human decisions.
+Your Controller chat/session is disposable. Durable memory is reconstructed from project state, work orders, traces, Git/PR state, explicit human decisions, and the optional compact project view.
 
 It is fine to keep one Controller session open while it remains useful, and equally fine to restart it when the context becomes stale or large. Restarting should not require reconstructing worker history from chat because durable control state is authoritative.
 
@@ -234,7 +272,7 @@ A good Controller response usually ends in one of four outcomes:
 
 ## Control Room relationship
 
-Treat the OODA Control Room as a derived observation surface, not authority. Use it to orient quickly, then verify the minimum authoritative artifact when a consequential routing decision depends on it.
+Treat the OODA Control Room as a derived observation surface, not authority. Use it to orient quickly, then verify the minimum authoritative artifact when a consequential routing decision depends on it. The Control Room may render `.ooda/project-view.json`, but the underlying evidence and project artifacts remain authoritative.
 
 ## Design rule
 

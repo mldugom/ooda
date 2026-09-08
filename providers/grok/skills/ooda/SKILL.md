@@ -140,11 +140,17 @@ At completion return a concise OODA TRACE summary:
 - ORIENT: role/profile/lenses + key uncertainty/risk;
 - DECIDE: bounded action chosen;
 - ACT: what changed/tested;
-- RESULT: completed | negative_finding | blocked | budget_exhausted | needs_human_gate;
+- RESULT: completed | negative_finding | blocked | budget_exhausted | needs_human_gate, plus the factual/technical finding;
+- SO WHAT: immediate practical implication in plain stakeholder language;
+- BIGGER IDEA: how the result changes or advances the larger project/research/product objective;
 - VERIFICATION: tests/artifacts/evidence;
 - DOCUMENTATION: none or durable docs updated/created;
 - COST: turns/tool calls/cost when available;
 - NEXT GATE: human/ChatGPT decision or next bounded loop.
+
+`SO WHAT` and `BIGGER IDEA` are not marketing summaries. Name the concrete dataset, model, experiment, gate, feature family, system, or user decision whenever possible. Avoid vague relative pronouns such as “it”, “this”, or “the idea” when the actual noun is available.
+
+For trivial administrative missions, keep these implication blocks to one line or omit them when they would add no information. For research, validation, architecture, product, and consequential engineering missions, include them.
 
 Do not emit private chain-of-thought. Report decision provenance and evidence only.
 

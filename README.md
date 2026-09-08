@@ -54,6 +54,7 @@ The distribution name is `ooda-ai`; there is no PyPI release yet.
 | `ooda doctor` | Validate project/contracts. |
 | `ooda mission` | Create one bounded mission/work order. |
 | `ooda trace` | Record durable mission outcome/feedback. |
+| `ooda view` | Render the project's objective ladder, decision timeline, and stakeholder summary. |
 | `ooda dashboard` | Open the bundled local Control Room. |
 | `grok-safe` | Launch Grok with OODA's bounded policy. |
 
@@ -115,6 +116,31 @@ Then inside Grok:
 
 For existing repos with useful docs, normally do **not** use `--scaffold`.
 
+## Human-facing project view
+
+Projects that benefit from a compact history of **why the project changed direction** may keep:
+
+```text
+.ooda/project-view.json
+```
+
+It contains:
+
+- an objective/research ladder with exactly one current rung;
+- a material decision timeline: `TIME | DECISION | SO WHAT | BIGGER IDEA`;
+- a rolling stakeholder summary.
+
+Downstream ladder rungs are provisional hypotheses/plans, not authorized future missions.
+
+Render it in the terminal:
+
+```bash
+ooda view
+ooda view --all
+```
+
+The same object is available to `/ooda-controller` for `timeline`, `show timeline`, or `where are we`, and is rendered by the Control Room. See [`docs/PROJECT_VIEW.md`](docs/PROJECT_VIEW.md).
+
 ## Missions
 
 Direct creation is available when you already know the bounded task:
@@ -169,6 +195,14 @@ needs_human_gate
 
 A trace is concise decision provenance and feedback, not chain-of-thought.
 
+For material research/product/architecture/validation results, OODA workers and the Controller should distinguish:
+
+```text
+RESULT       factual/technical finding
+SO WHAT      immediate practical implication
+BIGGER IDEA  connection to the larger project objective
+```
+
 ## `grok-safe`
 
 `grok-safe` finds the Grok CLI from `GROK_BIN`, `~/.grok/bin/grok`, or your shell `PATH`, then adds OODA's bounded execution policy.
@@ -182,6 +216,8 @@ OODA_GROK_MAX_TURNS=12 grok-safe
 ```
 
 Subagents are enabled so the Controller can use isolated child workers. OODA policy restricts broad fan-out and defaults to one Controller child mission at a time.
+
+If Grok's user config explicitly contains `[workflows] enabled=false`, `grok-safe` warns because the Controller's inline workflow/subagent path may be unavailable. OODA does not rewrite that user setting.
 
 For a strict session with child agents disabled:
 
@@ -197,7 +233,9 @@ The dashboard is bundled with OODA; no second repository is required.
 ooda dashboard
 ```
 
-It opens a local read-only Control Room on `127.0.0.1:8791`, scans OODA-adopted repos under `~/repos`, and reconstructs compact state from `.ooda/project.json`, `PROJECT_STATE.md`, the latest work order/trace, and local Git state.
+It opens a local read-only Control Room, scans OODA-adopted repos under `~/repos`, and reconstructs compact state from `.ooda/project.json`, `PROJECT_STATE.md`, the latest work order/trace, optional `.ooda/project-view.json`, and local Git state.
+
+The launcher reuses a port only when the existing service identifies as the expected OODA Control Room. If the preferred port is occupied by another local service, OODA selects the next free local port.
 
 It has **Refresh now** and defaults to a 60-second browser refresh.
 
@@ -211,13 +249,18 @@ OODA_DASHBOARD_REFRESH_SECONDS=30 ooda dashboard
 
 The dashboard is derived observation state. It does not modify projects, certify results, merge code, or replace Git/project truth.
 
+## Project cockpit direction
+
+Do not turn the portfolio Control Room into a giant notebook/artifact warehouse. Analytical projects may earn a separate lightweight project cockpit with stable `Overview / Research / Live / Health` surfaces.
+
+OODA should standardize the decision-useful interface while the project owns its domain analytics. No plot is required unless a visualization actually helps answer the current decision. See [`docs/PROJECT_COCKPIT.md`](docs/PROJECT_COCKPIT.md).
+
 ## New repo starter pack
 
 ```bash
 mkdir -p ~/repos/my-project
 cd ~/repos/my-project
 git init
-
 ooda init \
   --project-id my-project \
   --project-class software-product \
@@ -249,6 +292,8 @@ See [`docs/SELECTION_REFERENCE.md`](docs/SELECTION_REFERENCE.md) for exact value
 - [`docs/CONTROLLER_QUICKSTART.md`](docs/CONTROLLER_QUICKSTART.md) — one-window Controller flow
 - [`docs/ZERO_TO_GROK.md`](docs/ZERO_TO_GROK.md) — install-to-running cheat sheet
 - [`docs/SELECTION_REFERENCE.md`](docs/SELECTION_REFERENCE.md) — roles/profiles/lenses/claims/project classes
+- [`docs/PROJECT_VIEW.md`](docs/PROJECT_VIEW.md) — objective ladder, timeline, stakeholder summary
+- [`docs/PROJECT_COCKPIT.md`](docs/PROJECT_COCKPIT.md) — generalized Overview/Research/Live/Health design
 - [`docs/DOCUMENTATION_STEWARDSHIP.md`](docs/DOCUMENTATION_STEWARDSHIP.md) — documentation discipline
 - [`contracts/WORK_ORDER.md`](contracts/WORK_ORDER.md) — mission contract
 - [`contracts/TRACE.md`](contracts/TRACE.md) — feedback contract
