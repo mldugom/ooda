@@ -19,6 +19,12 @@ The Control Room follows OODA's default editorial/FiveThirtyEight-inspired visua
 
 The default browser refresh is 15 seconds. Override it with `OODA_DASHBOARD_REFRESH_SECONDS`.
 
+The default local HTTP port is now **8792**. Override it with `OODA_DASHBOARD_PORT`. If the preferred port is occupied by a foreign service, OODA selects the next free local port rather than reusing the wrong UI.
+
+## Grok terminal companion
+
+OODA 0.3.3 also exposes current objective, next gate, worker state, context usage, and latest pivot through Grok Build's supported command status-line hook. That TUI surface needs **no port**; Grok runs it on session changes plus a 10-minute timed refresh. See [`GROK_TUI.md`](GROK_TUI.md).
+
 ## Session context telemetry
 
 OODA does **not** scrape provider terminal chrome. When no structured context telemetry exists, the Control Room says `provider UI` and the provider's native context meter remains authoritative.
