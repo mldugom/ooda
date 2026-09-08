@@ -11,6 +11,8 @@ SAFE_LEGACY_SRC="$ROOT/scripts/grok-safe"
 SAFE_MARKER="# OODA grok-safe source: $ROOT"
 LEGACY_SAFE_MARKER="# OODA source: $ROOT"
 OS_NAME="${OODA_OS_NAME:-$(uname -s)}"
+LEGACY_GROK_SKILLS_SOURCE='source "$HOME/repos/grok-skills/shell/grok-safe.zsh"'
+LEGACY_GROK_SKILLS_COMMENT='# Grok safe launcher (managed by ~/repos/grok-skills)'
 
 mkdir -p "$BIN_DIR"
 
@@ -99,3 +101,24 @@ case ":${PATH:-}:" in
     echo "  export PATH=\"$BIN_DIR:\$PATH\""
     ;;
 esac
+
+# Migrate the exact legacy grok-skills shell hook when present. That hook defines
+# a shell function named grok-safe, which shadows OODA's installed executable
+# and disables subagents by default. Only the known managed lines are removed;
+# unrelated shell configuration is untouched.
+shell_name="$(basename "${SHELL:-sh}")"
+case "$shell_name" in
+  zsh) rc_file="$HOME/.zshrc" ;;
+  bash)
+    if [ "$OS_NAME" = "Darwin" ]; then rc_file="$HOME/.bash_profile"; else rc_file="$HOME/.bashrc"; fi
+    ;;
+  *) rc_file="$HOME/.profile" ;;
+esac
+if [ -f "$rc_file" ] && grep -Fqx "$LEGACY_GROK_SKILLS_SOURCE" "$rc_file"; then
+  tmp="$(mktemp)"
+  grep -Fvx "$LEGACY_GROK_SKILLS_SOURCE" "$rc_file" | grep -Fvx "$LEGACY_GROK_SKILLS_COMMENT" > "$tmp" || true
+  cp "$rc_file" "$rc_file.ooda-backup.$(date +%Y%m%d_%H%M%S)"
+  mv "$tmp" "$rc_file"
+  echo "Removed legacy grok-skills grok-safe shell hook from $rc_file"
+  echo "Run: unset -f grok-safe 2>/dev/null || true"
+fi
