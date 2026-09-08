@@ -10,6 +10,12 @@ def main() -> None:
         del sys.argv[1]
         raise SystemExit(launch())
 
+    if len(sys.argv) > 1 and sys.argv[1] == "view":
+        from .project_view import main as view_main
+
+        del sys.argv[1]
+        raise SystemExit(view_main(sys.argv[1:]))
+
     from .cli import main as cli_main
 
     cli_main()
