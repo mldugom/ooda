@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 from importlib.resources import files
 from pathlib import Path
+
+from .grok_statusline import DEFAULT_REFRESH_SECONDS, configure_status_line
 
 
 def _grok_binary() -> str | None:
@@ -38,10 +41,14 @@ def _workflows_explicitly_disabled(text: str) -> bool:
     return False
 
 
+def _grok_config_path() -> Path:
+    return Path(os.environ.get("GROK_HOME", str(Path.home() / ".grok"))).expanduser() / "config.toml"
+
+
 def _warn_if_workflows_disabled() -> None:
     if os.environ.get("GROK_WORKFLOWS") not in {None, ""}:
         return
-    config = Path(os.environ.get("GROK_HOME", str(Path.home() / ".grok"))).expanduser() / "config.toml"
+    config = _grok_config_path()
     try:
         text = config.read_text(encoding="utf-8")
     except OSError:
@@ -55,6 +62,44 @@ def _warn_if_workflows_disabled() -> None:
         )
 
 
+def _ooda_cli() -> str | None:
+    explicit = os.environ.get("OODA_BIN")
+    if explicit:
+        return explicit
+
+    default = Path.home() / ".local" / "bin" / "ooda"
+    if default.is_file() and os.access(default, os.X_OK):
+        return str(default)
+
+    return shutil.which("ooda")
+
+
+def _configure_ooda_status_line() -> None:
+    if os.environ.get("OODA_GROK_STATUSLINE", "1").lower() in {"0", "false", "no", "off"}:
+        return
+
+    ooda_bin = _ooda_cli()
+    if not ooda_bin:
+        return
+
+    try:
+        refresh = int(os.environ.get("OODA_GROK_STATUSLINE_REFRESH_SECONDS", str(DEFAULT_REFRESH_SECONDS)))
+    except ValueError:
+        refresh = DEFAULT_REFRESH_SECONDS
+    refresh = max(1, min(86400, refresh))
+
+    changed = configure_status_line(
+        _grok_config_path(),
+        command=f"{shlex.quote(ooda_bin)} statusline",
+        refresh_seconds=refresh,
+    )
+    if changed:
+        print(
+            f"grok-safe: configured OODA Grok status line (refresh {refresh}s). Restart Grok to load it.",
+            file=sys.stderr,
+        )
+
+
 def main() -> None:
     grok_bin = _grok_binary()
     if not grok_bin:
@@ -64,6 +109,7 @@ def main() -> None:
         )
         raise SystemExit(1)
 
+    _configure_ooda_status_line()
     _warn_if_workflows_disabled()
 
     policy = (
