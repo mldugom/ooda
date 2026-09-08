@@ -36,31 +36,33 @@ class ControlRoomTests(unittest.TestCase):
             "timeline": [
                 {
                     "at": "2026-09-08",
-                    "decision": "Freeze V1",
-                    "so_what": "Open-ended EDA stops",
-                    "bigger_idea": "Outcome tests cannot redesign features",
+                    "decision": "Freeze five R7 market-state hypotheses",
+                    "so_what": "R7 may test only frozen intensity, acceleration, and staleness definitions.",
+                    "bigger_idea": "Tenniskal moves from exploration to preregistered predictive testing; outcome-driven feature changes remain unauthorized.",
                 }
             ],
         }
 
-    def test_renders_live_control_room_without_cost_ui(self):
+    def test_renders_compact_control_surface_and_specific_timeline_labels(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "tenniskal"
             (repo / ".ooda").mkdir(parents=True)
             page = render_html([self._project(repo)], 15, Path(tmp))
 
         self.assertIn("OODA Control Room", page)
-        self.assertIn("LIVE OODA LOOP", page)
+        self.assertIn('class="ooda-rail"', page)
+        self.assertIn("NOW", page)
+        self.assertIn("WAITING ON / GATE", page)
+        self.assertIn("NEXT IF CURRENT GATE PASSES", page)
         self.assertIn("OBJECTIVE LADDER", page)
         self.assertIn("MATERIAL DECISION TIMELINE", page)
-        self.assertIn("Preregister R7", page)
-        self.assertIn("CURRENT", page)
-        self.assertIn("SESSION CONTEXT", page)
-        self.assertIn("provider UI", page)
-        self.assertNotIn("SESSION COST", page)
-        self.assertNotIn("$", page)
+        self.assertIn("IMMEDIATE CONSEQUENCE", page)
+        self.assertIn("PROGRAM IMPACT", page)
+        self.assertIn("FEEDBACK-LOOP EFFICIENCY", page)
+        self.assertNotIn("LIVE OODA LOOP", page)
+        self.assertIn("No exact mission economics yet", page)
 
-    def test_project_tabs_replace_vertical_project_stack(self):
+    def test_project_sidebar_replaces_horizontal_tabs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             one = root / "tenniskal"
@@ -73,13 +75,15 @@ class ControlRoomTests(unittest.TestCase):
                 root,
             )
 
-        self.assertIn('class="project-tabs"', page)
+        self.assertIn('class="project-sidebar"', page)
+        self.assertIn('class="project-nav active"', page)
         self.assertIn('data-project-name="tenniskal"', page)
         self.assertIn('data-project-name="crypto-innout"', page)
+        self.assertNotIn('class="project-tabs"', page)
         self.assertEqual(page.count('class="project-panel active"'), 1)
         self.assertIn("localStorage.setItem('ooda.activeProject'", page)
 
-    def test_editorial_style_is_default(self):
+    def test_editorial_style_is_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "tenniskal"
             (repo / ".ooda").mkdir(parents=True)
@@ -91,7 +95,7 @@ class ControlRoomTests(unittest.TestCase):
         self.assertIn("--accent:#4c78a8", page)
         self.assertNotIn("--bg:#0f1115", page)
 
-    def test_optional_context_telemetry_renders_percent(self):
+    def test_grok_telemetry_renders_context_and_metered_session_cost(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "demo"
             (repo / ".ooda").mkdir(parents=True)
@@ -100,19 +104,51 @@ class ControlRoomTests(unittest.TestCase):
                     {
                         "schema": "ooda/session-telemetry/v1",
                         "provider": "grok",
+                        "model": "Grok 4.6",
                         "context_used": 29000,
                         "context_limit": 500000,
+                        "session_cost_usd": 0.37,
+                        "session_cost_kind": "provider-metered",
                         "updated_at": "2026-09-08T01:30:00-04:00",
                     }
                 )
             )
             telemetry = _session_context(repo)
-            page = render_html([self._project(repo)], 15, Path(tmp))
+            page = render_html([self._project(repo, "demo")], 15, Path(tmp))
 
         self.assertIsNotNone(telemetry)
         self.assertAlmostEqual(telemetry["pct"], 5.8)
         self.assertIn("5.8%", page)
         self.assertIn("29K / 500K", page)
+        self.assertIn("$0.370 session", page)
+        self.assertNotIn("~$0.370 session", page)
+
+    def test_deepseek_telemetry_labels_estimate_and_actual_balance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "demo"
+            (repo / ".ooda").mkdir(parents=True)
+            (repo / ".ooda/session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "deepseek",
+                        "model": "deepseek-v4-pro",
+                        "context_used": 84000,
+                        "context_limit": 1000000,
+                        "session_cost_usd": 0.07,
+                        "session_cost_kind": "tui-estimate",
+                        "account_balance": 9.62,
+                        "account_currency": "USD",
+                        "updated_at": "2026-09-08T01:30:00-04:00",
+                    }
+                )
+            )
+            page = render_html([self._project(repo, "demo")], 15, Path(tmp))
+
+        self.assertIn("8.4%", page)
+        self.assertIn("84K / 1.0M", page)
+        self.assertIn("~$0.070 session", page)
+        self.assertIn("USD 9.62 balance", page)
 
 
 if __name__ == "__main__":

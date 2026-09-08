@@ -45,8 +45,10 @@ class ProjectViewTests(unittest.TestCase):
         self.assertIn("OBJECTIVE LADDER — sample", rendered)
         self.assertIn("● CURRENT Test the frozen hypotheses", rendered)
         self.assertIn("DECISION", rendered)
-        self.assertIn("SO WHAT", rendered)
-        self.assertIn("BIGGER IDEA", rendered)
+        self.assertIn("IMMEDIATE CONSEQUENCE", rendered)
+        self.assertIn("PROGRAM IMPACT", rendered)
+        self.assertNotIn("SO WHAT", rendered)
+        self.assertNotIn("BIGGER IDEA", rendered)
         self.assertIn("CURRENT STAKEHOLDER SUMMARY", rendered)
 
     def test_cli_reads_project_view(self):

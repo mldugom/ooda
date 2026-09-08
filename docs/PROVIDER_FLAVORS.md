@@ -1,40 +1,30 @@
 # Provider Flavors
 
-Status: deferred design plan. Current OODA behavior remains Grok-first until a provider-port mission is explicitly commissioned.
+Status: **implemented provider boundary with one reference flavor (Grok) and one experimental/unqualified flavor (DeepSeek).**
 
-## Why this exists
+OODA core remains provider-neutral. A provider flavor adapts terminal execution, model selection, child isolation, permissions, telemetry, and provider-native skills without redefining project truth or authority.
 
-OODA is intended to be provider-neutral. The durable control system should survive a change in terminal agent, model vendor, or inference backend without forcing a project migration or replaying conversational history.
+## Core stays provider-neutral
 
-The core doctrine and project state must remain independent of any one provider:
+The following do not belong to any provider:
 
-- `PROJECT_STATE.md`
-- `.ooda/project.json`
-- `.ooda/work-orders/`
-- `.ooda/traces/`
-- `.ooda/project-view.json`
-- project-local research/code/docs
-- Git / PR state
-- roles, profiles, lenses, claim levels, authority, and human gates
+- `PROJECT_STATE.md`;
+- `.ooda/project.json`;
+- `.ooda/work-orders/`;
+- `.ooda/traces/`;
+- `.ooda/project-view.json`;
+- project-local research/code/docs;
+- Git / PR state;
+- roles, profiles, lenses, claim levels, authority, and human gates.
 
-Provider-specific code should only adapt how an agent is launched, how bounded child context is created, how tools are exposed, and how results return to the same durable OODA artifacts.
-
-## Current practical bridge
-
-When one Grok Build quota is constrained, the lowest-risk short-term continuity path is to keep using the existing Grok flavor from another authorized Grok terminal/session, rather than changing the OODA execution model mid-research.
-
-This bridge is operational, not architectural. OODA project state should not encode the identity of the human account used to invoke the provider. Git ownership/credentials, project authority, protected refs, and local secrets remain separate concerns and must be verified before writes.
-
-No provider-port implementation is required merely to continue work through another authorized Grok terminal.
+Provider changes must not require a project migration or replay of chat history.
 
 ## Flavor abstraction
 
-A future flavor should separate two concepts:
+Keep two concepts separate:
 
-1. **Runner / harness** — terminal agent UX, tool execution, child/subagent mechanism, permissions, context isolation.
-2. **Inference provider** — model endpoint, model choice, reasoning/effort controls, context limits, pricing/quota.
-
-Conceptually:
+1. **Runner / harness** — terminal UX, tool execution, child-agent mechanism, permissions, context isolation, hooks.
+2. **Inference provider** — model endpoint, model choice, effort controls, context limits, pricing/quota/balance.
 
 ```text
                      OODA CORE
@@ -52,140 +42,132 @@ Conceptually:
              runner + inference provider
 ```
 
-The provider flavor must not redefine OODA semantics.
+A flavor may define launch/setup, provider-native skills, bounded child isolation, role/profile/lens rendering, model/effort, tool permissions, telemetry, capability diagnostics, and concise result return.
 
-## Provider adapter responsibilities
+A flavor may **not** redefine work-order meaning, TRACE semantics, claim levels, human integration authority, merge/model-promotion/capital gates, objective-ladder semantics, project truth sources, or completed/current/provisional meaning.
 
-A flavor may define:
+## Grok flavor — reference
 
-- how to launch the terminal agent;
-- where provider-native skill/agent files are installed;
-- how one bounded child worker gets an isolated context;
-- how role/profile/lenses/claim metadata are rendered into provider-native instructions;
-- model and reasoning-effort selection;
-- tool/permission restrictions;
-- how work-order scope and stop conditions are supplied;
-- how the child returns a concise result/TRACE-compatible handoff;
-- provider capability checks such as child-agent availability or quota warnings.
+Current reference behavior:
 
-A flavor may **not** redefine:
-
-- work-order schema or meaning;
-- TRACE semantics;
-- claim levels;
-- human integration authority;
-- merge/model-promotion/capital gates;
-- objective-ladder semantics;
-- project truth sources;
-- completed/current/provisional meaning;
-- scientific or project-local invariants.
-
-## Candidate UX
-
-Exact CLI names are not frozen. A later design mission may evaluate a surface such as:
-
-```bash
-ooda setup grok
-ooda setup <provider>
-ooda run --flavor grok
-ooda run --flavor <provider>
-ooda doctor
+```text
+Grok Build TUI
+  -> OODA Controller
+  -> one bounded Grok Workflow child when warranted
+  -> concise result / TRACE
 ```
 
-or a persistent provider preference.
+`grok-safe` remains the reference launcher. The supported Grok command status line exposes current project orientation and writes provider telemetry when Grok supplies it.
 
-The front door should stay simple. Provider configuration must not turn OODA into a general-purpose model-router product.
+## DeepSeek flavor — experimental / unqualified
 
-## Candidate future flavors
+OODA 0.4 adds a direct DeepSeek path with no Claude or other inference provider in the loop:
 
-These are possibilities, not selected dependencies or approved implementation work:
+```text
+DeepSeek-TUI
+  -> DeepSeek V4 Pro Controller
+  -> one DeepSeek V4 Flash bounded child
+  -> concise result / TRACE
+```
 
-- Grok Build / xAI — current reference flavor.
-- Google terminal-agent stack — possible hosted bridge when its quota/economics are useful.
-- Local / Ollama-backed execution — possible low-cost/private worker path when model capability is sufficient.
-- Other hosted inference providers — evaluate only when cost, capability, privacy, or availability creates a real reason.
-- Pi — revisit when the intended Pi workflow is available and worth integrating.
+DeepSeek-TUI is a community-maintained terminal runner listed in DeepSeek's official `awesome-deepseek-agent` integration documentation. It is not the official DeepSeek Harness. OODA uses it here because the current runner exposes the skills, sandbox, subagent, model-selection, and turn-hook capabilities needed by the existing OODA contract. DeepSeek's official Harness remains developer preview and is not the 0.4 execution dependency.
 
-No specific non-Grok provider is currently preferred or qualified by this document.
+Commands:
+
+```bash
+ooda setup deepseek
+ooda doctor --provider deepseek
+deepseek-safe
+```
+
+Controller default model: `deepseek-v4-pro`.
+Bounded child default model: `deepseek-v4-flash`.
+
+DeepSeek remains **UNQUALIFIED** until it passes the frozen Tenniskal and Crypto-Innout orientation cases plus one Pro -> Flash child delegation. Implementation alone is not qualification. See [`DEEPSEEK.md`](DEEPSEEK.md).
+
+## Provider telemetry contract
+
+Provider adapters may write the optional derived file:
+
+```text
+.ooda/session-telemetry.json
+```
+
+using `ooda/session-telemetry/v1`. Useful fields include provider, model, effort, context used/limit/percentage, session tokens, session cost, account balance, telemetry source, and update time.
+
+Rules:
+
+- missing remains unknown, never zero;
+- provider-metered cost and runner-estimated cost are labeled differently;
+- account balance is distinct from session cost;
+- credentials are not written into project telemetry;
+- telemetry must never become project authority;
+- a telemetry failure must not break the provider terminal.
+
+Grok supplies a provider-metered session cost through its supported status payload, but the Grok Build account-level Extra Usage balance is not exposed there; OODA does not scrape it.
+
+DeepSeek-TUI can supply turn/session telemetry. When it supplies a session-cost value OODA labels it as an estimate. DeepSeek's documented `/user/balance` endpoint can supply actual account balance when `DEEPSEEK_API_KEY` is available to the OODA process; balance calls are cached.
+
+## Model-tier routing
+
+Model tier is execution economics, not doctrine.
+
+Current DeepSeek default:
+
+```text
+V4 Pro
+  -> Controller orientation
+  -> consequential research design
+  -> validation when needed
+
+V4 Flash
+  -> bounded implementation
+  -> code archaeology
+  -> tests
+  -> documentation / mechanical work
+```
+
+A mission may deliberately choose Pro for a worker when the work requires it. The work-order contract, not model brand, determines scope and authority.
 
 ## Qualification principle
 
-Do not qualify a flavor from public benchmarks alone. Re-run the same **read-only OODA orientation tasks** against frozen project state and compare the result to established truth.
+Do not qualify a flavor from public benchmarks alone. Re-run the same read-only OODA orientation tasks against frozen project state and compare the recovered control truth to established repository truth.
 
-Good acceptance cases include:
+### Tenniskal acceptance
 
-### Tenniskal
+A fresh provider should recover:
 
-A fresh provider should recover from durable state that:
-
-- R6 exploratory work is complete;
+- R6 exploratory research is complete;
 - `ALPHA_HYPOTHESES_V1` is frozen;
 - R7 compute has not started;
 - the next scientific gate is an R7 preregistration;
 - no outcome join, ROI search, or frozen-definition change is authorized.
 
-### Crypto-Innout
+### Crypto-Innout acceptance
 
-A fresh provider should recover that:
+A fresh provider should recover:
 
 - the program revisited the PIT substrate gate;
-- historical availability is not equivalent to decision-time availability;
-- the panel should reuse existing A1.4/A1.5, crowd-PIT, `pit_universe`, presence, and registry machinery where valid;
+- historically downloadable data is not automatically decision-time available;
+- the panel should reuse valid A1.4/A1.5, crowd-PIT, `pit_universe`, presence, and feature-registry machinery;
 - new collectors are not automatically warranted;
 - wallet/cluster state must remain as-of-T or missing;
 - live-writer containment is a separate operational gate.
 
 A flavor is useful only if it preserves approximately the same control truth, boundaries, and next gate without importing old chat context.
 
-## Model-tier routing
-
-A future flavor may use different model tiers for different bounded roles, but OODA should treat this as execution economics rather than doctrine.
-
-For example:
-
-```text
-strongest available model
-  -> Controller orientation
-  -> consequential research design
-  -> independent validation
-
-cheaper/local model when sufficient
-  -> bounded implementation
-  -> code archaeology
-  -> tests
-  -> documentation/mechanical work
-```
-
-The work-order contract, not the model brand, determines scope and authority.
-
 ## Security and privacy
-
-Provider portability must make secret handling stricter, not looser.
 
 At minimum:
 
-- never send `.env`, API keys, private keys, wallet secrets, credentials, or unrelated private data to a provider;
-- provider adapters should honor project-local exclusions and tool permissions;
-- switching inference providers should be a conscious decision when private/proprietary repositories are involved;
-- Git authentication must remain distinct from model-provider authentication;
-- provider changes do not grant additional merge, live-runtime, or capital authority.
-
-## Deferred implementation plan
-
-When provider portability becomes the highest-value OODA product task, commission one bounded architecture/implementation slice:
-
-1. inventory Grok-specific launcher/setup behavior;
-2. extract the minimum provider-adapter interface while preserving Grok behavior exactly;
-3. choose one second flavor based on the actual constraint at that time;
-4. generate provider-native Controller/worker instructions from the same OODA semantics where practical;
-5. add `ooda doctor` capability diagnostics;
-6. validate the second flavor against frozen Tenniskal and Crypto-Innout orientation cases;
-7. only then consider additional providers.
-
-Avoid building a broad provider matrix before a second provider is actually needed.
+- never persist `.env`, API keys, private keys, wallet secrets, credentials, or unrelated private data in OODA state;
+- provider adapters must honor project-local exclusions and tool permissions;
+- switching hosted inference providers is a conscious decision for private/proprietary repositories;
+- Git authentication remains distinct from provider authentication;
+- provider changes do not grant merge, live-runtime, model-promotion, or capital authority.
 
 ## Current decision
 
-**KEEP USING GROK FOR NOW.**
+**Grok remains the qualified reference. DeepSeek is now implemented as the second experimental flavor and must earn qualification through repository-specific read-only tests.**
 
-The provider-port project is intentionally parked. The immediate continuity strategy is to use an authorized Grok terminal with available quota and continue letting Git + OODA durable state carry project truth. Revisit provider flavors when the quota/provider constraint again becomes material or when Pi is ready.
+Do not build a broad provider matrix until dogfooding shows another provider is worth the additional adapter surface.

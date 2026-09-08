@@ -10,6 +10,8 @@ SAFE_DST="$BIN_DIR/grok-safe"
 SAFE_LEGACY_SRC="$ROOT/scripts/grok-safe"
 SAFE_MARKER="# OODA grok-safe source: $ROOT"
 LEGACY_SAFE_MARKER="# OODA source: $ROOT"
+DEEPSEEK_SAFE_DST="$BIN_DIR/deepseek-safe"
+DEEPSEEK_SAFE_MARKER="# OODA deepseek-safe source: $ROOT"
 OS_NAME="${OODA_OS_NAME:-$(uname -s)}"
 LEGACY_GROK_SKILLS_SOURCE='source "$HOME/repos/grok-skills/shell/grok-safe.zsh"'
 LEGACY_GROK_SKILLS_COMMENT='# Grok safe launcher (managed by ~/repos/grok-skills)'
@@ -70,6 +72,28 @@ elif [ -e "$SAFE_DST" ] || [ -L "$SAFE_DST" ]; then
 else
   install_safe_wrapper
   echo "Installed $SAFE_DST"
+fi
+
+install_deepseek_safe_wrapper() {
+  cat > "$DEEPSEEK_SAFE_DST" <<EOF
+#!/usr/bin/env bash
+$DEEPSEEK_SAFE_MARKER
+set -euo pipefail
+ROOT="$ROOT"
+PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_deepseek_safe "\$@"
+EOF
+  chmod +x "$DEEPSEEK_SAFE_DST"
+}
+
+if [ -f "$DEEPSEEK_SAFE_DST" ] && grep -Fqx "$DEEPSEEK_SAFE_MARKER" "$DEEPSEEK_SAFE_DST"; then
+  echo "Already installed $DEEPSEEK_SAFE_DST"
+elif [ -e "$DEEPSEEK_SAFE_DST" ] || [ -L "$DEEPSEEK_SAFE_DST" ]; then
+  echo "Refusing to replace existing $DEEPSEEK_SAFE_DST" >&2
+  echo "Remove or move it deliberately, then rerun install." >&2
+  exit 2
+else
+  install_deepseek_safe_wrapper
+  echo "Installed $DEEPSEEK_SAFE_DST"
 fi
 
 case ":${PATH:-}:" in
