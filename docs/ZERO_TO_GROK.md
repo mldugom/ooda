@@ -53,6 +53,8 @@ For an existing repo with useful docs, normally do **not** use `--scaffold`. OOD
   traces/
 ```
 
+A Controller may later create `.ooda/project-view.json` when a durable human-facing ladder/timeline/summary is useful.
+
 ## C. Open one Controller conversation
 
 ```bash
@@ -128,7 +130,7 @@ The child owns deep code/research/data context. The Controller should receive on
 
 Default to one active child mission at a time.
 
-You do not need to open another terminal just because a worker exists.
+You do not need to open another terminal just because a worker exists. Grok's native Workflow/subagent panel remains provider-owned UI; OODA supplies the mission/control semantics.
 
 ## F. Optional: standalone worker session
 
@@ -180,13 +182,38 @@ Re-observe from ORIENT-001 and the latest durable state. What is the best next b
 
 Or restart Grok and `/ooda-controller`. A fresh Controller is fine because durable state—not chat history—is the memory.
 
-## I. Dashboard
+## I. Terminal control view
+
+When `.ooda/project-view.json` exists, render the same durable orientation outside the Grok conversation:
+
+```bash
+ooda view
+ooda view --all
+```
+
+Inside Grok, ask the Controller:
+
+```text
+/ooda-controller where are we?
+```
+
+or:
+
+```text
+/ooda-controller timeline
+```
+
+These are views over the same durable project artifact. OODA does not patch or scrape Grok's native terminal chrome.
+
+## J. Browser Control Room
 
 ```bash
 ooda dashboard
 ```
 
-The bundled local Control Room scans OODA-adopted repos under `~/repos` and shows compact project/mission/trace/Git state. It has manual refresh and defaults to a 60-second browser refresh.
+The bundled local Control Room scans OODA-adopted repos under `~/repos`. For the selected project it shows the stakeholder summary, human/next gate, live OODA loop, objective ladder, recent material pivots, and Git/controller/mission freshness.
+
+Projects appear as horizontal tabs. The selected project is remembered across automatic refresh when browser local storage is available. The default refresh interval is **15 seconds**.
 
 For a different project root:
 
