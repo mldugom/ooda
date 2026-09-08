@@ -20,6 +20,12 @@ def main() -> None:
 
         raise SystemExit(deepseek_hook_main())
 
+    if len(sys.argv) > 1 and sys.argv[1] == "tui":
+        from .tui import main as tui_main
+
+        del sys.argv[1]
+        raise SystemExit(tui_main(sys.argv[1:]))
+
     if len(sys.argv) > 1 and sys.argv[1] == "dashboard":
         from .dashboard_launcher import launch
 
@@ -44,6 +50,7 @@ def main() -> None:
         parser().print_help()
         print(
             "\nAdditional bundled commands:\n"
+            "  tui [path]                  open the OODA-native terminal cockpit (DeepSeek/CodeWhale runtime)\n"
             "  view                        render objective ladder, decision timeline, and stakeholder summary\n"
             "  setup deepseek              install OODA DeepSeek skills + telemetry hook\n"
             "  doctor --provider deepseek  check DeepSeek runner, skills, sandbox, and balance access\n"
