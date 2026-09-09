@@ -17,8 +17,7 @@ PORT_SEARCH_SPAN = 20
 CURRENT_UI_MARKERS = (
     "project-sidebar",
     "efficiency-chart",
-    "attention-strip",
-    "domain-orientation-grid",
+    "domain-compact-control-room",
 )
 
 
@@ -48,14 +47,6 @@ def _is_any_ooda_dashboard(port: int, root: Path) -> bool:
 
 
 def _is_ooda_dashboard(port: int, root: Path) -> bool:
-    """Return True only for a dashboard from the current Control Room UI generation.
-
-    A browser refresh cannot replace an already-running Python process after OODA is
-    upgraded. Reusing any page with the right title/root therefore served stale UI
-    indefinitely. The stable structural markers below let the launcher distinguish
-    the current domain-first Control Room from an older process without killing
-    arbitrary local processes.
-    """
     body = _dashboard_body(port)
     if body is None:
         return False
@@ -67,7 +58,6 @@ def _is_ooda_dashboard(port: int, root: Path) -> bool:
 
 
 def _select_port(preferred: int, root: Path) -> tuple[int, bool]:
-    """Return (port, reuse_existing_current_ooda_dashboard)."""
     for port in range(preferred, preferred + PORT_SEARCH_SPAN):
         if _is_ooda_dashboard(port, root):
             return port, True
@@ -113,7 +103,7 @@ def launch() -> int:
         env["OODA_DASHBOARD_PORT"] = str(port)
         env["OODA_PROJECTS_ROOT"] = str(root)
         subprocess.Popen(
-            [sys.executable, "-m", "ooda.domain_control_room", "--serve"],
+            [sys.executable, "-m", "ooda.compact_control_room", "--serve"],
             stdout=log,
             stderr=log,
             start_new_session=True,

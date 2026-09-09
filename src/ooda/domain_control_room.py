@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -43,6 +44,26 @@ def _current_ladder_item(project: Dict[str, Any]) -> Dict[str, Any]:
     return {}
 
 
+def _plain(value: Any) -> str:
+    text = str(value or "")
+    text = re.sub(r"[`*_#]+", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _compact(value: Any, limit: int = 190) -> str:
+    text = _plain(value)
+    if len(text) <= limit:
+        return text
+    cut = text[: limit + 1]
+    boundary = max(cut.rfind(". "), cut.rfind("; "), cut.rfind(", "))
+    if boundary >= int(limit * 0.55):
+        cut = cut[: boundary + 1]
+    else:
+        cut = cut[:limit].rsplit(" ", 1)[0]
+    return cut.rstrip(" ,;.") + "…"
+
+
 def _orientation(project: Dict[str, Any]) -> Dict[str, str]:
     repo = project.get("repo")
     if not isinstance(repo, Path):
@@ -56,15 +77,13 @@ def _orientation(project: Dict[str, Any]) -> Dict[str, str]:
     bottleneck = str(view.get("current_bottleneck") or _section(brief, "CURRENT BOTTLENECK") or "").strip()
     mission = str(view.get("current_mission") or current.get("label") or project.get("objective") or "").strip()
     why_now = str(view.get("why_now") or view.get("stakeholder_summary") or "").strip()
-    critical_path = str(view.get("critical_path") or _section(brief, "CRITICAL PATH") or "").strip()
 
     return {
-        "goal": goal or "Goal not yet explicit — Controller should orient before consequential work.",
-        "decision": decision or "Decision served not yet explicit.",
-        "bottleneck": bottleneck or str(project.get("blockers") or "Current bottleneck not yet explicit."),
-        "mission": mission or "No current mission recorded.",
-        "why_now": why_now or "Resolve the current bottleneck before committing the next consequential mission.",
-        "critical_path": critical_path,
+        "goal": _compact(goal or "Goal not yet explicit — orient before consequential work.", 180),
+        "decision": _compact(decision or "Decision served not yet explicit.", 190),
+        "bottleneck": _compact(bottleneck or project.get("blockers") or "Current bottleneck not yet explicit.", 190),
+        "mission": _compact(mission or "No current mission recorded.", 180),
+        "why_now": _compact(why_now or "Resolve the current bottleneck before committing the next consequential mission.", 190),
     }
 
 
@@ -72,40 +91,72 @@ def _domain_grid(project: Dict[str, Any]) -> str:
     o = _orientation(project)
     return f"""
       <div class="domain-orientation-grid">
-        <div class="domain-card domain-goal"><small>GOAL / VALUE FUNCTION</small><b>{legacy._e(o['goal'])}</b></div>
-        <div class="domain-card"><small>DECISION SERVED</small><b>{legacy._e(o['decision'])}</b></div>
-        <div class="domain-card bottleneck"><small>CURRENT BOTTLENECK</small><b>{legacy._e(o['bottleneck'])}</b></div>
+        <div class="domain-card domain-goal"><small>GOAL</small><b>{legacy._e(o['goal'])}</b></div>
+        <div class="domain-card"><small>DECISION</small><b>{legacy._e(o['decision'])}</b></div>
+        <div class="domain-card bottleneck"><small>BOTTLENECK</small><b>{legacy._e(o['bottleneck'])}</b></div>
         <div class="domain-card current-mission"><small>CURRENT MISSION</small><b>{legacy._e(o['mission'])}</b></div>
-        <div class="domain-card"><small>WHY NOW</small><b>{legacy._e(o['why_now'])}</b></div>
       </div>
+      <div class="why-now"><small>WHY NOW</small><b>{legacy._e(o['why_now'])}</b></div>
     """
+
+
+def _compact_timeline_html(project: Dict[str, Any]) -> str:
+    timeline = [x for x in (project.get("timeline") or []) if isinstance(x, dict)]
+    if not timeline:
+        return '<div class="empty-state">No material decision timeline yet.</div>'
+    latest = timeline[-4:]
+    rows = ['<div class="compact-timeline-row compact-timeline-head"><b>DATE</b><b>DECISION</b><b>WHY IT MATTERS</b></div>']
+    for item in latest:
+        impact = str(item.get("so_what") or item.get("bigger_idea") or "")
+        rows.append(
+            '<div class="compact-timeline-row">'
+            f'<span>{legacy._e(_compact(item.get("at"), 18))}</span>'
+            f'<span>{legacy._e(_compact(item.get("decision"), 175))}</span>'
+            f'<span>{legacy._e(_compact(impact, 210))}</span>'
+            '</div>'
+        )
+    if len(timeline) > len(latest):
+        rows.append(
+            f'<div class="timeline-more">Latest {len(latest)} of {len(timeline)} decisions · '
+            '<code>ooda view --all</code> for history</div>'
+        )
+    return "".join(rows)
 
 
 def _project_card(project: Dict[str, Any]) -> str:
     o = _orientation(project)
-    summary = project.get("stakeholder_summary") or "No stakeholder summary recorded yet."
-    critical = o.get("critical_path") or summary
     _current, next_if = legacy._current_and_next(project)
+    gate = _compact(project.get("next_gate") or "No human/next gate recorded", 190)
+    next_if = _compact(next_if, 190)
+    technical = _compact(project.get("objective") or "", 220)
     return f"""
-    <section class="project-card domain-first-control-room">
+    <section class="project-card domain-first-control-room domain-compact-control-room">
       <style>
-        .domain-orientation-grid{{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:9px;margin:12px 0 10px}}
-        .domain-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:10px 11px;min-width:0}}
-        .domain-card small,.domain-card b{{display:block}}.domain-card b{{margin-top:3px;font-size:12px}}
-        .domain-goal{{grid-column:span 2;border-top:3px solid var(--accent)}}
+        .project-card.domain-compact-control-room{{max-width:1180px}}
+        .domain-orientation-grid{{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:11px 0 8px}}
+        .domain-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:8px;padding:11px 12px;min-width:0}}
+        .domain-card small,.domain-card b{{display:block}}.domain-card b{{margin-top:4px;font-size:13px;line-height:1.35}}
+        .domain-goal{{border-top:3px solid var(--accent)}}
         .bottleneck{{border-top:3px solid #b7904b}}.current-mission{{border-top:3px solid #4c78a8}}
-        .domain-control-strip{{display:grid;grid-template-columns:1.2fr 1fr;gap:9px;margin:0 0 10px}}
-        .critical-path-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:10px 11px}}
-        .critical-path-card small,.critical-path-card b{{display:block}}.critical-path-card b{{margin-top:3px}}
-        .technical-objective{{color:var(--muted);font-size:10px;margin-top:4px;max-width:1000px}}
-        @media(max-width:1050px){{.domain-orientation-grid,.domain-control-strip{{grid-template-columns:1fr}}.domain-goal{{grid-column:auto}}}}
+        .why-now{{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:start;background:#fbf8f0;border:1px solid var(--rule);border-radius:8px;padding:9px 11px;margin-bottom:9px}}
+        .why-now b{{font-size:12px;line-height:1.35}}
+        .domain-control-strip{{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 10px}}
+        .next-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:9px 11px}}
+        .next-card small,.next-card b{{display:block}}.next-card b{{margin-top:3px;font-size:12px;line-height:1.35}}
+        .tech-details{{margin-top:5px;color:var(--muted);font-size:10px}}.tech-details summary{{cursor:pointer}}
+        .tech-details p{{margin-top:4px;max-width:900px}}
+        .compact-timeline-row{{display:grid;grid-template-columns:84px minmax(190px,.95fr) minmax(250px,1.25fr);gap:10px;padding:8px 10px;border-bottom:1px solid #ebe2d2}}
+        .compact-timeline-head{{font-size:9px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}
+        .compact-timeline-row span{{min-width:0;line-height:1.4}}
+        .cockpit-grid{{grid-template-columns:minmax(320px,.9fr) minmax(0,1.4fr)}}
+        .ooda-rail{{margin-top:2px}}
+        @media(max-width:1050px){{.domain-orientation-grid,.domain-control-strip,.cockpit-grid{{grid-template-columns:1fr}}.compact-timeline-row{{grid-template-columns:76px 1fr}}.compact-timeline-row span:last-child{{grid-column:2}}}}
       </style>
       <div class="project-title">
         <div>
           <div class="eyebrow">DOMAIN / VALUE CONTROL</div>
           <h2>{legacy._e(project.get('project_id'))}</h2>
-          <p>{legacy._e(o['goal'])}</p>
-          <div class="technical-objective">Technical/project-state objective: {legacy._e(project.get('objective'))}</div>
+          <details class="tech-details"><summary>Technical state</summary><p>{legacy._e(technical)}</p></details>
         </div>
         <div class="state-badges">
           <span class="badge">{legacy._e(project.get('stage'))}</span>
@@ -117,30 +168,29 @@ def _project_card(project: Dict[str, Any]) -> str:
 
       <div class="domain-control-strip">
         <div class="gate-band" style="margin-top:0">
-          <small>CURRENT HUMAN / CONTROL GATE</small>
-          <b>{legacy._e(project.get('next_gate'))}</b>
+          <small>CURRENT GATE</small>
+          <b>{legacy._e(gate)}</b>
         </div>
-        <div class="critical-path-card">
-          <small>NEXT IF CURRENT GATE PASSES</small>
+        <div class="next-card">
+          <small>NEXT IF GATE PASSES</small>
           <b>{legacy._e(next_if)}</b>
         </div>
       </div>
 
       <div class="summary-context">
-        <div class="critical-path-card">
-          <small>VALUE CRITICAL PATH / CURRENT ORIENTATION</small>
-          <b>{legacy._e(critical)}</b>
+        <div class="stakeholder">
+          <small>SESSION</small>
+          <b>Project orientation above is the cockpit. Evidence/history stay below.</b>
         </div>
         {legacy._context_html(project)}
       </div>
 
       {legacy._ooda_rail_html(project)}
-      {legacy._attention_html(project)}
 
       <div class="cockpit-grid">
         <div class="left-stack">
           <div class="pane">
-            <div class="pane-head"><b>VALUE CRITICAL PATH</b><span>evidence stages are provenance, not the roadmap</span></div>
+            <div class="pane-head"><b>VALUE CRITICAL PATH</b><span>provenance, not stage numbering</span></div>
             <div class="ladder">{legacy._ladder_html(project)}</div>
           </div>
           <div class="pane efficiency-pane">
@@ -149,8 +199,8 @@ def _project_card(project: Dict[str, Any]) -> str:
           </div>
         </div>
         <div class="pane timeline-pane">
-          <div class="pane-head"><b>MATERIAL DECISION TIMELINE</b><span>{len(project.get('timeline') or [])} pivots</span></div>
-          <div class="timeline">{legacy._timeline_html(project)}</div>
+          <div class="pane-head"><b>RECENT DECISIONS</b><span>{len(project.get('timeline') or [])} total</span></div>
+          <div class="timeline">{_compact_timeline_html(project)}</div>
         </div>
       </div>
 
