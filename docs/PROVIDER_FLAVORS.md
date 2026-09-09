@@ -88,6 +88,18 @@ Rules:
 
 Grok supplies provider/session telemetry through its supported status payload. Grok Build account-level Extra Usage balance is not exposed there, so OODA does not scrape it.
 
+### Provenance taxonomy for any provider adapter
+
+Any provider-neutral telemetry field must carry one of five provenance labels, defined once in `src/ooda/xai_usage.py` for reuse by every adapter (not only the xAI-specific `usage`-object parser that module also contains):
+
+- `EXACT_API` — read from a raw provider *inference-API* usage field (e.g. xAI's `usage.cost_in_usd_ticks`), verbatim or a pure unit conversion of one;
+- `PROVIDER_REPORTED` — the provider's own *runtime/CLI* directly reports it through a supported status/telemetry interface, but not from the raw inference API (e.g. Grok Build's `effort.level`, `cost.total_cost_usd`, `context_window.*`). May be exact, but the source is the runtime, not the raw API — never labeled `EXACT_API`;
+- `LOCAL_DERIVED` — OODA computed or attributed it locally from one or more `EXACT_API`/`PROVIDER_REPORTED` observations (e.g. a delta between cumulative snapshots, or mission attribution). Categorical: an inference built from exact inputs is still `LOCAL_DERIVED`, never `EXACT_API`;
+- `ESTIMATED` — a genuine non-authoritative guess with no reported/derived backing (e.g. DeepSeek's `tui-estimate` session cost);
+- `UNAVAILABLE` — the source field was not present.
+
+A new provider flavor's telemetry adapter should reuse these five categories rather than inventing its own.
+
 The parked DeepSeek experiment demonstrated that account-balance access and runner telemetry are separate concerns; if revisited, each field must retain explicit provenance rather than being presented as equivalent billing truth.
 
 ## Qualification principle

@@ -46,6 +46,141 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertEqual(data["context_limit"], 500000)
         self.assertEqual(data["session_cost_usd"], 0.37)
         self.assertEqual(data["session_cost_kind"], "provider-metered")
+        # Grok's own session-cost meter, reported through its runtime — not
+        # a raw xAI API usage field, so PROVIDER_REPORTED, never EXACT_API.
+        self.assertEqual(data["session_cost_provenance"], "PROVIDER_REPORTED")
+        self.assertEqual(data["effort"], "medium")
+        self.assertEqual(data["effort_provenance"], "PROVIDER_REPORTED")
+
+    def test_grok_payload_never_persists_secrets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "api_key": "xai-should-never-be-here",
+                "cost": {"total_cost_usd": 0.1},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            raw = target.read_text(encoding="utf-8")
+
+        self.assertNotIn("xai-should-never-be-here", raw)
+
+    def test_grok_payload_with_exact_usage_populates_ledger_and_last_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "session_id": "sess-1",
+                "cost": {"total_cost_usd": 0.00083},
+                "usage": {
+                    "cost_in_usd_ticks": 8_300_000,
+                    "prompt_tokens": 1000,
+                    "prompt_tokens_details": {"cached_tokens": 400},
+                    "completion_tokens": 200,
+                },
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+            from ooda.telemetry_ledger import read_events
+
+            events = read_events(repo)
+
+        self.assertIn("last_request_usage", data)
+        self.assertAlmostEqual(data["last_request_usage"]["cost_usd"], 0.00083)
+        self.assertEqual(data["current_mission_id"], "M1")
+        self.assertAlmostEqual(data["current_mission_attributed_spend_usd"], 0.00083)
+        self.assertEqual(data["current_mission_attributed_spend_provenance"], "LOCAL_DERIVED")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["attribution"], "mission")
+
+    def test_mission_attributed_spend_never_marked_exact_api(self):
+        # Even though the underlying per-request usage was itself exact
+        # (billed ticks), attribution to a named mission is always OODA's
+        # own inference — it must never be labeled EXACT_API.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "session_id": "sess-1",
+                "cost": {"total_cost_usd": 0.00083},
+                "usage": {"cost_in_usd_ticks": 8_300_000, "prompt_tokens": 100, "completion_tokens": 20},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["current_mission_attributed_spend_provenance"], "LOCAL_DERIVED")
+        self.assertNotEqual(data["current_mission_attributed_spend_provenance"], "EXACT_API")
+
+    def test_grok_payload_without_usage_leaves_last_request_and_mission_cost_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "cost": {"total_cost_usd": 0.1},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertNotIn("last_request_usage", data)
+        self.assertNotIn("current_mission_id", data)
+        self.assertNotIn("current_mission_attributed_spend_usd", data)
+
+    def test_effort_present_recorded_with_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "effort": {"level": "xhigh"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "xhigh")
+        # Grok's own status-line runtime reports this about itself — it is
+        # not a raw xAI inference-API usage field, so it must be
+        # PROVIDER_REPORTED, never EXACT_API.
+        self.assertEqual(data["effort_provenance"], "PROVIDER_REPORTED")
+        self.assertNotEqual(data["effort_provenance"], "EXACT_API")
+
+    def test_effort_absent_is_unavailable_not_fabricated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "")
+        self.assertEqual(data["effort_provenance"], "UNAVAILABLE")
+
+    def test_worker_effort_always_unavailable_never_inherits_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "effort": {"level": "high"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "high")
+        self.assertIsNone(data["worker_effort"])
+        self.assertEqual(data["worker_effort_provenance"], "UNAVAILABLE")
+        self.assertNotEqual(data["worker_effort"], data["effort"])
 
     def test_deepseek_turn_persists_context_estimate_and_balance(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -87,6 +222,10 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertAlmostEqual(data["context_percent"], 8.4)
         self.assertEqual(data["session_cost_usd"], 0.07)
         self.assertEqual(data["session_cost_kind"], "tui-estimate")
+        # A genuine runner-side guess with no reported/derived backing —
+        # the taxonomy's canonical ESTIMATED case, never EXACT_API or
+        # PROVIDER_REPORTED.
+        self.assertEqual(data["session_cost_provenance"], "ESTIMATED")
         self.assertEqual(data["account_balance"], 9.62)
         self.assertEqual(data["account_currency"], "USD")
 

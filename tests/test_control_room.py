@@ -5,7 +5,9 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.control_room import _session_context, render_html
+from ooda.control_room import _cost_guzzler_html, _session_context, _telemetry_summary_html, render_html
+from ooda.telemetry_ledger import record_snapshot
+from ooda.xai_usage import EXACT_API, PROVIDER_REPORTED
 
 
 class ControlRoomTests(unittest.TestCase):
@@ -239,6 +241,154 @@ class ControlRoomTests(unittest.TestCase):
         self.assertNotIn("http-equiv=\"refresh\"", page)
         self.assertIn('id="refresh-toggle"', page)
         self.assertIn("toggleAutoRefresh", page)
+
+    def test_telemetry_summary_shows_five_target_fields_and_drilldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "context_percent": 12.4,
+                        "session_cost_usd": 0.42,
+                        "effort": "medium",
+                        "effort_provenance": PROVIDER_REPORTED,
+                        "current_mission_id": "M1",
+                        "current_mission_attributed_spend_usd": 0.15,
+                        "current_mission_attributed_spend_provenance": "LOCAL_DERIVED",
+                        "last_request_usage": {
+                            "input_tokens": 1000,
+                            "input_tokens_provenance": EXACT_API,
+                            "cached_input_tokens": 400,
+                            "cached_input_tokens_provenance": EXACT_API,
+                            "uncached_input_tokens": 600,
+                            "uncached_input_tokens_provenance": "LOCAL_DERIVED",
+                            "output_tokens": 200,
+                            "output_tokens_provenance": EXACT_API,
+                            "reasoning_tokens": 50,
+                            "reasoning_tokens_provenance": EXACT_API,
+                            "server_tool_count": 1,
+                            "server_tool_count_provenance": EXACT_API,
+                            "service_tier": "default",
+                            "service_tier_provenance": EXACT_API,
+                            "cache_hit_pct": 40.0,
+                            "cache_hit_pct_provenance": "LOCAL_DERIVED",
+                        },
+                    }
+                )
+            )
+            project = self._project(repo)
+            html = _telemetry_summary_html(project)
+
+        self.assertIn(">MODEL<", html)
+        self.assertIn(">EFFORT<", html)
+        self.assertIn(">CONTEXT %<", html)
+        self.assertIn(">SESSION COST<", html)
+        self.assertIn(">CURRENT MISSION ATTRIBUTED SPEND<", html)
+        self.assertIn(">CACHE HIT %<", html)
+        self.assertIn("medium", html)
+        self.assertIn("$0.420", html)
+        self.assertIn("$0.150", html)
+        self.assertIn("40%", html)
+        self.assertIn("Per-request detail", html)
+        self.assertIn("Reasoning tokens", html)
+        self.assertIn(EXACT_API, html)
+        # the mission-spend figure must carry a LOCAL_DERIVED tag, never
+        # be presented as if xAI billed "M1" directly
+        self.assertIn("LOCAL_DERIVED", html)
+        self.assertNotIn("CURRENT MISSION COST", html)
+        # effort came from Grok's own runtime report, not the raw xAI API —
+        # it must be tagged PROVIDER_REPORTED, never EXACT_API
+        self.assertIn(PROVIDER_REPORTED, html)
+
+    def test_effort_renders_unavailable_when_grok_does_not_supply_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "session_cost_usd": 0.1,
+                    }
+                )
+            )
+            html = _telemetry_summary_html(self._project(repo))
+
+        self.assertIn(">EFFORT<", html)
+        self.assertIn("UNAVAILABLE", html)
+
+    def test_worker_effort_never_inherits_parent_and_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "effort": "high",
+                        "effort_provenance": PROVIDER_REPORTED,
+                        "session_cost_usd": 0.1,
+                    }
+                )
+            )
+            html = _telemetry_summary_html(self._project(repo))
+
+        # Parent effort renders as "high", but nothing in the page may
+        # claim the worker/child shares it — that would be an unsupported
+        # inheritance assumption.
+        self.assertIn(">EFFORT<", html)
+        self.assertIn("high", html)
+        self.assertIn("Worker/child effort", html)
+        self.assertIn("<span>Worker/child effort</span><b>UNAVAILABLE</b>", html)
+
+    def test_telemetry_summary_absent_when_no_telemetry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            html = _telemetry_summary_html(self._project(repo))
+
+        self.assertEqual(html, "")
+
+    def test_cost_guzzler_table_ranks_missions_by_attributed_spend_with_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "validator.json").write_text(json.dumps({"id": "validator"}))
+            record_snapshot(
+                repo, provider="grok", model="Grok 4.6", session_id="s1",
+                cumulative_session_cost_usd=0.83, cumulative_session_cost_provenance=PROVIDER_REPORTED,
+                usage={"cost_in_usd_ticks": 8_300_000_000, "prompt_tokens": 1000, "prompt_tokens_details": {"cached_tokens": 760}},
+            )
+            html = _cost_guzzler_html(self._project(repo))
+
+        self.assertIn("COST GUZZLERS", html)
+        self.assertIn("validator", html)
+        self.assertIn("$0.830", html)
+        self.assertIn("76%", html)
+        self.assertIn(">SOURCE<", html)
+        self.assertIn("LOCAL_DERIVED", html)
+        # never imply xAI billed a named mission directly
+        self.assertNotIn("exact-cost", html.lower())
+        self.assertNotIn(EXACT_API, html)
+
+    def test_cost_guzzler_table_absent_with_no_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            html = _cost_guzzler_html(self._project(repo))
+
+        self.assertEqual(html, "")
 
 
 if __name__ == "__main__":

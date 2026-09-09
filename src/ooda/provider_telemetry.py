@@ -9,6 +9,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .telemetry_ledger import ATTRIBUTED_SPEND_PROVENANCE, _current_open_work_order_id, cumulative_mission_cost, record_snapshot
+from .xai_usage import ESTIMATED, PROVIDER_REPORTED, UNAVAILABLE, is_present, parse_usage
+
 SCHEMA = "ooda/session-telemetry/v1"
 DEEPSEEK_CONTEXT_LIMIT = 1_000_000
 BALANCE_TTL_SECONDS = 600
@@ -70,17 +73,40 @@ def record_grok_payload(payload: Dict[str, Any]) -> Optional[Path]:
     cost = payload.get("cost") if isinstance(payload.get("cost"), dict) else {}
     effort = payload.get("effort") if isinstance(payload.get("effort"), dict) else {}
 
+    parent_effort_level = str(effort.get("level") or "")
+
     data: Dict[str, Any] = {
         "schema": SCHEMA,
         "provider": "grok",
+        # model/model_id are PROVIDER_REPORTED conceptually (Grok's own
+        # status-line payload, not a raw xAI API usage field) — no
+        # separate provenance key is stored for these since nothing here
+        # claims otherwise; documented for future provider adapters.
         "model": str(model.get("display_name") or model.get("id") or "Grok"),
         "model_id": str(model.get("id") or ""),
-        "effort": str(effort.get("level") or ""),
+        # "effort" is the parent/Controller session's effort level, read
+        # verbatim from Grok's own supported status-line payload
+        # (effort.level) — PROVIDER_REPORTED: Grok's runtime reports this
+        # about itself, it is not a raw xAI inference-API usage field.
+        "effort": parent_effort_level,
+        "effort_provenance": PROVIDER_REPORTED if parent_effort_level else UNAVAILABLE,
+        # Grok owns the Workflow/subagent panel; child/worker sessions have
+        # no supported hook of their own, so their effort is never
+        # observable here and must never be assumed to match the parent's.
+        "worker_effort": None,
+        "worker_effort_provenance": UNAVAILABLE,
         "session_id": str(payload.get("session_id") or ""),
         "updated_at": _now_iso(),
         "telemetry_source": "grok-status-line-json",
     }
 
+    # context_used/context_limit/context_percent/session_input_tokens/
+    # session_output_tokens are also PROVIDER_REPORTED conceptually — read
+    # verbatim from Grok's own context_window object, not from a raw xAI
+    # usage field. No separate `_provenance` key is stored for these
+    # (no incorrect claim is made about them today), but any future
+    # rendering of a provenance tag for them must use PROVIDER_REPORTED,
+    # not EXACT_API.
     context_used = _as_number(context.get("context_tokens"))
     context_limit = _as_number(context.get("context_window_size"))
     context_pct = _as_number(context.get("used_percentage"))
@@ -100,7 +126,44 @@ def record_grok_payload(payload: Dict[str, Any]) -> Optional[Path]:
         data["session_output_tokens"] = int(session_output)
     if session_cost is not None:
         data["session_cost_usd"] = session_cost
+        # Grok's own session-cost meter, reported through its runtime —
+        # PROVIDER_REPORTED, not a raw xAI API usage field. "provider-metered"
+        # is the pre-existing display-kind label (vs. "tui-estimate" for a
+        # runner's own ESTIMATED guess, as DeepSeek uses); kept for the
+        # existing "$"/"~$" prefix logic in the Control Room.
         data["session_cost_kind"] = "provider-metered"
+        data["session_cost_provenance"] = PROVIDER_REPORTED
+
+    usage = payload.get("usage")
+    if is_present(usage):
+        data["last_request_usage"] = parse_usage(usage)
+
+    mission_cost = record_snapshot(
+        repo,
+        provider="grok",
+        model=data["model"],
+        session_id=data["session_id"],
+        cumulative_session_cost_usd=session_cost,
+        cumulative_session_cost_provenance=PROVIDER_REPORTED if session_cost is not None else UNAVAILABLE,
+        context_used=int(context_used) if context_used is not None else None,
+        session_input_tokens=int(session_input) if session_input is not None else None,
+        session_output_tokens=int(session_output) if session_output is not None else None,
+        usage=usage,
+    )
+    if mission_cost is not None:
+        current_mission = _current_open_work_order_id(repo)
+        if current_mission is not None:
+            costs = cumulative_mission_cost(repo)
+            if current_mission in costs:
+                data["current_mission_id"] = current_mission
+                # Always LOCAL_DERIVED: attribution to a mission is OODA's
+                # own inference (the "one open work order" rule applied to
+                # a subtraction between cumulative session readings), never
+                # a fact xAI billed. See telemetry_ledger.ATTRIBUTED_SPEND_PROVENANCE.
+                data["current_mission_attributed_spend_usd"] = costs[current_mission]
+                data["current_mission_attributed_spend_provenance"] = ATTRIBUTED_SPEND_PROVENANCE
+                # Deprecated alias, kept one release for compatibility.
+                data["current_mission_cost_usd"] = costs[current_mission]
 
     _write(repo, data)
     return repo / ".ooda" / "session-telemetry.json"
@@ -193,6 +256,9 @@ def record_deepseek_turn(payload: Dict[str, Any], env: Optional[Dict[str, str]] 
     if session_cost is not None:
         data["session_cost_usd"] = session_cost
         data["session_cost_kind"] = "tui-estimate"
+        # A genuine runner-side guess with no reported/derived backing —
+        # this is the taxonomy's canonical ESTIMATED case.
+        data["session_cost_provenance"] = ESTIMATED
 
     now = time.time()
     for key in (
