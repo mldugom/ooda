@@ -132,6 +132,26 @@ For substantial structural changes, an `architect` review may be warranted. For 
 
 See `docs/DOCUMENTATION_STEWARDSHIP.md` in the OODA doctrine repo when available.
 
+### Research-visualization gate
+
+For quantitative/data-science/research work, visual output must earn its complexity.
+
+Use this order:
+
+1. **text/table** when exact values, a short ranking, or a pass/fail gate answers the question;
+2. **diagnostic plot** when shape, path, tails, calibration, missingness, PIT/leakage, or relationship structure matters;
+3. **durable panel** only when the same stable diagnostic will be revisited across missions/stages;
+4. **research dashboard** only when several stable panels support one recurring operator workflow;
+5. **live monitor** only when wall-clock freshness can change an operator action and decision-time availability is explicit.
+
+Do not make one dashboard tab per research step, do not plot merely because a metric exists, and do not silently expand a bounded research mission into dashboard construction.
+
+If visualization work is material, record one of `none`, `diagnostic`, `durable-panel`, `dashboard`, or `live-monitor` in the RESULT/TRACE plus the decision question it serves. A diagnostic plot should state the sample/provenance and what outcome would change the decision. A durable panel/dashboard must have stable sample/metric/timestamp semantics and remain derived from authoritative research artifacts.
+
+If a dashboard becomes warranted but is outside the work-order scope, stop at a proposed panel contract and return to the Controller instead of building it opportunistically.
+
+See `docs/RESEARCH_VISUALIZATION.md` in the OODA doctrine repo when available.
+
 ## 5. Re-observe and report
 
 At completion return a concise OODA TRACE summary:
