@@ -67,9 +67,9 @@ class DomainControlRoomTests(unittest.TestCase):
         self.assertIn("Repeatable positive after-fee EV on pre-match tennis", page)
         self.assertIn("No signed fair-value probability independent of Kalshi", page)
         self.assertIn("VALUE CRITICAL PATH", page)
-        self.assertIn("Technical state", page)
+        self.assertIn("<details class=\"tech-details\"><summary>Technical state</summary>", page)
+        self.assertIn("<p>STALE: R7 preregistration</p>", page)
         self.assertNotIn("VALUE CRITICAL PATH / CURRENT ORIENTATION", page)
-        self.assertNotIn("<p>STALE: R7 preregistration</p>", page)
 
 
 if __name__ == "__main__":
