@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from .dashboard import discover_projects
-from .telemetry_ledger import cost_guzzlers
-from .xai_usage import UNAVAILABLE
+from .mission_economics import cost_guzzlers, mission_economics_report
+from .xai_usage import LOCAL_DERIVED, UNAVAILABLE
 
 
 def _e(value: Any) -> str:
@@ -348,31 +348,28 @@ def _parse_time(value: Any) -> Optional[dt.datetime]:
 
 
 def _mission_points(repo: Path) -> List[Dict[str, Any]]:
-    work_orders: Dict[str, Dict[str, Any]] = {}
-    for path in sorted((repo / ".ooda" / "work-orders").glob("*.json")):
-        data = _read_json(path)
-        if data.get("id"):
-            work_orders[str(data["id"])] = data
-
+    """A point per completed mission with a defensible cost: an explicit
+    `trace.economics.cost_usd` when one was manually recorded, otherwise the
+    telemetry ledger's own windowed attribution (see
+    `mission_economics.attribute_events`). A mission with neither — no
+    manual figure and no ledger events inside its [created_at,
+    completed_at] window — does not get a point; OODA does not invent
+    mission economics."""
     points: List[Dict[str, Any]] = []
-    for path in sorted((repo / ".ooda" / "traces").glob("*.json")):
-        trace = _read_json(path)
-        work_id = str(trace.get("work_order_id") or "")
-        work = work_orders.get(work_id, {})
-        started = _parse_time(work.get("created_at"))
-        completed = _parse_time(trace.get("completed_at"))
-        economics = trace.get("economics") if isinstance(trace.get("economics"), dict) else {}
-        cost = economics.get("cost_usd")
-        result = trace.get("result") if isinstance(trace.get("result"), dict) else {}
+    for record in mission_economics_report(repo):
+        started = _parse_time(record.get("created_at"))
+        completed = _parse_time(record.get("completed_at"))
+        cost = record.get("attributed_spend_usd")
         if started is None or completed is None or not isinstance(cost, (int, float)) or completed <= started:
             continue
         points.append(
             {
-                "id": work_id or path.stem,
+                "id": record["mission_id"],
                 "minutes": (completed - started).total_seconds() / 60.0,
                 "cost": max(0.0, float(cost)),
-                "state": str(result.get("state") or "completed"),
-                "provider": str(trace.get("provider") or "provider"),
+                "state": str(record.get("result_state") or "completed"),
+                "provider": str(record.get("provider") or "provider"),
+                "provenance": str(record.get("spend_provenance") or LOCAL_DERIVED),
             }
         )
     return points[-24:]
@@ -396,8 +393,9 @@ def _efficiency_chart(project: Dict[str, Any]) -> str:
         return (
             '<div class="chart-note">Not enough recorded mission economics yet '
             f'({len(points)}/{MIN_EFFICIENCY_POINTS}). Needs work orders with '
-            '<code>created_at</code> and traces with <code>completed_at</code> + '
-            'exact/recorded <code>cost_usd</code> — OODA does not infer these from file mtimes.</div>'
+            '<code>created_at</code> and traces with <code>completed_at</code>, plus either a recorded '
+            '<code>economics.cost_usd</code> or telemetry-ledger events inside that mission\'s window — '
+            'OODA does not infer these from file mtimes.</div>'
         )
 
     width, height = 560, 220
@@ -411,7 +409,7 @@ def _efficiency_chart(project: Dict[str, Any]) -> str:
         x = left + (p["cost"] / max_cost) * plot_w
         y = top + plot_h - (p["minutes"] / max_min) * plot_h
         state = "".join(ch if ch.isalnum() else "-" for ch in p["state"].lower()).strip("-")
-        title = f"{p['id']} · {p['provider']} · ${p['cost']:.3f} · {p['minutes']:.0f} min · {p['state']}"
+        title = f"{p['id']} · {p['provider']} · ${p['cost']:.3f} ({p['provenance']}) · {p['minutes']:.0f} min · {p['state']}"
         dots.append(f'<circle class="dot dot-{_e(state)}" cx="{x:.1f}" cy="{y:.1f}" r="5"><title>{_e(title)}</title></circle>')
 
     return f"""
@@ -425,6 +423,87 @@ def _efficiency_chart(project: Dict[str, Any]) -> str:
       {''.join(dots)}
     </svg>
     <div class="chart-caption">Lower-left is better: cheaper mission, faster verified feedback. Points require explicit timestamps and recorded cost.</div>
+    """
+
+
+def _spend_over_time_chart(project: Dict[str, Any]) -> str:
+    """Spend-over-time trend, or "" (no pane at all — not an empty
+    placeholder) when there isn't enough dated telemetry for a meaningful
+    trend yet. Per the visualization policy, do not chart something merely
+    because data exists."""
+    repo = project.get("repo")
+    if not isinstance(repo, Path):
+        return ""
+    from .mission_economics import MIN_SPEND_TREND_DAYS, daily_spend_series
+
+    series = daily_spend_series(repo)
+    if len(series) < MIN_SPEND_TREND_DAYS:
+        return ""
+
+    width, height = 560, 140
+    left, right, top, bottom = 44, 14, 14, 26
+    plot_w = width - left - right
+    plot_h = height - top - bottom
+    max_spend = max((row["spend_usd"] for row in series), default=0.0) or 0.01
+    n = len(series)
+    step = plot_w / max(1, n - 1)
+    coords = [
+        (left + i * step, top + plot_h - (row["spend_usd"] / max_spend) * plot_h) for i, row in enumerate(series)
+    ]
+    path_d = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in coords)
+    dots = []
+    for (x, y), row in zip(coords, series):
+        title = f"{row['date']} · ${row['spend_usd']:.3f} · LOCAL_DERIVED"
+        dots.append(f'<circle class="dot" cx="{x:.1f}" cy="{y:.1f}" r="3"><title>{_e(title)}</title></circle>')
+
+    return f"""
+    <div class="pane spend-trend-pane">
+      <div class="pane-head"><b>SPEND OVER TIME</b><span>daily recorded telemetry · LOCAL_DERIVED</span></div>
+      <svg class="spend-trend-chart" viewBox="0 0 {width} {height}" role="img" aria-label="Recorded spend by day">
+        <line class="axis" x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" />
+        <text class="axis-label" x="{left}" y="{height - 6}">{_e(series[0]['date'])}</text>
+        <text class="axis-label" text-anchor="end" x="{left + plot_w}" y="{height - 6}">{_e(series[-1]['date'])}</text>
+        <text class="axis-label" x="6" y="{top + 8}">${max_spend:.2f}</text>
+        <path class="spend-line" d="{path_d}" fill="none" />
+        {''.join(dots)}
+      </svg>
+    </div>
+    """
+
+
+def _cost_pane_html(project: Dict[str, Any]) -> str:
+    """Compact cost rollup: TODAY / 7 DAYS / RECORDED (all-time), plus the
+    top mission and dominant provider when the ledger actually names one.
+    Absent entirely (not an empty pane) until the ledger has recorded
+    telemetry — same absent-when-empty rule as the rest of the telemetry
+    register. Never labeled EXACT_API: a rollup over individually exact
+    per-event values is still LOCAL_DERIVED, per
+    mission_economics.project_rollup."""
+    repo = project.get("repo")
+    if not isinstance(repo, Path):
+        return ""
+    from .mission_economics import project_rollup
+
+    roll = project_rollup(repo)
+    if not roll["has_data"]:
+        return ""
+
+    top_mission = roll["top_missions"][0]["mission_id"] if roll["top_missions"] else "n/a"
+    provider = max(roll["by_provider"].items(), key=lambda kv: kv[1])[0] if roll["by_provider"] else "n/a"
+
+    return f"""
+    <div class="pane cost-pane">
+      <div class="pane-head"><b>COST</b><span>{_e(roll['provenance'])}</span></div>
+      <div class="cost-rollup-grid">
+        <div><small>Today</small><b>${roll['today_usd']:.3f}</b></div>
+        <div><small>7 days</small><b>${roll['last_7d_usd']:.3f}</b></div>
+        <div><small>Recorded</small><b>${roll['all_time_usd']:.3f}</b></div>
+      </div>
+      <div class="cost-rollup-foot">
+        <span><small>Top mission</small><b>{_e(top_mission)}</b></span>
+        <span><small>Provider</small><b>{_e(provider)}</b></span>
+      </div>
+    </div>
     """
 
 
@@ -533,10 +612,33 @@ def _attention_dot_class(rank: int) -> str:
     return "dot-quiet"
 
 
+def _portfolio_recorded_spend(projects: List[Dict[str, Any]]) -> Optional[float]:
+    """Total recorded telemetry spend across the projects already on this
+    page — reuses the project list render_html was handed rather than
+    re-discovering projects, so it stays honest about exactly what's
+    included. Returns None (not 0) when no project has any recorded
+    telemetry yet, so the KPI can be omitted instead of showing a
+    misleading $0.00."""
+    from .mission_economics import project_rollup
+
+    total = 0.0
+    any_data = False
+    for project in projects:
+        repo = project.get("repo")
+        if not isinstance(repo, Path):
+            continue
+        roll = project_rollup(repo)
+        if roll["has_data"]:
+            total += roll["all_time_usd"]
+            any_data = True
+    return total if any_data else None
+
+
 def render_html(projects: List[Dict[str, Any]], refresh_seconds: int, root: Path) -> str:
     active = sum(p.get("controller") == "active" for p in projects)
     review = sum(p.get("stage") == "review" for p in projects)
     blocked = sum(p.get("controller") == "blocked" for p in projects)
+    recorded_spend = _portfolio_recorded_spend(projects)
 
     ordered = sorted(range(len(projects)), key=lambda i: (_attention_rank(projects[i]), i))
 
@@ -587,7 +689,7 @@ h1,h2,p{{margin:0}}h1,h2{{font-family:Georgia,"Times New Roman",serif;font-weigh
 small{{color:var(--muted);font-size:11px}}code{{background:#eee6d7;border:1px solid var(--rule);padding:1px 5px;border-radius:4px}}
 .hero{{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:12px}}.hero p{{color:var(--muted);margin-top:5px}}.eyebrow{{font-size:11px;font-weight:800;letter-spacing:.13em;color:var(--muted)}}
 button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:8px 11px;font-weight:700;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.03)}}.hero>div:last-child{{display:grid;justify-items:end;gap:3px}}
-.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}}.kpi{{background:var(--paper);border:1px solid var(--rule);border-radius:7px;padding:8px 11px}}.kpi b{{display:block;font:700 19px/1.1 Georgia,"Times New Roman",serif;margin-top:1px}}
+.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}}.kpi{{background:var(--paper);border:1px solid var(--rule);border-radius:7px;padding:8px 11px}}.kpi b{{display:block;font:700 19px/1.1 Georgia,"Times New Roman",serif;margin-top:1px}}
 .control-layout{{display:grid;grid-template-columns:245px minmax(0,1fr);gap:12px;align-items:start}}.project-sidebar{{background:var(--paper);border:1px solid var(--rule);border-radius:9px;overflow:hidden;position:sticky;top:12px;box-shadow:0 3px 12px rgba(64,49,28,.05)}}.sidebar-head{{padding:10px 12px;background:var(--paper2);border-bottom:1px solid var(--rule)}}.sidebar-head span,.sidebar-head small{{display:block}}.sidebar-head span{{font-size:11px;font-weight:900;letter-spacing:.14em}}.project-nav{{width:100%;appearance:none;background:transparent;color:var(--ink);border:0;border-bottom:1px solid #ebe2d2;padding:10px 12px;text-align:left;cursor:pointer}}.project-nav:last-child{{border-bottom:0}}.project-nav:hover{{background:#fbf7ed}}.project-nav.active{{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}}.project-nav-top{{display:flex;align-items:center;justify-content:space-between;gap:8px}}.project-nav-top b{{font-size:13px}}.project-nav-top i{{font-size:10px;font-style:normal;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}}.project-nav small{{display:block;margin-top:3px;line-height:1.35}}
 .attn-dot{{width:8px;height:8px;border-radius:99px;flex:none;background:#c9beaa}}.attn-dot.dot-needs{{background:#a2452f}}.attn-dot.dot-review{{background:var(--gate-strong)}}
 .project-panel{{display:none}}.project-panel.active{{display:block}}.project-card{{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:17px;box-shadow:var(--shadow)}}.project-title{{display:flex;justify-content:space-between;gap:20px}}.project-title p{{color:var(--muted);margin-top:4px;max-width:1000px}}
@@ -605,6 +707,8 @@ button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);bor
 .ladder{{padding:7px 11px}}.ladder-row{{display:grid;grid-template-columns:24px 1fr;gap:7px;padding:5px 0;border-bottom:1px solid #ebe2d2}}.ladder-row:last-child{{border-bottom:0}}.ladder-row.provisional{{color:var(--muted)}}.ladder-row.current{{color:#2f5f8f;background:linear-gradient(90deg,var(--accent-soft),transparent);margin:0 -11px;padding:6px 11px}}.marker{{font-weight:900}}.current-tag{{display:inline-block;margin-left:7px;font-size:10px;border:1px solid var(--accent);color:#2f5f8f;background:#f4f8fc;padding:1px 5px;border-radius:99px;vertical-align:2px}}
 .timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:88px minmax(170px,.9fr) minmax(210px,1.15fr) minmax(210px,1.15fr);gap:9px;padding:7px 9px;border-bottom:1px solid #ebe2d2;min-width:790px}}.timeline-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
 .efficiency-pane{{min-height:0}}.efficiency-chart{{display:block;width:100%;height:auto;padding:8px 8px 0}}.axis{{stroke:#b9ad98;stroke-width:1}}.axis-label{{font-size:9px;fill:#5b5346}}.dot{{fill:var(--accent);stroke:#fffdf7;stroke-width:2}}.dot-blocked,.dot-budget-exhausted{{fill:#9f5d4d}}.dot-negative-finding{{fill:#7b7b69}}.dot-needs-human-gate{{fill:#b7904b}}.chart-caption{{font-size:11px;color:var(--muted);padding:0 10px 9px}}.chart-note{{padding:11px 12px;color:var(--muted);font-size:11px;line-height:1.5}}
+.spend-trend-chart{{display:block;width:100%;height:auto;padding:8px 8px 4px}}.spend-line{{stroke:var(--accent);stroke-width:2}}
+.cost-pane{{}}.cost-rollup-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:9px 11px 4px}}.cost-rollup-grid small{{display:block;font-size:10px;color:var(--muted)}}.cost-rollup-grid b{{display:block;margin-top:2px;font:700 15px/1.1 Georgia,"Times New Roman",serif}}.cost-rollup-foot{{display:flex;gap:16px;padding:2px 11px 10px}}.cost-rollup-foot small{{display:block;font-size:10px;color:var(--muted)}}.cost-rollup-foot b{{display:block;margin-top:2px;font-size:12px}}
 .empty-state,.empty-room{{padding:16px;color:var(--muted);background:var(--paper);border:1px solid var(--rule)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:15px;border-top:1px solid var(--rule);padding-top:9px;margin-top:11px;color:var(--muted);font-size:11px}}.meta-strip b{{color:var(--ink)}}
 @media(max-width:1050px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.control-layout{{grid-template-columns:1fr}}.project-sidebar{{position:static;display:flex;overflow:auto}}.sidebar-head{{min-width:130px}}.project-nav{{min-width:190px;border-right:1px solid #ebe2d2;border-bottom:0}}.summary-context,.cockpit-grid,.attention-strip{{grid-template-columns:1fr}}.attention-strip>div{{border-right:0;border-bottom:1px solid var(--rule)}}.attention-strip>div:last-child{{border-bottom:0}}.hero,.project-title{{align-items:start;flex-direction:column}}.telemetry-summary{{grid-template-columns:repeat(2,1fr)}}}}
 </style>
@@ -670,6 +774,7 @@ if (REFRESH_SECONDS > 0) {{
     <div class="kpi"><small>Active missions</small><b>{active}</b></div>
     <div class="kpi"><small>Human gates / review</small><b>{review}</b></div>
     <div class="kpi"><small>Blocked</small><b>{blocked}</b></div>
+    {f'<div class="kpi"><small>Recorded spend</small><b>${recorded_spend:.2f}</b></div>' if recorded_spend is not None else ""}
   </div>
   {project_area}
 </main>

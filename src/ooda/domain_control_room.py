@@ -188,7 +188,9 @@ def _project_card(project: Dict[str, Any]) -> str:
         if telemetry
         else ""
     )
+    cost_block = legacy._cost_pane_html(project)
     guzzler_block = legacy._cost_guzzler_html(project)
+    spend_trend_block = legacy._spend_over_time_chart(project)
     return f"""
     <section class="project-card domain-first-control-room domain-compact-control-room">
       <style>
@@ -252,7 +254,9 @@ def _project_card(project: Dict[str, Any]) -> str:
             <div class="pane-head"><b>FEEDBACK-LOOP EFFICIENCY</b><span>cost × time to verified feedback</span></div>
             {legacy._efficiency_chart(project)}
           </div>
+          {cost_block}
           {guzzler_block}
+          {spend_trend_block}
         </div>
         <div class="pane timeline-pane">
           <div class="pane-head"><b>RECENT DECISIONS</b><span>{len(project.get('timeline') or [])} total</span></div>
