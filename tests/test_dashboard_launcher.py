@@ -53,15 +53,15 @@ class DashboardLauncherTests(unittest.TestCase):
         self.assertEqual(port, 8793)
         self.assertTrue(reuse)
 
-    def test_current_generation_requires_domain_first_markers(self):
+    def test_current_generation_requires_compact_domain_markers(self):
         root = Path("/tmp/repos")
         current = (
             "<title>OODA Control Room</title> /tmp/repos "
-            "project-sidebar efficiency-chart attention-strip domain-orientation-grid"
+            "project-sidebar efficiency-chart domain-compact-control-room"
         )
         previous = (
             "<title>OODA Control Room</title> /tmp/repos "
-            "project-sidebar efficiency-chart attention-strip"
+            "project-sidebar efficiency-chart domain-orientation-grid"
         )
 
         with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=current):
