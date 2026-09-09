@@ -23,17 +23,47 @@ even though the mission is fully described by durable fields. This gets
 systematically worse for short/cheap missions — exactly the missions a
 Feedback-loop Efficiency chart most wants a point for.
 
-## The fix: attribute retroactively, not at snapshot time
+## The fix: attribute by delta INTERVAL, not by point timestamp
 
-Once a mission is complete, its window — [work_order.created_at,
-trace.completed_at], both explicit durable fields, never a filesystem
-mtime — is known for good. This module re-walks the ledger and attributes
-each event whose own `at` timestamp falls inside exactly one mission's
-window to that mission, independent of what "the one open work order"
-looked like at write time. An event inside zero windows is unattributed;
-an event inside more than one (overlapping/concurrent missions) is left
-unattributed too — OODA will not guess which of two concurrent missions
-paid for it.
+A first cut at this fix compared each ledger event's own `at` timestamp
+to a completed mission's [created_at, completed_at] window. That still
+misses the common case where Grok's refresh cadence is coarser than the
+mission itself:
+
+    06:00  cumulative snapshot = $1.00
+    06:02  mission starts
+    06:07  mission completes
+    06:10  cumulative snapshot = $1.45   <- delta $0.45 recorded here
+
+The $0.45 delta represents spend accrued over [06:00, 06:10] — the
+interval since the *previous* snapshot for that session — not spend that
+happened at the instant 06:10. A point-timestamp rule sees `at=06:10`,
+which is after `completed_at=06:07`, and leaves the mission unattributed.
+
+Every ledger event's real claim is therefore an INTERVAL, not a point:
+`interval_start` = the previous recorded snapshot's `at` for the same
+`session_id` (None if this is that session's first recorded snapshot —
+the interval before it is unknown), `interval_end` = this event's own
+`at`. A delta is attributed to a mission only when the mission's window
+overlaps that interval, and only when exactly one mission's window does
+— multiple missions overlapping the same coarse interval (two sequential
+missions inside one refresh window, or two genuinely concurrent ones)
+leaves it unattributed, because OODA cannot tell which mission the spend
+actually belongs to. `interval_start = None` (the session's first
+recorded snapshot) is unattributed unconditionally, even if it lands
+inside a mission's window — that cumulative reading may include spend
+that predates the mission entirely, and there is no prior boundary to
+prove otherwise.
+
+This is still an interval attribution, not a request-level one: OODA
+does not proportionally split a delta by wall-clock duration and does
+not assume uniform spend across the interval. If unrelated activity
+happened in the same coarse interval as a mission, that activity's
+cost is indistinguishable from the mission's own and is included in
+whatever the interval attributes to — a real limitation of coarse
+provider telemetry, not something this module can see past. Mission
+spend from this module is therefore useful for OODA's own
+feedback-efficiency measurement, but it is not request-level billing.
 
 The result is always LOCAL_DERIVED
 (`telemetry_ledger.ATTRIBUTED_SPEND_PROVENANCE`): attribution to a named
@@ -45,10 +75,12 @@ values never becomes EXACT_API itself.
 ## What this module does not do
 
 - It does not infer mission economics from filesystem mtimes.
-- It does not manufacture costs for missions with no ledger events in
-  their window — those report `attributed_spend_usd = None`,
-  `spend_provenance = UNAVAILABLE`, not zero.
+- It does not manufacture costs for missions with no ledger events whose
+  interval overlaps their window — those report `attributed_spend_usd =
+  None`, `spend_provenance = UNAVAILABLE`, not zero.
 - It does not backfill missions that predate the telemetry ledger.
+- It does not proportionally split a coarse delta across the wall-clock
+  duration of the interval, and does not assume uniform spend within it.
 - If Grok's refresh cadence means a mission's true boundary cost reading
   is imprecise, that imprecision is inherited honestly (still
   LOCAL_DERIVED, never upgraded to a stronger claim) rather than hidden.
@@ -178,11 +210,48 @@ def _completed_windows(missions: List[Dict[str, Any]]) -> List[tuple]:
     ]
 
 
+def _session_intervals(repo: Path) -> List[Dict[str, Any]]:
+    """One record per ledger event carrying the delta's real time claim: the
+    interval since the previous recorded snapshot for the same session, not
+    the event's own point timestamp (see module docstring). `interval_start`
+    is None for a session's first recorded snapshot — the interval before it
+    is genuinely unknown, not "zero-length"."""
+    last_at_by_session: Dict[str, dt.datetime] = {}
+    intervals: List[Dict[str, Any]] = []
+    for event in read_events(repo):
+        session_id = str(event.get("session_id") or "unknown-session")
+        at = parse_time(event.get("at"))
+        intervals.append(
+            {
+                "session_id": session_id,
+                "interval_start": last_at_by_session.get(session_id),
+                "interval_end": at,
+                "event": event,
+            }
+        )
+        if at is not None:
+            last_at_by_session[session_id] = at
+    return intervals
+
+
+def _overlapping_missions(windows: List[tuple], start: Optional[dt.datetime], end: Optional[dt.datetime]) -> List[str]:
+    """Missions whose [created_at, completed_at] window overlaps the delta
+    interval [start, end]. `start=None` (session's first recorded snapshot)
+    never overlaps anything — see module docstring on why that interval is
+    conservatively unknown rather than attributable."""
+    if start is None or end is None:
+        return []
+    return [mid for mid, m_start, m_end in windows if m_start <= end and m_end >= start]
+
+
 def attribute_events(repo: Path, missions: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Dict[str, Any]]:
-    """Retroactively attribute ledger events to completed missions by time
-    window (see module docstring). Returns a dict keyed by mission_id, plus
-    a `"__unattributed__"` bucket for events matching zero or (ambiguously)
-    more than one mission window."""
+    """Retroactively attribute ledger deltas to completed missions by
+    overlap between the delta's INTERVAL (previous snapshot -> this one,
+    for the same session) and a mission's [created_at, completed_at]
+    window — see module docstring. Returns a dict keyed by mission_id,
+    plus a `"__unattributed__"` bucket for deltas whose interval matches
+    zero or (ambiguously) more than one mission window, or whose interval
+    start is unknown (a session's first recorded snapshot)."""
     if missions is None:
         missions = mission_lifecycle(repo)
     windows = _completed_windows(missions)
@@ -191,12 +260,12 @@ def attribute_events(repo: Path, missions: Optional[List[Dict[str, Any]]] = None
     unattributed_spend = 0.0
     unattributed_by_session: Dict[str, float] = {}
 
-    for event in read_events(repo):
-        at = parse_time(event.get("at"))
+    for item in _session_intervals(repo):
+        event = item["event"]
         delta = event.get("delta_cost_usd")
-        if at is None or not isinstance(delta, (int, float)):
+        if not isinstance(delta, (int, float)):
             continue
-        matches = [mid for mid, start, end in windows if start <= at <= end]
+        matches = _overlapping_missions(windows, item["interval_start"], item["interval_end"])
         if len(matches) == 1:
             mid = matches[0]
             bucket = totals.setdefault(
@@ -222,8 +291,7 @@ def attribute_events(repo: Path, missions: Optional[List[Dict[str, Any]]] = None
             if isinstance(cum, (int, float)):
                 bucket["cumulative_readings"].append(cum)
         else:
-            session_id = str(event.get("session_id") or "unknown-session")
-            unattributed_by_session[session_id] = unattributed_by_session.get(session_id, 0.0) + delta
+            unattributed_by_session[item["session_id"]] = unattributed_by_session.get(item["session_id"], 0.0) + delta
             unattributed_spend += delta
 
     results: Dict[str, Dict[str, Any]] = {}
@@ -287,24 +355,28 @@ def mission_economics_report(repo: Path) -> List[Dict[str, Any]]:
 def cost_guzzlers(repo: Path, limit: int = 5) -> List[Dict[str, Any]]:
     """Top missions/buckets by attributed spend.
 
-    Prefers windowed lifecycle attribution (a completed mission's
-    [created_at, completed_at] window) over the live per-event
-    `work_order_id` written at snapshot time — this is what recovers a
-    completed-fast mission's spend out of `session/unattributed` (see
-    module docstring: the trace can exist before the next status-line
-    refresh, so the live "one open work order" rule alone would miss it).
+    Prefers interval-based lifecycle attribution (a completed mission's
+    [created_at, completed_at] window overlapping the delta's own
+    [previous snapshot, this snapshot] interval — see module docstring)
+    over the live per-event `work_order_id` written at snapshot time —
+    this is what recovers a completed-fast mission's spend out of
+    `session/unattributed` even when the mission's TRACE existed before
+    the next status-line refresh.
 
-    Falls back to the event's own live `work_order_id` when no windowed
-    match exists — an in-flight mission with no trace yet (so no window
-    can be built) still gets its live real-time attribution, exactly as
-    before this module existed."""
+    Falls back to the event's own live `work_order_id` only when the
+    delta's interval matches zero mission windows (typically: an
+    in-flight mission with no trace yet, so no window can be built) — an
+    in-flight mission still gets its live real-time attribution, exactly
+    as before this module existed. A delta whose interval is ambiguous
+    (matches more than one window) is never rescued by the live fallback
+    — ambiguity always wins over a guess."""
     missions = mission_lifecycle(repo)
     windows = _completed_windows(missions)
 
     groups: Dict[str, Dict[str, Any]] = {}
-    for event in read_events(repo):
-        at = parse_time(event.get("at"))
-        matches = [mid for mid, start, end in windows if at is not None and start <= at <= end]
+    for item in _session_intervals(repo):
+        event = item["event"]
+        matches = _overlapping_missions(windows, item["interval_start"], item["interval_end"])
         if len(matches) == 1:
             key = matches[0]
             label = matches[0]

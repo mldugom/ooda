@@ -57,26 +57,39 @@ that predate the telemetry ledger.
 state, and a verified flag. An open mission (no trace yet) has no
 `completed_at`/`elapsed_minutes`.
 
-**Mission spend — the completed-mission attribution fix.** Live attribution
-(`telemetry_ledger.record_snapshot`) can only attribute a delta to "the one
-work order with no trace yet" *at the moment the snapshot is appended*.
-Grok's status-line hook reports a *cumulative* session cost roughly every
-~10 minutes (or on session change) rather than per request, so a mission
-that is created and traced-complete before the next refresh has its real
-spend appended *after* the trace already exists — at that instant zero
-work orders are "open", so the live rule alone puts the whole delta in
-`session/unattributed`, even though the mission's durable fields fully
-describe it. `mission_economics.attribute_events` fixes this
-retroactively: once a mission is complete, its window
-`[work_order.created_at, trace.completed_at]` is known for good, and every
-ledger event whose own `at` timestamp falls inside exactly one mission's
-window is attributed to that mission — independent of what "the currently
-open work order" looked like at write time. An event inside zero windows
-stays unattributed; an event inside more than one (overlapping/concurrent
-missions) is left unattributed too — OODA will not guess which of two
-concurrent missions paid for it. The result is always `LOCAL_DERIVED`
-(never `EXACT_API`, even when every per-event delta that fed it was
-itself `EXACT_API`/`PROVIDER_REPORTED`): attribution to a named mission is
+**Mission spend — attribution by delta INTERVAL, not by point timestamp.**
+Live attribution (`telemetry_ledger.record_snapshot`) can only attribute a
+delta to "the one work order with no trace yet" *at the moment the
+snapshot is appended*. Grok's status-line hook reports a *cumulative*
+session cost roughly every ~10 minutes (or on session change) rather than
+per request, so a mission that is created and traced-complete before the
+next refresh has its real spend appended *after* the trace already exists
+— at that instant zero work orders are "open", so the live rule alone
+puts the whole delta in `session/unattributed`.
+
+A first retroactive fix compared each ledger event's own `at` timestamp to
+a completed mission's window and still missed this case: a delta recorded
+at 10:10 can represent spend accrued since the *previous* snapshot at
+10:00, so a mission that ran and completed at 10:02–10:07 falls entirely
+inside that accrual period even though 10:10 itself is after the mission
+completed. `mission_economics.attribute_events` therefore reasons over
+each delta's real claim — an INTERVAL, not a point: `interval_start` is
+the previous recorded snapshot's `at` for the same `session_id`
+(`None` for a session's first recorded snapshot — that interval is
+genuinely unknown, not zero-length, so it is never attributed even if it
+lands inside a mission's window), `interval_end` is this event's own `at`.
+A delta is attributed to a mission only when the mission's
+`[created_at, completed_at]` window overlaps that interval and exactly
+one mission's window does — two sequential missions inside one coarse
+refresh interval, or two genuinely concurrent ones, both leave the delta
+unattributed, because OODA cannot tell which one it belongs to. This does
+not proportionally split a delta by wall-clock duration, and it cannot
+distinguish a mission's own spend from unrelated activity that happened
+in the same coarse interval — mission spend from this layer is useful for
+OODA's own feedback-efficiency measurement, but it is not request-level
+billing. The result is always `LOCAL_DERIVED` (never `EXACT_API`, even
+when every per-event delta that fed it was itself
+`EXACT_API`/`PROVIDER_REPORTED`): attribution to a named mission is
 always OODA's own inference, never a billed fact.
 
 **Rollups.** `mission_economics.session_spend`, `project_rollup` (today /
@@ -88,12 +101,17 @@ all reuse the same ledger and lifecycle data, with the same honesty rules.
 
 The chart plots one bounded mission per point:
 
+- only completed, **verified** missions are eligible (an explicit
+  `created_at`, an explicit `completed_at`, and a result state other than
+  `blocked`/`budget_exhausted`/no-trace);
 - x-axis = mission spend — an explicit `trace.economics.cost_usd` when one
-  was manually recorded, otherwise the ledger's windowed attribution
+  was manually recorded, otherwise the ledger's interval-based attribution
   above (a manual figure is never required if the ledger can defensibly
   provide the spend);
 - y-axis = minutes from explicit work-order `created_at` to trace `completed_at`;
-- point state = completed, negative finding, blocked, budget exhausted, or human gate;
+- point state = completed, negative finding, or needs human gate
+  (blocked/budget-exhausted missions are excluded as unverified, not
+  merely recolored);
 - hover/detail includes mission id, provider, spend, minutes, result/gate
   state, and cost provenance.
 

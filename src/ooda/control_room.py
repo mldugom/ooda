@@ -348,18 +348,21 @@ def _parse_time(value: Any) -> Optional[dt.datetime]:
 
 
 def _mission_points(repo: Path) -> List[Dict[str, Any]]:
-    """A point per completed mission with a defensible cost: an explicit
-    `trace.economics.cost_usd` when one was manually recorded, otherwise the
-    telemetry ledger's own windowed attribution (see
-    `mission_economics.attribute_events`). A mission with neither — no
-    manual figure and no ledger events inside its [created_at,
-    completed_at] window — does not get a point; OODA does not invent
-    mission economics."""
+    """A point per completed, VERIFIED mission with a defensible cost: an
+    explicit `trace.economics.cost_usd` when one was manually recorded,
+    otherwise the telemetry ledger's own interval-based attribution (see
+    `mission_economics.attribute_events`). A mission missing any of
+    explicit created_at, explicit completed_at, a verified result, or a
+    defensible attributed spend does not get a point; OODA does not
+    invent mission economics. `blocked`/`budget_exhausted`/no-trace
+    outcomes are not "verified" and are excluded here."""
     points: List[Dict[str, Any]] = []
     for record in mission_economics_report(repo):
         started = _parse_time(record.get("created_at"))
         completed = _parse_time(record.get("completed_at"))
         cost = record.get("attributed_spend_usd")
+        if not record.get("verified"):
+            continue
         if started is None or completed is None or not isinstance(cost, (int, float)) or completed <= started:
             continue
         points.append(

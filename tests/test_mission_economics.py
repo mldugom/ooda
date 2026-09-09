@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ooda import mission_economics as econ
-from ooda.telemetry_ledger import record_snapshot
+from ooda.telemetry_ledger import ledger_path, record_snapshot
 from ooda.xai_usage import LOCAL_DERIVED, PROVIDER_REPORTED, UNAVAILABLE
 
 
@@ -16,7 +16,12 @@ def _write_json(path: Path, data: dict) -> None:
 
 
 class _RepoBuilder:
-    """Small helper for real-shaped .ooda fixtures across tests."""
+    """Small helper for real-shaped .ooda fixtures. `snapshot()` appends one
+    ledger event at an explicit `at` timestamp — the delta it carries is
+    attributed by INTERVAL (previous snapshot for the same session -> this
+    one), so most tests need a `boundary()` snapshot first to establish a
+    known interval start, exactly as a real Grok session would have prior
+    status-line refreshes before any given mission."""
 
     def __init__(self, root: Path, name: str = "demo"):
         self.repo = root / name
@@ -49,19 +54,17 @@ class _RepoBuilder:
         self._retime_last_event(at)
         return self
 
+    # Alias for readability at call sites establishing a known interval start.
+    def boundary(self, *, session_id: str, cost: float, at: str) -> "_RepoBuilder":
+        return self.snapshot(session_id=session_id, cost=cost, at=at)
+
     def _retime_last_event(self, at: str) -> None:
-        path = econ_ledger_path(self.repo)
+        path = ledger_path(self.repo)
         lines = path.read_text(encoding="utf-8").splitlines()
         record = json.loads(lines[-1])
         record["at"] = at
         lines[-1] = json.dumps(record, sort_keys=True)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def econ_ledger_path(repo: Path) -> Path:
-    from ooda.telemetry_ledger import ledger_path
-
-    return ledger_path(repo)
 
 
 class MissionLifecycleTests(unittest.TestCase):
@@ -87,35 +90,44 @@ class MissionLifecycleTests(unittest.TestCase):
         self.assertIsNone(missions[0]["completed_at"])
 
 
-class MissionSpendAttributionTests(unittest.TestCase):
-    def test_mission_spend_is_local_derived_from_ledger_window(self):
-        """Reproduces the dogfood scenario: a fast mission whose TRACE is
-        already written before the ledger records the delta, so the live
-        'one open work order' rule alone would see zero open missions."""
+class DeltaIntervalAttributionTests(unittest.TestCase):
+    """Attribution reasons over the telemetry DELTA INTERVAL (previous
+    snapshot -> this one, same session), not the snapshot's own point
+    timestamp — see mission_economics module docstring."""
+
+    def test_exact_fast_mission_case_from_integration_owner_review(self):
+        """06:00 snapshot=$1.00, mission 06:02-06:07, 06:10 snapshot=$1.45.
+        The $0.45 delta's interval [06:00, 06:10] overlaps the mission
+        window even though the snapshot's own timestamp (06:10) is after
+        completed_at (06:07)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T06:02:00Z").trace("M1", "2026-09-01T06:07:00Z")
+            b.boundary(session_id="s1", cost=1.00, at="2026-09-01T06:00:00Z")
+            b.snapshot(session_id="s1", cost=1.45, at="2026-09-01T06:10:00Z")
+            report = econ.mission_economics_report(b.repo)
+        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 0.45)
+        self.assertEqual(report[0]["spend_provenance"], LOCAL_DERIVED)
+
+    def test_two_sequential_missions_inside_one_coarse_interval_unattributed(self):
+        """Two short missions both complete between two status-line
+        refreshes. The single delta interval overlaps both windows, so
+        neither gets the spend — OODA cannot tell them apart."""
         with tempfile.TemporaryDirectory() as tmp:
             b = (
                 _RepoBuilder(Path(tmp))
-                .work_order("M1", "2026-09-01T10:00:00Z")
-                .trace("M1", "2026-09-01T10:05:00Z")
+                .work_order("M1", "2026-09-01T06:01:00Z")
+                .trace("M1", "2026-09-01T06:03:00Z")
+                .work_order("M2", "2026-09-01T06:04:00Z")
+                .trace("M2", "2026-09-01T06:06:00Z")
             )
-            # Snapshot arrives AFTER the trace already exists — the race that
-            # broke the live attribution rule.
-            b.snapshot(session_id="s1", cost=2.527, at="2026-09-01T10:04:00Z")
+            b.boundary(session_id="s1", cost=0.0, at="2026-09-01T06:00:00Z")
+            b.snapshot(session_id="s1", cost=0.50, at="2026-09-01T06:10:00Z")
+            attributed = econ.attribute_events(b.repo)
+        self.assertNotIn("M1", attributed)
+        self.assertNotIn("M2", attributed)
+        self.assertAlmostEqual(attributed["__unattributed__"]["spend_usd"], 0.50)
 
-            report = econ.mission_economics_report(b.repo)
-
-        self.assertEqual(len(report), 1)
-        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 2.527)
-        self.assertEqual(report[0]["spend_provenance"], LOCAL_DERIVED)
-
-    def test_mission_spend_never_labeled_exact_api(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:05:00Z")
-            b.snapshot(session_id="s1", cost=1.0, at="2026-09-01T10:02:00Z")
-            report = econ.mission_economics_report(b.repo)
-        self.assertNotEqual(report[0]["spend_provenance"], "EXACT_API")
-
-    def test_no_attribution_when_multiple_missions_overlap(self):
+    def test_overlapping_missions_unattributed(self):
         with tempfile.TemporaryDirectory() as tmp:
             b = (
                 _RepoBuilder(Path(tmp))
@@ -124,14 +136,85 @@ class MissionSpendAttributionTests(unittest.TestCase):
                 .work_order("M2", "2026-09-01T10:10:00Z")
                 .trace("M2", "2026-09-01T10:40:00Z")
             )
-            # This event's timestamp falls inside BOTH windows.
+            b.boundary(session_id="s1", cost=0.0, at="2026-09-01T09:55:00Z")
             b.snapshot(session_id="s1", cost=1.0, at="2026-09-01T10:20:00Z")
-
             attributed = econ.attribute_events(b.repo)
-
         self.assertNotIn("M1", attributed)
         self.assertNotIn("M2", attributed)
         self.assertAlmostEqual(attributed["__unattributed__"]["spend_usd"], 1.0)
+
+    def test_mission_straddles_two_telemetry_intervals(self):
+        """A longer mission spans two refresh cycles. Each interval
+        unambiguously overlaps the one mission, so both deltas accrue to
+        it (no proportional splitting; the whole of each interval's delta
+        is attributed once its overlap is unambiguous)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:25:00Z")
+            b.boundary(session_id="s1", cost=1.0, at="2026-09-01T09:55:00Z")
+            b.snapshot(session_id="s1", cost=1.3, at="2026-09-01T10:10:00Z")  # interval 1: overlaps M1
+            b.snapshot(session_id="s1", cost=1.8, at="2026-09-01T10:30:00Z")  # interval 2: overlaps M1
+            report = econ.mission_economics_report(b.repo)
+        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 0.8)  # 0.3 + 0.5
+
+    def test_first_snapshot_during_mission_is_conservative_unavailable(self):
+        """A session's first recorded snapshot has no known interval start,
+        so even if it lands squarely inside a mission's window it must not
+        be assigned to that mission — the cumulative reading may include
+        spend that predates the mission entirely."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:30:00Z")
+            b.snapshot(session_id="s1", cost=2.527, at="2026-09-01T10:04:00Z")  # session's very first snapshot
+            report = econ.mission_economics_report(b.repo)
+        self.assertIsNone(report[0]["attributed_spend_usd"])
+        self.assertEqual(report[0]["spend_provenance"], UNAVAILABLE)
+
+    def test_first_snapshot_becomes_attributable_once_a_prior_boundary_exists(self):
+        """Same scenario, but with an earlier boundary snapshot recorded
+        first (a real session that had status-line refreshes before the
+        mission) — now the interval is known and attribution proceeds."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:05:00Z")
+            b.boundary(session_id="s1", cost=1.0, at="2026-09-01T09:50:00Z")
+            b.snapshot(session_id="s1", cost=3.527, at="2026-09-01T10:04:00Z")
+            report = econ.mission_economics_report(b.repo)
+        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 2.527)
+        self.assertEqual(report[0]["spend_provenance"], LOCAL_DERIVED)
+
+    def test_session_reset_produces_a_fresh_valid_interval(self):
+        """A cumulative-cost reset mid-session is still a real wall-clock
+        interval; the reset changes how the delta amount is computed
+        (telemetry_ledger treats it as a fresh delta, not negative), not
+        whether the interval itself is known."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:30:00Z")
+            b.boundary(session_id="s1", cost=1.0, at="2026-09-01T09:55:00Z")
+            b.snapshot(session_id="s1", cost=1.5, at="2026-09-01T10:05:00Z")   # +0.5
+            b.snapshot(session_id="s1", cost=0.2, at="2026-09-01T10:10:00Z")  # reset -> fresh delta 0.2
+            report = econ.mission_economics_report(b.repo)
+        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 0.7)
+
+    def test_unrelated_activity_inside_same_coarse_interval_is_not_distinguishable(self):
+        """Documents a real limitation: if unrelated activity happens in the
+        same refresh interval as a mission, its cost is indistinguishable
+        from the mission's own and is included in the interval's full
+        delta. This is coarse interval attribution, not request-level
+        billing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:03:00Z").trace("M1", "2026-09-01T10:04:00Z")
+            b.boundary(session_id="s1", cost=1.0, at="2026-09-01T10:00:00Z")
+            # $0.90 delta covers [10:00,10:10]; only [10:03,10:04] was M1's
+            # own mission time, but the whole delta still lands on M1.
+            b.snapshot(session_id="s1", cost=1.90, at="2026-09-01T10:10:00Z")
+            report = econ.mission_economics_report(b.repo)
+        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 0.90)
+
+    def test_mission_spend_never_labeled_exact_api(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:05:00Z")
+            b.boundary(session_id="s1", cost=0.5, at="2026-09-01T09:55:00Z")
+            b.snapshot(session_id="s1", cost=1.5, at="2026-09-01T10:02:00Z")
+            report = econ.mission_economics_report(b.repo)
+        self.assertNotEqual(report[0]["spend_provenance"], "EXACT_API")
 
     def test_unattributed_bucket_remains_honest(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -147,9 +230,9 @@ class MissionSpendAttributionTests(unittest.TestCase):
         self.assertIn("s1", attributed["__unattributed__"]["by_session"])
 
     def test_missing_provider_telemetry_gives_none_not_zero(self):
-        """A completed mission with no ledger events at all in its window
-        must not be reported as costing $0 — that would be a manufactured
-        number, not an honest 'no telemetry' state."""
+        """A completed mission with no ledger events at all must not be
+        reported as costing $0 — that would be a manufactured number, not
+        an honest 'no telemetry' state."""
         with tempfile.TemporaryDirectory() as tmp:
             b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:05:00Z")
             report = econ.mission_economics_report(b.repo)
@@ -174,6 +257,7 @@ class MissionSpendAttributionTests(unittest.TestCase):
     def test_duplicate_telemetry_events_do_not_inflate_mission_spend(self):
         with tempfile.TemporaryDirectory() as tmp:
             b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:30:00Z")
+            b.boundary(session_id="s1", cost=0.0, at="2026-09-01T09:55:00Z")
             for _ in range(3):
                 record_snapshot(
                     b.repo, provider="grok", model="Grok 4.6", session_id="s1",
@@ -183,21 +267,15 @@ class MissionSpendAttributionTests(unittest.TestCase):
             report = econ.mission_economics_report(b.repo)
         self.assertAlmostEqual(report[0]["attributed_spend_usd"], 1.0)
 
-    def test_session_reset_within_mission_window_still_sums_correctly(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:30:00Z")
-            b.snapshot(session_id="s1", cost=0.5, at="2026-09-01T10:05:00Z")
-            b.snapshot(session_id="s1", cost=0.2, at="2026-09-01T10:10:00Z")  # reset: treated as fresh delta
-            report = econ.mission_economics_report(b.repo)
-        self.assertAlmostEqual(report[0]["attributed_spend_usd"], 0.7)
-
 
 class CostGuzzlerTests(unittest.TestCase):
     def test_completed_mission_recovered_from_unattributed(self):
         """The exact dogfood bug: attribution must land on the mission, not
-        session/unattributed, once the mission's window is known."""
+        session/unattributed, once its window and the delta's interval
+        both establish an unambiguous overlap."""
         with tempfile.TemporaryDirectory() as tmp:
             b = _RepoBuilder(Path(tmp)).work_order("M1", "2026-09-01T10:00:00Z").trace("M1", "2026-09-01T10:05:00Z")
+            b.boundary(session_id="s1", cost=0.0, at="2026-09-01T09:59:00Z")
             b.snapshot(session_id="s1", cost=2.527, at="2026-09-01T10:04:00Z")
             rows = econ.cost_guzzlers(b.repo)
         self.assertEqual(rows[0]["label"], "M1")
@@ -284,15 +362,20 @@ class FeedbackEfficiencyChartTests(unittest.TestCase):
     def _project(self, repo: Path) -> dict:
         return {"repo": repo, "objective": "x", "objective_ladder": [], "timeline": []}
 
+    def _mission_with_boundary(self, b: "_RepoBuilder", idx: int) -> None:
+        day = f"2026-09-0{idx + 1}"
+        mid = f"M{idx}"
+        b.work_order(mid, f"{day}T10:00:00Z").trace(mid, f"{day}T10:20:00Z")
+        b.boundary(session_id=f"s{idx}", cost=0.0, at=f"{day}T09:55:00Z")
+        b.snapshot(session_id=f"s{idx}", cost=1.0, at=f"{day}T10:10:00Z")
+
     def test_hidden_below_three_valid_points(self):
         from ooda.control_room import _efficiency_chart
 
         with tempfile.TemporaryDirectory() as tmp:
             b = _RepoBuilder(Path(tmp))
             for i in range(2):
-                mid = f"M{i}"
-                b.work_order(mid, f"2026-09-0{i+1}T10:00:00Z").trace(mid, f"2026-09-0{i+1}T10:20:00Z")
-                b.snapshot(session_id=f"s{i}", cost=1.0, at=f"2026-09-0{i+1}T10:10:00Z")
+                self._mission_with_boundary(b, i)
             html = _efficiency_chart(self._project(b.repo))
         self.assertIn("Not enough recorded mission economics", html)
 
@@ -302,12 +385,26 @@ class FeedbackEfficiencyChartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             b = _RepoBuilder(Path(tmp))
             for i in range(3):
-                mid = f"M{i}"
-                b.work_order(mid, f"2026-09-0{i+1}T10:00:00Z").trace(mid, f"2026-09-0{i+1}T10:20:00Z")
-                b.snapshot(session_id=f"s{i}", cost=1.0, at=f"2026-09-0{i+1}T10:10:00Z")
+                self._mission_with_boundary(b, i)
             html = _efficiency_chart(self._project(b.repo))
         self.assertIn("efficiency-chart", html)
         self.assertIn("LOCAL_DERIVED", html)
+
+    def test_unverified_mission_excluded_even_with_valid_spend_and_timestamps(self):
+        from ooda.control_room import _mission_points
+
+        with tempfile.TemporaryDirectory() as tmp:
+            b = _RepoBuilder(Path(tmp))
+            for i in range(3):
+                self._mission_with_boundary(b, i)
+            # A 4th mission has everything except a verified result.
+            b.work_order("M-blocked", "2026-09-04T10:00:00Z").trace("M-blocked", "2026-09-04T10:20:00Z", state="blocked")
+            b.boundary(session_id="s-blocked", cost=0.0, at="2026-09-04T09:55:00Z")
+            b.snapshot(session_id="s-blocked", cost=1.0, at="2026-09-04T10:10:00Z")
+
+            points = _mission_points(b.repo)
+        self.assertEqual(len(points), 3)
+        self.assertNotIn("M-blocked", [p["id"] for p in points])
 
 
 if __name__ == "__main__":
