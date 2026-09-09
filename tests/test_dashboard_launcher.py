@@ -53,6 +53,39 @@ class DashboardLauncherTests(unittest.TestCase):
         self.assertEqual(port, 8793)
         self.assertTrue(reuse)
 
+    def test_current_generation_requires_sidebar_rail_and_efficiency_markers(self):
+        root = Path("/tmp/repos")
+        current = (
+            "<title>OODA Control Room</title> /tmp/repos "
+            "project-sidebar efficiency-chart attention-strip"
+        )
+        legacy = "<title>OODA Control Room</title> /tmp/repos project tabs live ooda loop"
+
+        with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=current):
+            self.assertTrue(dashboard_launcher._is_ooda_dashboard(8792, root))
+            self.assertTrue(dashboard_launcher._is_any_ooda_dashboard(8792, root))
+
+        with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=legacy):
+            self.assertFalse(dashboard_launcher._is_ooda_dashboard(8792, root))
+            self.assertTrue(dashboard_launcher._is_any_ooda_dashboard(8792, root))
+
+    def test_legacy_dashboard_is_not_reused(self):
+        root = Path("/tmp/repos")
+
+        def is_current(port, _root):
+            return False
+
+        def port_open(port):
+            return port == 8792
+
+        with mock.patch.object(dashboard_launcher, "_is_ooda_dashboard", side_effect=is_current), mock.patch.object(
+            dashboard_launcher, "_port_open", side_effect=port_open
+        ):
+            port, reuse = dashboard_launcher._select_port(8792, root)
+
+        self.assertEqual(port, 8793)
+        self.assertFalse(reuse)
+
 
 if __name__ == "__main__":
     unittest.main()
