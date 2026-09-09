@@ -74,6 +74,28 @@ If the objective materially changed and execution stopped, say so rather than pr
 ### ACT
 Record what was changed/tested/executed and the evidence produced.
 
+## Quantitative research feedback
+
+For material work under `quantitative-research`, `statistics`, `data-science`, `ml-research`, `quant-markets`, or an equivalent project profile, preserve the smallest useful research evidence packet so the next loop does not depend on terminal prose.
+
+The packet may be embedded in the trace or point to an authoritative research artifact. Useful fields are:
+
+```text
+QUESTION: decision uncertainty tested
+DATA: sample / snapshot / support / PIT-as-of semantics
+ANALYSIS: statistic, model, comparison, or experiment run
+KEY EVIDENCE: compact n + metric/effect + sensitivity/uncertainty + verdict table
+INTERPRETATION: what can and cannot now be claimed
+ARTIFACT DECISION: none | table | diagram | diagnostic | durable-panel | dashboard
+ARTIFACTS: durable markdown/CSV/JSON/HTML/figure paths
+DASHBOARD IMPACT: none | refresh existing panel | proposed panel | dashboard update required
+NEXT UNKNOWN: highest-value uncertainty exposed by the result
+```
+
+Do not create redundant artifacts when an existing result document/report already contains this information. The requirement is legible durable feedback, not file count.
+
+See `docs/QUANTITATIVE_RESEARCH_LOOP.md` and `docs/RESEARCH_VISUALIZATION.md`.
+
 ## Documentation result
 
 When documentation impact was assessed, the trace/handoff should state either:
