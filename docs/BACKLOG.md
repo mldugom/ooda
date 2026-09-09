@@ -2,6 +2,22 @@
 
 Backlog items are explicitly **not current work**. They are preserved so a useful experiment can be revisited without letting it compete with a working reference path.
 
+## Grok account usage / spend telemetry
+
+Status: **open telemetry gap; session telemetry already supported**.
+
+The current Grok status-line adapter already records provider-supplied context occupancy and, when Grok supplies it, provider-metered `cost.total_cost_usd` into `.ooda/session-telemetry.json`; the Control Room renders context percentage/tokens and session cost without inventing values.
+
+Desired follow-on:
+
+- make context usage and session spend visually explicit in the Control Room;
+- if xAI exposes a **supported Grok/Build account-usage endpoint**, add weekly usage-pool percentage/reset and Extra Usage Credits balance with explicit provenance;
+- keep missing values unknown rather than estimating them;
+- do not scrape Grok web/app pages or private endpoints;
+- do not confuse the xAI **Management API** billing endpoints with Grok app/Build usage. Management API `/v1/billing/teams/{team_id}/usage` and prepaid-balance endpoints cover xAI API-team billing; Grok's shared weekly pool / Extra Usage Credits are a different product surface unless xAI documents a supported bridge.
+
+Until a supported Grok/Build account endpoint exists, the authoritative account-level weekly usage / Extra Usage balance remains the Grok Settings → Usage surface. OODA may show provider-reported per-session context/cost, but must not label API-team billing as Grok Build spend.
+
 ## DeepSeek second-provider flavor — parked
 
 Status: **parked / unqualified**.
