@@ -14,6 +14,11 @@ from pathlib import Path
 
 DEFAULT_PORT = 8792
 PORT_SEARCH_SPAN = 20
+CURRENT_UI_MARKERS = (
+    "project-sidebar",
+    "efficiency-chart",
+    "attention-strip",
+)
 
 
 def _port_open(port: int) -> bool:
@@ -22,22 +27,46 @@ def _port_open(port: int) -> bool:
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
-def _is_ooda_dashboard(port: int, root: Path) -> bool:
+def _dashboard_body(port: int) -> str | None:
     url = f"http://127.0.0.1:{port}/"
     try:
         with urllib.request.urlopen(url, timeout=0.4) as response:
-            body = response.read(65536).decode("utf-8", errors="replace")
+            return response.read(65536).decode("utf-8", errors="replace")
     except (OSError, urllib.error.URLError, ValueError):
-        return False
+        return None
 
+
+def _is_any_ooda_dashboard(port: int, root: Path) -> bool:
+    body = _dashboard_body(port)
+    if body is None:
+        return False
     return (
         "<title>OODA Control Room</title>" in body
         and html.escape(str(root)) in body
     )
 
 
+def _is_ooda_dashboard(port: int, root: Path) -> bool:
+    """Return True only for a dashboard from the current Control Room UI generation.
+
+    A browser refresh cannot replace an already-running Python process after OODA is
+    upgraded. Reusing any page with the right title/root therefore served stale UI
+    indefinitely. The stable structural markers below let the launcher distinguish
+    the current sidebar/compact-rail Control Room from an older process without
+    killing arbitrary local processes.
+    """
+    body = _dashboard_body(port)
+    if body is None:
+        return False
+    return (
+        "<title>OODA Control Room</title>" in body
+        and html.escape(str(root)) in body
+        and all(marker in body for marker in CURRENT_UI_MARKERS)
+    )
+
+
 def _select_port(preferred: int, root: Path) -> tuple[int, bool]:
-    """Return (port, reuse_existing_ooda_dashboard)."""
+    """Return (port, reuse_existing_current_ooda_dashboard)."""
     for port in range(preferred, preferred + PORT_SEARCH_SPAN):
         if _is_ooda_dashboard(port, root):
             return port, True
@@ -54,6 +83,8 @@ def launch() -> int:
     ).expanduser()
     preferred = int(os.environ.get("OODA_DASHBOARD_PORT", str(DEFAULT_PORT)))
 
+    stale_preferred = _is_any_ooda_dashboard(preferred, root) and not _is_ooda_dashboard(preferred, root)
+
     try:
         port, reuse = _select_port(preferred, root)
     except (ValueError, RuntimeError) as exc:
@@ -63,9 +94,15 @@ def launch() -> int:
     url = f"http://127.0.0.1:{port}/"
 
     if port != preferred:
-        print(
-            f"OODA dashboard: port {preferred} is in use by another service; using {port} instead."
-        )
+        if stale_preferred:
+            print(
+                f"OODA dashboard: stale pre-upgrade Control Room is still running on port {preferred}; "
+                f"starting the current UI on {port}. The old process is left untouched."
+            )
+        else:
+            print(
+                f"OODA dashboard: port {preferred} is in use by another service; using {port} instead."
+            )
 
     if not reuse:
         log_dir = Path.home() / ".ooda"
