@@ -57,11 +57,11 @@ class DashboardLauncherTests(unittest.TestCase):
         root = Path("/tmp/repos")
         current = (
             "<title>OODA Control Room</title> /tmp/repos "
-            "project-sidebar efficiency-chart domain-compact-control-room"
+            "project-sidebar human-gate-band domain-compact-control-room"
         )
         previous = (
             "<title>OODA Control Room</title> /tmp/repos "
-            "project-sidebar efficiency-chart domain-orientation-grid"
+            "project-sidebar efficiency-chart domain-compact-control-room"
         )
 
         with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=current):

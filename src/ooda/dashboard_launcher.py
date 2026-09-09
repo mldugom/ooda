@@ -16,7 +16,7 @@ DEFAULT_PORT = 8792
 PORT_SEARCH_SPAN = 20
 CURRENT_UI_MARKERS = (
     "project-sidebar",
-    "efficiency-chart",
+    "human-gate-band",
     "domain-compact-control-room",
 )
 

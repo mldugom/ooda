@@ -60,7 +60,8 @@ class ControlRoomTests(unittest.TestCase):
         self.assertIn("PROGRAM IMPACT", page)
         self.assertIn("FEEDBACK-LOOP EFFICIENCY", page)
         self.assertNotIn("LIVE OODA LOOP", page)
-        self.assertIn("No exact mission economics yet", page)
+        self.assertIn("Not enough recorded mission economics yet (0/3)", page)
+        self.assertIn("CURRENT MISSION", page)
 
     def test_project_sidebar_replaces_horizontal_tabs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -149,6 +150,95 @@ class ControlRoomTests(unittest.TestCase):
         self.assertIn("84K / 1.0M", page)
         self.assertIn("~$0.070 session", page)
         self.assertIn("USD 9.62 balance", page)
+
+    def test_telemetry_register_absent_when_no_adapter_has_written_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            page = render_html([self._project(repo)], 15, Path(tmp))
+
+        self.assertNotIn("SESSION TELEMETRY", page)
+        self.assertNotIn('<div class="context-card">', page)
+
+    def test_efficiency_chart_hidden_below_three_missions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            work_orders = repo / ".ooda" / "work-orders"
+            traces = repo / ".ooda" / "traces"
+            work_orders.mkdir(parents=True)
+            traces.mkdir(parents=True)
+            for i in range(2):
+                wid = f"mission-{i}"
+                (work_orders / f"{wid}.json").write_text(
+                    json.dumps({"id": wid, "created_at": "2026-09-08T00:00:00Z"})
+                )
+                (traces / f"{wid}.json").write_text(
+                    json.dumps(
+                        {
+                            "work_order_id": wid,
+                            "completed_at": "2026-09-08T00:10:00Z",
+                            "economics": {"cost_usd": 0.1},
+                            "result": {"state": "completed"},
+                        }
+                    )
+                )
+            page = render_html([self._project(repo)], 15, Path(tmp))
+
+        self.assertNotIn('class="efficiency-chart"', page)
+        self.assertIn("Not enough recorded mission economics yet (2/3)", page)
+
+    def test_efficiency_chart_renders_at_three_missions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            work_orders = repo / ".ooda" / "work-orders"
+            traces = repo / ".ooda" / "traces"
+            work_orders.mkdir(parents=True)
+            traces.mkdir(parents=True)
+            for i in range(3):
+                wid = f"mission-{i}"
+                (work_orders / f"{wid}.json").write_text(
+                    json.dumps({"id": wid, "created_at": "2026-09-08T00:00:00Z"})
+                )
+                (traces / f"{wid}.json").write_text(
+                    json.dumps(
+                        {
+                            "work_order_id": wid,
+                            "completed_at": "2026-09-08T00:10:00Z",
+                            "economics": {"cost_usd": 0.1},
+                            "result": {"state": "completed"},
+                        }
+                    )
+                )
+            page = render_html([self._project(repo)], 15, Path(tmp))
+
+        self.assertIn('class="efficiency-chart"', page)
+        self.assertNotIn("Not enough recorded mission economics yet", page)
+
+    def test_needs_you_ordering_ranks_blocked_project_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            idle = root / "idle-project"
+            blocked = root / "blocked-project"
+            (idle / ".ooda").mkdir(parents=True)
+            (blocked / ".ooda").mkdir(parents=True)
+            idle_project = self._project(idle, "idle-project")
+            idle_project["controller"] = "active"
+            blocked_project = self._project(blocked, "blocked-project")
+            blocked_project["controller"] = "blocked"
+            page = render_html([idle_project, blocked_project], 15, root)
+
+        first_tab = page.index('data-project-tab="0"')
+        self.assertIn('data-project-name="blocked-project"', page[first_tab : first_tab + 200])
+
+    def test_auto_refresh_has_pause_toggle_instead_of_meta_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            page = render_html([self._project(repo)], 15, Path(tmp))
+
+        self.assertNotIn("http-equiv=\"refresh\"", page)
+        self.assertIn('id="refresh-toggle"', page)
+        self.assertIn("toggleAutoRefresh", page)
 
 
 if __name__ == "__main__":
