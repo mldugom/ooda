@@ -70,42 +70,39 @@ def _stage_key(project: Dict[str, Any]) -> str:
 
 
 def _context_html(project: Dict[str, Any]) -> str:
+    """Render session/provider telemetry. Returns "" when no telemetry exists —
+    the telemetry register should be entirely absent rather than a permanent
+    empty card, per the visualization policy against placeholder panels."""
     repo = project.get("repo")
     telemetry = _session_context(repo) if isinstance(repo, Path) else None
-    if telemetry:
-        top = "SESSION · " + telemetry["provider"].upper()
-        if telemetry["model"]:
-            top += " · " + telemetry["model"]
-        pct = telemetry["pct"]
-        pct_label = f"{pct:.1f}%" if isinstance(pct, float) else "context n/a"
-        bar_width = f"{pct:.2f}%" if isinstance(pct, float) else "0%"
-        if telemetry["used"] is not None and telemetry["limit"] is not None:
-            context_detail = f"{_human_number(telemetry['used'])} / {_human_number(telemetry['limit'])}"
-        else:
-            context_detail = "provider did not expose exact context occupancy"
-        economics: List[str] = []
-        if telemetry["session_cost"] is not None:
-            prefix = "~$" if telemetry["session_cost_kind"] == "tui-estimate" else "$"
-            economics.append(f"{prefix}{telemetry['session_cost']:.3f} session")
-        if telemetry["balance"] is not None:
-            economics.append(f"{telemetry['currency']} {telemetry['balance']:.2f} balance")
-        econ = " · ".join(economics) or "cost/balance unavailable"
-        return f"""
-        <div class="context-card">
-          <div class="context-top">
-            <span>{_e(top)}</span>
-            <b>{_e(pct_label)}</b>
-          </div>
-          <div class="context-bar"><i style="width:{_e(bar_width)}"></i></div>
-          <div class="context-foot"><span>{_e(context_detail)}</span><span>{_e(econ)}</span></div>
-        </div>
-        """
-    return """
-      <div class="context-card context-unavailable">
-        <div class="context-top"><span>SESSION TELEMETRY</span><b>unavailable</b></div>
-        <div class="context-bar"><i style="width:0%"></i></div>
-        <div class="context-foot"><span>Provider adapter has not written telemetry yet.</span><span>No value inferred.</span></div>
+    if not telemetry:
+        return ""
+    top = "SESSION · " + telemetry["provider"].upper()
+    if telemetry["model"]:
+        top += " · " + telemetry["model"]
+    pct = telemetry["pct"]
+    pct_label = f"{pct:.1f}%" if isinstance(pct, float) else "context n/a"
+    bar_width = f"{pct:.2f}%" if isinstance(pct, float) else "0%"
+    if telemetry["used"] is not None and telemetry["limit"] is not None:
+        context_detail = f"{_human_number(telemetry['used'])} / {_human_number(telemetry['limit'])}"
+    else:
+        context_detail = "provider did not expose exact context occupancy"
+    economics: List[str] = []
+    if telemetry["session_cost"] is not None:
+        prefix = "~$" if telemetry["session_cost_kind"] == "tui-estimate" else "$"
+        economics.append(f"{prefix}{telemetry['session_cost']:.3f} session")
+    if telemetry["balance"] is not None:
+        economics.append(f"{telemetry['currency']} {telemetry['balance']:.2f} balance")
+    econ = " · ".join(economics) or "cost/balance unavailable"
+    return f"""
+    <div class="context-card">
+      <div class="context-top">
+        <span>{_e(top)}</span>
+        <b>{_e(pct_label)}</b>
       </div>
+      <div class="context-bar"><i style="width:{_e(bar_width)}"></i></div>
+      <div class="context-foot"><span>{_e(context_detail)}</span><span>{_e(econ)}</span></div>
+    </div>
     """
 
 
@@ -167,7 +164,7 @@ def _ladder_html(project: Dict[str, Any]) -> str:
             continue
         status = str(item.get("status") or "provisional")
         marker = {"completed": "✓", "current": "●", "provisional": "○"}.get(status, "○")
-        current = '<span class="current-tag">CURRENT</span>' if status == "current" else ""
+        current = '<span class="current-tag">CURRENT MISSION</span>' if status == "current" else ""
         bits.append(
             f'<div class="ladder-row {status}"><div class="marker">{marker}</div>'
             f'<div><b>{_e(item.get("label") or "")}</b>{current}</div></div>'
@@ -244,17 +241,26 @@ def _mission_points(repo: Path) -> List[Dict[str, Any]]:
     return points[-24:]
 
 
+MIN_EFFICIENCY_POINTS = 3
+
+
 def _efficiency_chart(project: Dict[str, Any]) -> str:
+    """Render the Feedback-loop Efficiency scatter, or a compact one-line note.
+
+    A chart with fewer than MIN_EFFICIENCY_POINTS missions is not a diagnostic
+    shape yet — it is noise. Per the visualization policy, do not fill a
+    permanent panel with a placeholder; show one line instead of a chart-sized
+    empty block, and wait for a real diagnostic to exist."""
     repo = project.get("repo")
     if not isinstance(repo, Path):
-        return '<div class="chart-empty">No repository path available.</div>'
+        return '<div class="chart-note">No repository path available.</div>'
     points = _mission_points(repo)
-    if not points:
+    if len(points) < MIN_EFFICIENCY_POINTS:
         return (
-            '<div class="chart-empty"><b>No exact mission economics yet.</b><span>'
-            'The chart starts when work orders carry <code>created_at</code> and traces carry '
-            '<code>completed_at</code> + exact/recorded <code>cost_usd</code>. OODA does not infer these from file mtimes.'
-            '</span></div>'
+            '<div class="chart-note">Not enough recorded mission economics yet '
+            f'({len(points)}/{MIN_EFFICIENCY_POINTS}). Needs work orders with '
+            '<code>created_at</code> and traces with <code>completed_at</code> + '
+            'exact/recorded <code>cost_usd</code> — OODA does not infer these from file mtimes.</div>'
         )
 
     width, height = 560, 220
@@ -362,26 +368,58 @@ def _project_card(project: Dict[str, Any]) -> str:
     """
 
 
+_ATTENTION_RANK = {
+    "needs human gate": 0,
+    "blocked": 1,
+    "awaiting review": 2,
+    "active": 3,
+    "idle": 4,
+}
+
+
+def _attention_rank(project: Dict[str, Any]) -> int:
+    """Lower rank = needs the Integration Owner sooner. Derived only from
+    existing controller/stage state — no new durable field."""
+    controller = str(project.get("controller") or "").lower()
+    if controller in _ATTENTION_RANK:
+        return _ATTENTION_RANK[controller]
+    if str(project.get("stage") or "").lower() == "review":
+        return _ATTENTION_RANK["awaiting review"]
+    return 5
+
+
+def _attention_dot_class(rank: int) -> str:
+    if rank <= 1:
+        return "dot-needs"
+    if rank == 2:
+        return "dot-review"
+    return "dot-quiet"
+
+
 def render_html(projects: List[Dict[str, Any]], refresh_seconds: int, root: Path) -> str:
     active = sum(p.get("controller") == "active" for p in projects)
     review = sum(p.get("stage") == "review" for p in projects)
     blocked = sum(p.get("controller") == "blocked" for p in projects)
-    auto = f'<meta http-equiv="refresh" content="{refresh_seconds}">' if refresh_seconds > 0 else ""
+
+    ordered = sorted(range(len(projects)), key=lambda i: (_attention_rank(projects[i]), i))
 
     nav: List[str] = []
     panels: List[str] = []
-    for idx, project in enumerate(projects):
+    for slot, idx in enumerate(ordered):
+        project = projects[idx]
         name = str(project.get("project_id") or f"project-{idx + 1}")
-        active_cls = " active" if idx == 0 else ""
+        active_cls = " active" if slot == 0 else ""
+        rank = _attention_rank(project)
+        dot = f'<i class="attn-dot {_attention_dot_class(rank)}" title="needs-you priority"></i>'
         nav.append(
-            f'<button class="project-nav{active_cls}" data-project-tab="{idx}" '
-            f'data-project-name="{_e(name)}" role="tab" aria-selected="{"true" if idx == 0 else "false"}" '
-            f'onclick="showProject({idx}, this.dataset.projectName)">'
-            f'<span class="project-nav-top"><b>{_e(name)}</b><i>{_e(project.get("stage") or "orient")}</i></span>'
+            f'<button class="project-nav{active_cls}" data-project-tab="{slot}" '
+            f'data-project-name="{_e(name)}" role="tab" aria-selected="{"true" if slot == 0 else "false"}" '
+            f'onclick="showProject({slot}, this.dataset.projectName)">'
+            f'<span class="project-nav-top">{dot}<b>{_e(name)}</b><i>{_e(project.get("stage") or "orient")}</i></span>'
             f'<small>{_sidebar_meta(project)}</small></button>'
         )
         panels.append(
-            f'<div class="project-panel{active_cls}" data-project-panel="{idx}" role="tabpanel">'
+            f'<div class="project-panel{active_cls}" data-project-panel="{slot}" role="tabpanel">'
             f'{_project_card(project)}</div>'
         )
 
@@ -402,31 +440,31 @@ def render_html(projects: List[Dict[str, Any]], refresh_seconds: int, root: Path
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{auto}
 <title>OODA Control Room</title>
 <style>
-:root{{--bg:#f4eedc;--paper:#fffdf7;--paper2:#f8f3e8;--ink:#24211d;--muted:#756d62;--rule:#d7ccb7;--accent:#4c78a8;--accent-soft:#e9f0f7;--gate:#f4ebd6;--danger:#f5e5e0;--shadow:0 8px 24px rgba(64,49,28,.08)}}
+:root{{--bg:#f4eedc;--paper:#fffdf7;--paper2:#f8f3e8;--ink:#24211d;--muted:#5b5346;--rule:#d7ccb7;--accent:#4c78a8;--accent-soft:#e9f0f7;--gate:#f4ebd6;--gate-strong:#b7904b;--danger:#f5e5e0;--shadow:0 8px 24px rgba(64,49,28,.08)}}
 *{{box-sizing:border-box}}
 body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}}
 main{{max-width:1580px;margin:auto;padding:24px 26px 40px}}
 h1,h2,p{{margin:0}}h1,h2{{font-family:Georgia,"Times New Roman",serif;font-weight:700}}h1{{font-size:34px;letter-spacing:-.02em}}h2{{font-size:27px}}
 small{{color:var(--muted);font-size:11px}}code{{background:#eee6d7;border:1px solid var(--rule);padding:1px 5px;border-radius:4px}}
-.hero{{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:12px}}.hero p{{color:var(--muted);margin-top:5px}}.eyebrow{{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--muted)}}
+.hero{{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:12px}}.hero p{{color:var(--muted);margin-top:5px}}.eyebrow{{font-size:11px;font-weight:800;letter-spacing:.13em;color:var(--muted)}}
 button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:8px 11px;font-weight:700;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.03)}}.hero>div:last-child{{display:grid;justify-items:end;gap:3px}}
 .kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}}.kpi{{background:var(--paper);border:1px solid var(--rule);border-radius:7px;padding:8px 11px}}.kpi b{{display:block;font:700 19px/1.1 Georgia,"Times New Roman",serif;margin-top:1px}}
-.control-layout{{display:grid;grid-template-columns:245px minmax(0,1fr);gap:12px;align-items:start}}.project-sidebar{{background:var(--paper);border:1px solid var(--rule);border-radius:9px;overflow:hidden;position:sticky;top:12px;box-shadow:0 3px 12px rgba(64,49,28,.05)}}.sidebar-head{{padding:10px 12px;background:var(--paper2);border-bottom:1px solid var(--rule)}}.sidebar-head span,.sidebar-head small{{display:block}}.sidebar-head span{{font-size:10px;font-weight:900;letter-spacing:.14em}}.project-nav{{width:100%;appearance:none;background:transparent;color:var(--ink);border:0;border-bottom:1px solid #ebe2d2;padding:10px 12px;text-align:left;cursor:pointer}}.project-nav:last-child{{border-bottom:0}}.project-nav:hover{{background:#fbf7ed}}.project-nav.active{{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}}.project-nav-top{{display:flex;align-items:center;justify-content:space-between;gap:8px}}.project-nav-top b{{font-size:13px}}.project-nav-top i{{font-size:9px;font-style:normal;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}}.project-nav small{{display:block;margin-top:3px;line-height:1.35}}
+.control-layout{{display:grid;grid-template-columns:245px minmax(0,1fr);gap:12px;align-items:start}}.project-sidebar{{background:var(--paper);border:1px solid var(--rule);border-radius:9px;overflow:hidden;position:sticky;top:12px;box-shadow:0 3px 12px rgba(64,49,28,.05)}}.sidebar-head{{padding:10px 12px;background:var(--paper2);border-bottom:1px solid var(--rule)}}.sidebar-head span,.sidebar-head small{{display:block}}.sidebar-head span{{font-size:11px;font-weight:900;letter-spacing:.14em}}.project-nav{{width:100%;appearance:none;background:transparent;color:var(--ink);border:0;border-bottom:1px solid #ebe2d2;padding:10px 12px;text-align:left;cursor:pointer}}.project-nav:last-child{{border-bottom:0}}.project-nav:hover{{background:#fbf7ed}}.project-nav.active{{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}}.project-nav-top{{display:flex;align-items:center;justify-content:space-between;gap:8px}}.project-nav-top b{{font-size:13px}}.project-nav-top i{{font-size:10px;font-style:normal;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}}.project-nav small{{display:block;margin-top:3px;line-height:1.35}}
+.attn-dot{{width:8px;height:8px;border-radius:99px;flex:none;background:#c9beaa}}.attn-dot.dot-needs{{background:#a2452f}}.attn-dot.dot-review{{background:var(--gate-strong)}}
 .project-panel{{display:none}}.project-panel.active{{display:block}}.project-card{{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:17px;box-shadow:var(--shadow)}}.project-title{{display:flex;justify-content:space-between;gap:20px}}.project-title p{{color:var(--muted);margin-top:4px;max-width:1000px}}
-.state-badges{{white-space:nowrap}}.badge{{display:inline-block;border:1px solid var(--rule);background:var(--paper2);border-radius:999px;padding:3px 8px;margin-left:5px;text-transform:uppercase;font-size:9px;font-weight:800;letter-spacing:.04em}}
+.state-badges{{white-space:nowrap}}.badge{{display:inline-block;border:1px solid var(--rule);background:var(--paper2);border-radius:999px;padding:3px 8px;margin-left:5px;text-transform:uppercase;font-size:10px;font-weight:800;letter-spacing:.04em}}
 .gate-band{{margin-top:12px;border-left:4px solid #b7904b;background:var(--gate);padding:9px 11px}}.gate-band small,.gate-band b{{display:block}}.gate-band b{{margin-top:2px;font-size:14px}}
 .summary-context{{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);gap:9px;margin:9px 0 10px}}.stakeholder,.context-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:10px 11px}}.stakeholder small,.stakeholder b{{display:block}}.stakeholder b{{margin-top:3px}}
-.context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.04em}}.context-foot{{font-size:10px;color:var(--muted);margin-top:5px}}.context-bar{{height:6px;background:#e7decd;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:7px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}.context-unavailable .context-bar i{{background:#c9beaa}}
+.context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.04em}}.context-foot{{font-size:10px;color:var(--muted);margin-top:5px}}.context-bar{{height:6px;background:#e7decd;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:7px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}
 .ooda-rail{{display:flex;align-items:center;gap:8px;padding:6px 2px;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.08em}}.rail-step{{padding:2px 5px;border-radius:99px}}.rail-step.current{{background:var(--accent);color:white}}.rail-arrow{{color:#aa9e89}}
 .attention-strip{{display:grid;grid-template-columns:1fr 1.15fr 1fr;border:1px solid var(--rule);border-radius:7px;overflow:hidden;margin:2px 0 12px}}.attention-strip>div{{padding:8px 10px;background:var(--paper2);border-right:1px solid var(--rule)}}.attention-strip>div:last-child{{border-right:0}}.attention-strip small,.attention-strip b{{display:block}}.attention-strip b{{font-size:12px;margin-top:2px}}
-.cockpit-grid{{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.75fr);gap:11px}}.left-stack{{display:grid;gap:11px;align-content:start}}.pane{{border:1px solid var(--rule);background:var(--paper);border-radius:8px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--paper2)}}.pane-head span{{font-size:10px;color:var(--muted)}}
-.ladder{{padding:7px 11px}}.ladder-row{{display:grid;grid-template-columns:24px 1fr;gap:7px;padding:5px 0;border-bottom:1px solid #ebe2d2}}.ladder-row:last-child{{border-bottom:0}}.ladder-row.provisional{{color:var(--muted)}}.ladder-row.current{{color:#2f5f8f;background:linear-gradient(90deg,var(--accent-soft),transparent);margin:0 -11px;padding:6px 11px}}.marker{{font-weight:900}}.current-tag{{display:inline-block;margin-left:7px;font-size:9px;border:1px solid var(--accent);color:#2f5f8f;background:#f4f8fc;padding:1px 5px;border-radius:99px;vertical-align:2px}}
-.timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:88px minmax(170px,.9fr) minmax(210px,1.15fr) minmax(210px,1.15fr);gap:9px;padding:7px 9px;border-bottom:1px solid #ebe2d2;min-width:790px}}.timeline-head{{font-size:9px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
-.efficiency-pane{{min-height:170px}}.efficiency-chart{{display:block;width:100%;height:auto;padding:8px 8px 0}}.axis{{stroke:#b9ad98;stroke-width:1}}.axis-label{{font-size:9px;fill:#756d62}}.dot{{fill:var(--accent);stroke:#fffdf7;stroke-width:2}}.dot-blocked,.dot-budget-exhausted{{fill:#9f5d4d}}.dot-negative-finding{{fill:#7b7b69}}.dot-needs-human-gate{{fill:#b7904b}}.chart-caption{{font-size:10px;color:var(--muted);padding:0 10px 9px}}.chart-empty{{padding:14px 12px;color:var(--muted)}}.chart-empty b,.chart-empty span{{display:block}}.chart-empty span{{margin-top:4px;font-size:11px}}
-.empty-state,.empty-room{{padding:16px;color:var(--muted);background:var(--paper);border:1px solid var(--rule)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:15px;border-top:1px solid var(--rule);padding-top:9px;margin-top:11px;color:var(--muted);font-size:10px}}.meta-strip b{{color:var(--ink)}}
+.cockpit-grid{{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.75fr);gap:11px;align-items:start}}.left-stack{{display:grid;gap:11px;align-content:start}}.pane{{border:1px solid var(--rule);background:var(--paper);border-radius:8px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--paper2)}}.pane-head span{{font-size:11px;color:var(--muted)}}
+.ladder{{padding:7px 11px}}.ladder-row{{display:grid;grid-template-columns:24px 1fr;gap:7px;padding:5px 0;border-bottom:1px solid #ebe2d2}}.ladder-row:last-child{{border-bottom:0}}.ladder-row.provisional{{color:var(--muted)}}.ladder-row.current{{color:#2f5f8f;background:linear-gradient(90deg,var(--accent-soft),transparent);margin:0 -11px;padding:6px 11px}}.marker{{font-weight:900}}.current-tag{{display:inline-block;margin-left:7px;font-size:10px;border:1px solid var(--accent);color:#2f5f8f;background:#f4f8fc;padding:1px 5px;border-radius:99px;vertical-align:2px}}
+.timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:88px minmax(170px,.9fr) minmax(210px,1.15fr) minmax(210px,1.15fr);gap:9px;padding:7px 9px;border-bottom:1px solid #ebe2d2;min-width:790px}}.timeline-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
+.efficiency-pane{{min-height:0}}.efficiency-chart{{display:block;width:100%;height:auto;padding:8px 8px 0}}.axis{{stroke:#b9ad98;stroke-width:1}}.axis-label{{font-size:9px;fill:#5b5346}}.dot{{fill:var(--accent);stroke:#fffdf7;stroke-width:2}}.dot-blocked,.dot-budget-exhausted{{fill:#9f5d4d}}.dot-negative-finding{{fill:#7b7b69}}.dot-needs-human-gate{{fill:#b7904b}}.chart-caption{{font-size:11px;color:var(--muted);padding:0 10px 9px}}.chart-note{{padding:11px 12px;color:var(--muted);font-size:11px;line-height:1.5}}
+.empty-state,.empty-room{{padding:16px;color:var(--muted);background:var(--paper);border:1px solid var(--rule)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:15px;border-top:1px solid var(--rule);padding-top:9px;margin-top:11px;color:var(--muted);font-size:11px}}.meta-strip b{{color:var(--ink)}}
 @media(max-width:1050px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.control-layout{{grid-template-columns:1fr}}.project-sidebar{{position:static;display:flex;overflow:auto}}.sidebar-head{{min-width:130px}}.project-nav{{min-width:190px;border-right:1px solid #ebe2d2;border-bottom:0}}.summary-context,.cockpit-grid,.attention-strip{{grid-template-columns:1fr}}.attention-strip>div{{border-right:0;border-bottom:1px solid var(--rule)}}.attention-strip>div:last-child{{border-bottom:0}}.hero,.project-title{{align-items:start;flex-direction:column}}}}
 </style>
 <script>
@@ -450,6 +488,26 @@ window.addEventListener('DOMContentLoaded', function() {{
   if (idx < 0) idx = 0;
   showProject(idx, tabs[idx].dataset.projectName);
 }});
+
+var REFRESH_SECONDS = {refresh_seconds};
+function refreshPaused() {{
+  try {{ return localStorage.getItem('ooda.refreshPaused') === '1'; }} catch (e) {{ return false; }}
+}}
+function setRefreshPaused(paused) {{
+  try {{ localStorage.setItem('ooda.refreshPaused', paused ? '1' : '0'); }} catch (e) {{}}
+  var btn = document.getElementById('refresh-toggle');
+  if (btn) btn.textContent = paused ? 'Resume auto refresh' : 'Pause auto refresh';
+}}
+function toggleAutoRefresh() {{
+  setRefreshPaused(!refreshPaused());
+}}
+if (REFRESH_SECONDS > 0) {{
+  setRefreshPaused(refreshPaused());
+  setTimeout(function tick() {{
+    if (!refreshPaused()) {{ location.reload(); return; }}
+    setTimeout(tick, 1000);
+  }}, REFRESH_SECONDS * 1000);
+}}
 </script>
 </head>
 <body>
@@ -462,6 +520,7 @@ window.addEventListener('DOMContentLoaded', function() {{
     </div>
     <div>
       <button onclick="location.reload()">Refresh now</button>
+      {f'<button id="refresh-toggle" onclick="toggleAutoRefresh()">Pause auto refresh</button>' if refresh_seconds > 0 else ""}
       <small>{"Auto refresh every " + str(refresh_seconds) + "s" if refresh_seconds > 0 else "Auto refresh off"}</small>
     </div>
   </div>

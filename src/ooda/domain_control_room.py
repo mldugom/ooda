@@ -45,8 +45,14 @@ def _current_ladder_item(project: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _plain(value: Any) -> str:
+    """Strip markdown decoration while preserving domain identifiers.
+
+    Underscores are part of real feature/field names (rel_trade_intensity,
+    date_x_series) and must not be stripped along with markdown emphasis
+    markers, or the rendered vocabulary becomes unreadable and untraceable
+    back to source."""
     text = str(value or "")
-    text = re.sub(r"[`*_#]+", "", text)
+    text = re.sub(r"[`*#]+", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -64,10 +70,19 @@ def _compact(value: Any, limit: int = 190) -> str:
     return cut.rstrip(" ,;.") + "…"
 
 
-def _orientation(project: Dict[str, Any]) -> Dict[str, str]:
+def _orientation(project: Dict[str, Any]) -> Dict[str, Any]:
+    """Domain/value orientation for the current project.
+
+    Each field carries a paired `<field>_set` flag so the template can render
+    an explicit "not yet recorded" state instead of fallback prose that reads
+    like a real (if vague) answer. A fresh Controller session or CI fixture
+    with no `.ooda/domain-decision-brief.md` and no populated
+    `project-view.json` orientation fields is a common, legitimate state —
+    it should look visibly unset, not like the project has been oriented and
+    found wanting."""
     repo = project.get("repo")
     if not isinstance(repo, Path):
-        return {}
+        repo = Path(".")
     brief = repo / ".ooda" / "domain-decision-brief.md"
     view = _view(repo)
     current = _current_ladder_item(project)
@@ -79,24 +94,63 @@ def _orientation(project: Dict[str, Any]) -> Dict[str, str]:
     why_now = str(view.get("why_now") or view.get("stakeholder_summary") or "").strip()
 
     return {
-        "goal": _compact(goal or "Goal not yet explicit — orient before consequential work.", 180),
-        "decision": _compact(decision or "Decision served not yet explicit.", 190),
-        "bottleneck": _compact(bottleneck or project.get("blockers") or "Current bottleneck not yet explicit.", 190),
-        "mission": _compact(mission or "No current mission recorded.", 180),
-        "why_now": _compact(why_now or "Resolve the current bottleneck before committing the next consequential mission.", 190),
+        "goal": _compact(goal, 180),
+        "goal_set": bool(goal),
+        "decision": _compact(decision, 190),
+        "decision_set": bool(decision),
+        "bottleneck": _compact(bottleneck or project.get("blockers") or "", 190),
+        "bottleneck_set": bool(bottleneck or project.get("blockers")),
+        "mission": _compact(mission, 180),
+        "mission_set": bool(mission),
+        "why_now": _compact(why_now, 190),
+        "why_now_set": bool(why_now),
     }
 
 
-def _domain_grid(project: Dict[str, Any]) -> str:
+def _field_or_unset(label: str, value: str, is_set: bool, extra_cls: str = "") -> str:
+    if is_set:
+        return f'<div class="domain-card {extra_cls}"><small>{legacy._e(label)}</small><b>{legacy._e(value)}</b></div>'
+    return (
+        f'<div class="domain-card domain-card-unset {extra_cls}"><small>{legacy._e(label)}</small>'
+        '<span class="unset-chip">Not yet recorded</span></div>'
+    )
+
+
+def _orientation_html(project: Dict[str, Any]) -> str:
+    """Meaning register: what the project is for, in as few words as
+    possible. Never repeats the human-gate/control text below."""
     o = _orientation(project)
+    why_now = (
+        f'<div class="why-now"><small>WHY NOW</small><b>{legacy._e(o["why_now"])}</b></div>'
+        if o["why_now_set"]
+        else ""
+    )
     return f"""
       <div class="domain-orientation-grid">
-        <div class="domain-card domain-goal"><small>GOAL</small><b>{legacy._e(o['goal'])}</b></div>
-        <div class="domain-card"><small>DECISION</small><b>{legacy._e(o['decision'])}</b></div>
-        <div class="domain-card bottleneck"><small>BOTTLENECK</small><b>{legacy._e(o['bottleneck'])}</b></div>
-        <div class="domain-card current-mission"><small>CURRENT MISSION</small><b>{legacy._e(o['mission'])}</b></div>
+        {_field_or_unset("GOAL", o['goal'], o['goal_set'], "domain-goal")}
+        {_field_or_unset("DECISION", o['decision'], o['decision_set'])}
       </div>
-      <div class="why-now"><small>WHY NOW</small><b>{legacy._e(o['why_now'])}</b></div>
+      {why_now}
+    """
+
+
+def _human_gate_html(project: Dict[str, Any], gate: str, next_if: str) -> str:
+    """Control register: the single strongest affordance on the page. States
+    the bottleneck, the exact ask of the human, and what happens if they say
+    yes — once each, not repeated across separate cards."""
+    o = _orientation(project)
+    bottleneck = (
+        f'<b>{legacy._e(o["bottleneck"])}</b>' if o["bottleneck_set"] else '<span class="unset-chip">Not yet recorded</span>'
+    )
+    return f"""
+    <div class="human-gate-band">
+      <div class="human-gate-head"><span class="human-gate-flag">HUMAN GATE — ACTION NEEDED</span></div>
+      <div class="human-gate-body">
+        <div><small>BOTTLENECK</small>{bottleneck}</div>
+        <div class="human-gate-ask"><small>DECIDE</small><b>{legacy._e(gate)}</b></div>
+        <div><small>IF THE GATE PASSES</small><b>{legacy._e(next_if)}</b></div>
+      </div>
+    </div>
     """
 
 
@@ -124,33 +178,48 @@ def _compact_timeline_html(project: Dict[str, Any]) -> str:
 
 
 def _project_card(project: Dict[str, Any]) -> str:
-    o = _orientation(project)
     _current, next_if = legacy._current_and_next(project)
     gate = _compact(project.get("next_gate") or "No human/next gate recorded", 190)
     next_if = _compact(next_if, 190)
     technical = _compact(project.get("objective") or "", 220)
+    telemetry = legacy._context_html(project)
+    telemetry_block = (
+        f'<div class="telemetry-register"><div class="pane-head"><b>SESSION TELEMETRY</b></div>{telemetry}</div>'
+        if telemetry
+        else ""
+    )
     return f"""
     <section class="project-card domain-first-control-room domain-compact-control-room">
       <style>
         .project-card.domain-compact-control-room{{max-width:1180px}}
-        .domain-orientation-grid{{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:11px 0 8px}}
-        .domain-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:8px;padding:11px 12px;min-width:0}}
+        .human-gate-band{{border:1px solid var(--gate-strong);border-left:5px solid var(--gate-strong);background:var(--gate);border-radius:9px;padding:12px 14px;margin:11px 0 10px;box-shadow:0 2px 10px rgba(183,144,75,.12)}}
+        .human-gate-head{{margin-bottom:8px}}
+        .human-gate-flag{{font-size:11px;font-weight:900;letter-spacing:.1em;color:#7a5a20}}
+        .human-gate-body{{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:12px;align-items:start}}
+        .human-gate-body small{{display:block;font-size:11px;color:#7a5a20;font-weight:800;letter-spacing:.04em}}
+        .human-gate-body b{{display:block;margin-top:4px;font-size:14px;line-height:1.4}}
+        .human-gate-ask{{border-left:1px solid rgba(122,90,32,.3);border-right:1px solid rgba(122,90,32,.3);padding:0 12px}}
+        .human-gate-ask b{{font-size:16px}}
+        .domain-orientation-grid{{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 8px}}
+        .domain-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;min-width:0}}
         .domain-card small,.domain-card b{{display:block}}.domain-card b{{margin-top:4px;font-size:13px;line-height:1.35}}
+        .domain-card-unset{{background:transparent;border-style:dashed}}
+        .unset-chip{{display:inline-block;margin-top:5px;font-size:11px;color:var(--muted);font-style:italic;border:1px dashed var(--rule);border-radius:99px;padding:2px 8px}}
         .domain-goal{{border-top:3px solid var(--accent)}}
-        .bottleneck{{border-top:3px solid #b7904b}}.current-mission{{border-top:3px solid #4c78a8}}
-        .why-now{{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:start;background:#fbf8f0;border:1px solid var(--rule);border-radius:8px;padding:9px 11px;margin-bottom:9px}}
+        .why-now{{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:start;background:#fbf8f0;border:1px solid var(--rule);border-radius:8px;padding:9px 11px;margin-bottom:2px}}
         .why-now b{{font-size:12px;line-height:1.35}}
-        .domain-control-strip{{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 10px}}
-        .next-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:9px 11px}}
-        .next-card small,.next-card b{{display:block}}.next-card b{{margin-top:3px;font-size:12px;line-height:1.35}}
-        .tech-details{{margin-top:5px;color:var(--muted);font-size:10px}}.tech-details summary{{cursor:pointer}}
+        .tech-details{{margin-top:5px;color:var(--muted);font-size:11px}}.tech-details summary{{cursor:pointer}}
         .tech-details p{{margin-top:4px;max-width:900px}}
         .compact-timeline-row{{display:grid;grid-template-columns:84px minmax(190px,.95fr) minmax(250px,1.25fr);gap:10px;padding:8px 10px;border-bottom:1px solid #ebe2d2}}
-        .compact-timeline-head{{font-size:9px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}
+        .compact-timeline-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}
         .compact-timeline-row span{{min-width:0;line-height:1.4}}
         .cockpit-grid{{grid-template-columns:minmax(320px,.9fr) minmax(0,1.4fr)}}
-        .ooda-rail{{margin-top:2px}}
-        @media(max-width:1050px){{.domain-orientation-grid,.domain-control-strip,.cockpit-grid{{grid-template-columns:1fr}}.compact-timeline-row{{grid-template-columns:76px 1fr}}.compact-timeline-row span:last-child{{grid-column:2}}}}
+        .ooda-rail{{margin-top:10px}}
+        .telemetry-register{{margin-top:10px;max-width:360px}}
+        .telemetry-register .pane-head{{border:1px solid var(--rule);border-bottom:0;border-radius:7px 7px 0 0;padding:6px 11px;background:var(--paper2)}}
+        .telemetry-register .pane-head b{{font-size:11px}}
+        .telemetry-register .context-card{{border-radius:0 0 7px 7px;border-top:0}}
+        @media(max-width:1050px){{.domain-orientation-grid,.cockpit-grid,.human-gate-body{{grid-template-columns:1fr}}.human-gate-ask{{border-left:0;border-right:0;border-top:1px solid rgba(122,90,32,.3);border-bottom:1px solid rgba(122,90,32,.3);padding:8px 0}}.compact-timeline-row{{grid-template-columns:76px 1fr}}.compact-timeline-row span:last-child{{grid-column:2}}}}
       </style>
       <div class="project-title">
         <div>
@@ -164,26 +233,9 @@ def _project_card(project: Dict[str, Any]) -> str:
         </div>
       </div>
 
-      {_domain_grid(project)}
+      {_human_gate_html(project, gate, next_if)}
 
-      <div class="domain-control-strip">
-        <div class="gate-band" style="margin-top:0">
-          <small>CURRENT GATE</small>
-          <b>{legacy._e(gate)}</b>
-        </div>
-        <div class="next-card">
-          <small>NEXT IF GATE PASSES</small>
-          <b>{legacy._e(next_if)}</b>
-        </div>
-      </div>
-
-      <div class="summary-context">
-        <div class="stakeholder">
-          <small>SESSION</small>
-          <b>Project orientation above is the cockpit. Evidence/history stay below.</b>
-        </div>
-        {legacy._context_html(project)}
-      </div>
+      {_orientation_html(project)}
 
       {legacy._ooda_rail_html(project)}
 
@@ -203,6 +255,8 @@ def _project_card(project: Dict[str, Any]) -> str:
           <div class="timeline">{_compact_timeline_html(project)}</div>
         </div>
       </div>
+
+      {telemetry_block}
 
       <div class="meta-strip">
         <span><b>Git</b> {legacy._e(project.get('branch'))} @ {legacy._e(project.get('head'))} · dirty {legacy._e(project.get('dirty'))}</span>
