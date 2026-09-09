@@ -47,6 +47,66 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertEqual(data["session_cost_usd"], 0.37)
         self.assertEqual(data["session_cost_kind"], "provider-metered")
 
+    def test_grok_payload_never_persists_secrets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "api_key": "xai-should-never-be-here",
+                "cost": {"total_cost_usd": 0.1},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            raw = target.read_text(encoding="utf-8")
+
+        self.assertNotIn("xai-should-never-be-here", raw)
+
+    def test_grok_payload_with_exact_usage_populates_ledger_and_last_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "session_id": "sess-1",
+                "cost": {"total_cost_usd": 0.00083},
+                "usage": {
+                    "cost_in_usd_ticks": 8_300_000,
+                    "prompt_tokens": 1000,
+                    "prompt_tokens_details": {"cached_tokens": 400},
+                    "completion_tokens": 200,
+                },
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+            from ooda.telemetry_ledger import read_events
+
+            events = read_events(repo)
+
+        self.assertIn("last_request_usage", data)
+        self.assertAlmostEqual(data["last_request_usage"]["cost_usd"], 0.00083)
+        self.assertEqual(data["current_mission_id"], "M1")
+        self.assertAlmostEqual(data["current_mission_cost_usd"], 0.00083)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["attribution"], "mission")
+
+    def test_grok_payload_without_usage_leaves_last_request_and_mission_cost_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "cost": {"total_cost_usd": 0.1},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertNotIn("last_request_usage", data)
+        self.assertNotIn("current_mission_id", data)
+        self.assertNotIn("current_mission_cost_usd", data)
+
     def test_deepseek_turn_persists_context_estimate_and_balance(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = self._repo(Path(tmp), "crypto-innout")

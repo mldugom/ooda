@@ -110,6 +110,80 @@ class DomainControlRoomTests(unittest.TestCase):
         self.assertNotIn("Goal not yet explicit — orient before consequential work", page)
         self.assertNotIn("Decision served not yet explicit", page)
 
+    def test_grok_cost_telemetry_and_cost_guzzlers_render_when_present(self):
+        from ooda.telemetry_ledger import record_snapshot
+        from ooda.xai_usage import EXACT_API
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "tenniskal"
+            ooda = repo / ".ooda"
+            (ooda / "work-orders").mkdir(parents=True)
+            (ooda / "traces").mkdir(parents=True)
+            (ooda / "work-orders" / "tk-r7-compute.json").write_text(
+                json.dumps({"id": "tk-r7-compute"}), encoding="utf-8"
+            )
+            record_snapshot(
+                repo,
+                provider="grok",
+                model="Grok 4.6",
+                session_id="s1",
+                cumulative_session_cost_usd=0.83,
+                cumulative_session_cost_provenance=EXACT_API,
+                usage={
+                    "cost_in_usd_ticks": 8_300_000_000,
+                    "prompt_tokens": 1000,
+                    "prompt_tokens_details": {"cached_tokens": 760},
+                    "completion_tokens": 120,
+                },
+            )
+            (ooda / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "context_percent": 12.4,
+                        "session_cost_usd": 0.83,
+                        "current_mission_id": "tk-r7-compute",
+                        "current_mission_cost_usd": 0.83,
+                        "last_request_usage": {
+                            "cache_hit_pct": 76.0,
+                            "cache_hit_pct_provenance": "LOCAL_DERIVED",
+                            "reasoning_tokens": None,
+                            "reasoning_tokens_provenance": "UNAVAILABLE",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project = {
+                "repo": repo,
+                "project_id": "tenniskal",
+                "objective": "R7 compute",
+                "stage": "act",
+                "claim": "evidence",
+                "next_gate": "n/a",
+                "stakeholder_summary": "",
+                "blockers": "",
+                "controller": "active",
+                "branch": "main",
+                "head": "abc1234",
+                "dirty": "no",
+                "updated": "2026-09-09 00:00",
+                "work_order": "tk-r7-compute",
+                "objective_ladder": [],
+                "timeline": [],
+            }
+            page = render_html([project], 0, root)
+
+        self.assertIn("SESSION TELEMETRY", page)
+        self.assertIn("CURRENT MISSION COST", page)
+        self.assertIn("$0.830", page)
+        self.assertIn("76%", page)
+        self.assertIn("COST GUZZLERS", page)
+        self.assertIn("tk-r7-compute", page)
+
 
 if __name__ == "__main__":
     unittest.main()

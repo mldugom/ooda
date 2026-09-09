@@ -182,12 +182,13 @@ def _project_card(project: Dict[str, Any]) -> str:
     gate = _compact(project.get("next_gate") or "No human/next gate recorded", 190)
     next_if = _compact(next_if, 190)
     technical = _compact(project.get("objective") or "", 220)
-    telemetry = legacy._context_html(project)
+    telemetry = legacy._telemetry_summary_html(project)
     telemetry_block = (
         f'<div class="telemetry-register"><div class="pane-head"><b>SESSION TELEMETRY</b></div>{telemetry}</div>'
         if telemetry
         else ""
     )
+    guzzler_block = legacy._cost_guzzler_html(project)
     return f"""
     <section class="project-card domain-first-control-room domain-compact-control-room">
       <style>
@@ -249,6 +250,7 @@ def _project_card(project: Dict[str, Any]) -> str:
             <div class="pane-head"><b>FEEDBACK-LOOP EFFICIENCY</b><span>cost × time to verified feedback</span></div>
             {legacy._efficiency_chart(project)}
           </div>
+          {guzzler_block}
         </div>
         <div class="pane timeline-pane">
           <div class="pane-head"><b>RECENT DECISIONS</b><span>{len(project.get('timeline') or [])} total</span></div>

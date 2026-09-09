@@ -9,6 +9,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .telemetry_ledger import _current_open_work_order_id, cumulative_mission_cost, record_snapshot
+from .xai_usage import EXACT_API, UNAVAILABLE, is_present, parse_usage
+
 SCHEMA = "ooda/session-telemetry/v1"
 DEEPSEEK_CONTEXT_LIMIT = 1_000_000
 BALANCE_TTL_SECONDS = 600
@@ -101,6 +104,30 @@ def record_grok_payload(payload: Dict[str, Any]) -> Optional[Path]:
     if session_cost is not None:
         data["session_cost_usd"] = session_cost
         data["session_cost_kind"] = "provider-metered"
+
+    usage = payload.get("usage")
+    if is_present(usage):
+        data["last_request_usage"] = parse_usage(usage)
+
+    mission_cost = record_snapshot(
+        repo,
+        provider="grok",
+        model=data["model"],
+        session_id=data["session_id"],
+        cumulative_session_cost_usd=session_cost,
+        cumulative_session_cost_provenance=EXACT_API if session_cost is not None else UNAVAILABLE,
+        context_used=int(context_used) if context_used is not None else None,
+        session_input_tokens=int(session_input) if session_input is not None else None,
+        session_output_tokens=int(session_output) if session_output is not None else None,
+        usage=usage,
+    )
+    if mission_cost is not None:
+        current_mission = _current_open_work_order_id(repo)
+        if current_mission is not None:
+            costs = cumulative_mission_cost(repo)
+            if current_mission in costs:
+                data["current_mission_id"] = current_mission
+                data["current_mission_cost_usd"] = costs[current_mission]
 
     _write(repo, data)
     return repo / ".ooda" / "session-telemetry.json"

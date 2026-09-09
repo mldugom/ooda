@@ -4,13 +4,17 @@ Backlog items are explicitly **not current work**. They are preserved so a usefu
 
 ## Grok account usage / spend telemetry
 
-Status: **open telemetry gap; session telemetry already supported**.
+Status: **cost/context observability implemented (session + optional per-request); account-level balance still an open gap**.
 
-The current Grok status-line adapter already records provider-supplied context occupancy and, when Grok supplies it, provider-metered `cost.total_cost_usd` into `.ooda/session-telemetry.json`; the Control Room renders context percentage/tokens and session cost without inventing values.
+The Grok status-line adapter records provider-supplied context occupancy and, when Grok supplies it, provider-metered `cost.total_cost_usd` into `.ooda/session-telemetry.json`. It additionally accepts an optional xAI-shaped `usage` object (`src/ooda/xai_usage.py`) — `cost_in_usd_ticks` (exact, `USD = ticks / 1e10`), cached/uncached input split, reasoning tokens, server-side tool count, service tier — parsed only when actually present in the payload, never fabricated. Every derived field carries explicit provenance (`EXACT_API` / `LOCAL_DERIVED` / `ESTIMATED` / `UNAVAILABLE`).
 
-Desired follow-on:
+Each status-line snapshot is turned into a delta event in a small local append-only ledger (`.ooda/telemetry/events.jsonl`, `src/ooda/telemetry_ledger.py`) rather than recorded verbatim, since Grok's payload reports *cumulative* session totals, not one event per request; duplicate snapshots are a no-op. A delta is attributed to a work order only when exactly one work order in the repo has no trace yet (unambiguous open mission) — otherwise it is recorded `unattributed`. This is intentionally conservative: OODA does not invent mission economics.
 
-- make context usage and session spend visually explicit in the Control Room;
+The Control Room's telemetry register (built on Control Room V2) shows a compact MODEL / CONTEXT % / SESSION COST / CURRENT MISSION COST / CACHE HIT % summary with a progressive-disclosure drill-down for input/cached/output/reasoning/tool/service-tier detail, and a text-first COST GUZZLERS ranking of top missions by exact recorded cost. Both are absent (not empty panels) until real data exists.
+
+Still open:
+
+- as of this implementation, Grok Build's supported status-line hook does **not** appear to pass through a raw per-request `usage` object in practice — today's real telemetry is session-cumulative only (context %, `cost.total_cost_usd`), so the per-request fields above render `UNAVAILABLE` until/unless Grok's payload includes one. The parser is forward-compatible and fully tested against synthetic payloads shaped like xAI's raw API `usage` object;
 - if xAI exposes a **supported Grok/Build account-usage endpoint**, add weekly usage-pool percentage/reset and Extra Usage Credits balance with explicit provenance;
 - keep missing values unknown rather than estimating them;
 - do not scrape Grok web/app pages or private endpoints;

@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from .dashboard import discover_projects
+from .telemetry_ledger import cost_guzzlers
+from .xai_usage import UNAVAILABLE
 
 
 def _e(value: Any) -> str:
@@ -49,6 +51,11 @@ def _session_context(repo: Path) -> Optional[Dict[str, Any]]:
         "balance": float(data["account_balance"]) if isinstance(data.get("account_balance"), (int, float)) else None,
         "currency": str(data.get("account_currency") or "USD"),
         "updated_at": str(data.get("updated_at") or ""),
+        "current_mission_id": data.get("current_mission_id"),
+        "current_mission_cost": float(data["current_mission_cost_usd"])
+        if isinstance(data.get("current_mission_cost_usd"), (int, float))
+        else None,
+        "last_request_usage": data.get("last_request_usage") if isinstance(data.get("last_request_usage"), dict) else None,
     }
 
 
@@ -104,6 +111,99 @@ def _context_html(project: Dict[str, Any]) -> str:
       <div class="context-foot"><span>{_e(context_detail)}</span><span>{_e(econ)}</span></div>
     </div>
     """
+
+
+_DRILL_DOWN_FIELDS = [
+    ("input_tokens", "Input tokens"),
+    ("cached_input_tokens", "Cached input"),
+    ("uncached_input_tokens", "Uncached input"),
+    ("output_tokens", "Output tokens"),
+    ("reasoning_tokens", "Reasoning tokens"),
+    ("server_tool_count", "Server-side tools"),
+    ("service_tier", "Service tier"),
+]
+
+
+def _telemetry_summary_html(project: Dict[str, Any]) -> str:
+    """Compact MODEL / CONTEXT % / SESSION COST / CURRENT MISSION COST /
+    CACHE HIT % summary with progressive disclosure for per-request detail.
+    Returns "" when no telemetry exists — same absent-when-empty rule as
+    the rest of the telemetry register. This is one register, not another
+    same-weight hero card: no chart here, text/numbers only."""
+    repo = project.get("repo")
+    telemetry = _session_context(repo) if isinstance(repo, Path) else None
+    if not telemetry:
+        return ""
+
+    model = telemetry["model"] or telemetry["provider"].upper()
+    pct = telemetry["pct"]
+    ctx_label = f"{pct:.0f}%" if isinstance(pct, float) else "n/a"
+    bar_width = f"{pct:.2f}%" if isinstance(pct, float) else "0%"
+    session_cost = (
+        f"{'~' if telemetry['session_cost_kind'] == 'tui-estimate' else ''}${telemetry['session_cost']:.3f}"
+        if telemetry["session_cost"] is not None
+        else "n/a"
+    )
+    mission_cost = f"${telemetry['current_mission_cost']:.3f}" if telemetry["current_mission_cost"] is not None else "n/a"
+    usage = telemetry["last_request_usage"] or {}
+    cache_pct = usage.get("cache_hit_pct")
+    cache_label = f"{cache_pct:.0f}%" if isinstance(cache_pct, (int, float)) else "n/a"
+
+    summary = f"""
+    <div class="telemetry-summary">
+      <div><small>MODEL</small><b>{_e(model)}</b></div>
+      <div><small>CONTEXT %</small><b>{_e(ctx_label)}</b></div>
+      <div><small>SESSION COST</small><b>{_e(session_cost)}</b></div>
+      <div><small>CURRENT MISSION COST</small><b>{_e(mission_cost)}</b></div>
+      <div><small>CACHE HIT %</small><b>{_e(cache_label)}</b></div>
+    </div>
+    <div class="context-bar"><i style="width:{_e(bar_width)}"></i></div>
+    """
+
+    drill_rows = []
+    for key, label in _DRILL_DOWN_FIELDS:
+        if key not in usage:
+            continue
+        value = usage.get(key)
+        provenance = usage.get(f"{key}_provenance", UNAVAILABLE)
+        display = value if value is not None else "unavailable"
+        drill_rows.append(
+            f'<div class="telemetry-drill-row"><span>{_e(label)}</span><b>{_e(display)}</b>'
+            f'<i>{_e(provenance)}</i></div>'
+        )
+    drill = (
+        '<details class="telemetry-drill"><summary>Per-request detail</summary>' + "".join(drill_rows) + "</details>"
+        if drill_rows
+        else ""
+    )
+    return summary + drill
+
+
+def _cost_guzzler_html(project: Dict[str, Any]) -> str:
+    """Top recent missions/requests by exact cost. Text/table first, no
+    chart — a decorative chart is not warranted until this shape is
+    repeatedly revisited (see RESEARCH_VISUALIZATION.md). Absent (not an
+    empty pane) until the ledger has at least one attributable row."""
+    repo = project.get("repo")
+    if not isinstance(repo, Path):
+        return ""
+    rows = cost_guzzlers(repo, limit=5)
+    if not rows:
+        return ""
+    body = ['<div class="guzzler-row guzzler-head"><b>MISSION</b><b>COST</b><b>CACHE</b></div>']
+    for row in rows:
+        cache_hit = row.get("cache_hit_pct")
+        cache_label = f"{cache_hit:.0f}%" if isinstance(cache_hit, (int, float)) else "n/a"
+        body.append(
+            '<div class="guzzler-row">'
+            f'<span>{_e(row["label"])}</span><span>${row["cost_usd"]:.3f}</span><span>{_e(cache_label)}</span>'
+            "</div>"
+        )
+    return (
+        '<div class="pane guzzler-pane"><div class="pane-head"><b>COST GUZZLERS</b>'
+        '<span>top exact-cost missions</span></div>'
+        f'<div class="guzzler-table">{"".join(body)}</div></div>'
+    )
 
 
 def _ooda_rail_html(project: Dict[str, Any]) -> str:
@@ -458,6 +558,9 @@ button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);bor
 .gate-band{{margin-top:12px;border-left:4px solid #b7904b;background:var(--gate);padding:9px 11px}}.gate-band small,.gate-band b{{display:block}}.gate-band b{{margin-top:2px;font-size:14px}}
 .summary-context{{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);gap:9px;margin:9px 0 10px}}.stakeholder,.context-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:10px 11px}}.stakeholder small,.stakeholder b{{display:block}}.stakeholder b{{margin-top:3px}}
 .context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.04em}}.context-foot{{font-size:10px;color:var(--muted);margin-top:5px}}.context-bar{{height:6px;background:#e7decd;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:7px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}
+.telemetry-summary{{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}}.telemetry-summary>div{{min-width:0}}.telemetry-summary small{{font-size:10px;display:block}}.telemetry-summary b{{display:block;margin-top:2px;font-size:13px;font-family:Georgia,"Times New Roman",serif}}
+.telemetry-drill{{margin-top:8px;font-size:11px;color:var(--muted)}}.telemetry-drill summary{{cursor:pointer;font-weight:700}}.telemetry-drill-row{{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #ebe2d2}}.telemetry-drill-row b{{color:var(--ink)}}.telemetry-drill-row i{{font-style:normal;font-size:9px;color:#a99b7f;text-transform:uppercase}}
+.guzzler-pane{{margin-top:10px}}.guzzler-table{{padding:0}}.guzzler-row{{display:grid;grid-template-columns:1fr 80px 70px;gap:8px;padding:7px 11px;border-bottom:1px solid #ebe2d2;font-size:12px}}.guzzler-row:last-child{{border-bottom:0}}.guzzler-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.guzzler-row span:nth-child(2),.guzzler-row span:nth-child(3){{text-align:right}}
 .ooda-rail{{display:flex;align-items:center;gap:8px;padding:6px 2px;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.08em}}.rail-step{{padding:2px 5px;border-radius:99px}}.rail-step.current{{background:var(--accent);color:white}}.rail-arrow{{color:#aa9e89}}
 .attention-strip{{display:grid;grid-template-columns:1fr 1.15fr 1fr;border:1px solid var(--rule);border-radius:7px;overflow:hidden;margin:2px 0 12px}}.attention-strip>div{{padding:8px 10px;background:var(--paper2);border-right:1px solid var(--rule)}}.attention-strip>div:last-child{{border-right:0}}.attention-strip small,.attention-strip b{{display:block}}.attention-strip b{{font-size:12px;margin-top:2px}}
 .cockpit-grid{{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.75fr);gap:11px;align-items:start}}.left-stack{{display:grid;gap:11px;align-content:start}}.pane{{border:1px solid var(--rule);background:var(--paper);border-radius:8px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--paper2)}}.pane-head span{{font-size:11px;color:var(--muted)}}
@@ -465,7 +568,7 @@ button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);bor
 .timeline{{overflow:auto}}.timeline-row{{display:grid;grid-template-columns:88px minmax(170px,.9fr) minmax(210px,1.15fr) minmax(210px,1.15fr);gap:9px;padding:7px 9px;border-bottom:1px solid #ebe2d2;min-width:790px}}.timeline-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.timeline-row span{{min-width:0}}.timeline-more{{padding:8px 10px;color:var(--muted);font-size:11px}}
 .efficiency-pane{{min-height:0}}.efficiency-chart{{display:block;width:100%;height:auto;padding:8px 8px 0}}.axis{{stroke:#b9ad98;stroke-width:1}}.axis-label{{font-size:9px;fill:#5b5346}}.dot{{fill:var(--accent);stroke:#fffdf7;stroke-width:2}}.dot-blocked,.dot-budget-exhausted{{fill:#9f5d4d}}.dot-negative-finding{{fill:#7b7b69}}.dot-needs-human-gate{{fill:#b7904b}}.chart-caption{{font-size:11px;color:var(--muted);padding:0 10px 9px}}.chart-note{{padding:11px 12px;color:var(--muted);font-size:11px;line-height:1.5}}
 .empty-state,.empty-room{{padding:16px;color:var(--muted);background:var(--paper);border:1px solid var(--rule)}}.meta-strip{{display:flex;flex-wrap:wrap;gap:15px;border-top:1px solid var(--rule);padding-top:9px;margin-top:11px;color:var(--muted);font-size:11px}}.meta-strip b{{color:var(--ink)}}
-@media(max-width:1050px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.control-layout{{grid-template-columns:1fr}}.project-sidebar{{position:static;display:flex;overflow:auto}}.sidebar-head{{min-width:130px}}.project-nav{{min-width:190px;border-right:1px solid #ebe2d2;border-bottom:0}}.summary-context,.cockpit-grid,.attention-strip{{grid-template-columns:1fr}}.attention-strip>div{{border-right:0;border-bottom:1px solid var(--rule)}}.attention-strip>div:last-child{{border-bottom:0}}.hero,.project-title{{align-items:start;flex-direction:column}}}}
+@media(max-width:1050px){{main{{padding:14px}}.kpis{{grid-template-columns:repeat(2,1fr)}}.control-layout{{grid-template-columns:1fr}}.project-sidebar{{position:static;display:flex;overflow:auto}}.sidebar-head{{min-width:130px}}.project-nav{{min-width:190px;border-right:1px solid #ebe2d2;border-bottom:0}}.summary-context,.cockpit-grid,.attention-strip{{grid-template-columns:1fr}}.attention-strip>div{{border-right:0;border-bottom:1px solid var(--rule)}}.attention-strip>div:last-child{{border-bottom:0}}.hero,.project-title{{align-items:start;flex-direction:column}}.telemetry-summary{{grid-template-columns:repeat(2,1fr)}}}}
 </style>
 <script>
 function showProject(index, name) {{

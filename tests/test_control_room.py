@@ -5,7 +5,9 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.control_room import _session_context, render_html
+from ooda.control_room import _cost_guzzler_html, _session_context, _telemetry_summary_html, render_html
+from ooda.telemetry_ledger import record_snapshot
+from ooda.xai_usage import EXACT_API
 
 
 class ControlRoomTests(unittest.TestCase):
@@ -239,6 +241,92 @@ class ControlRoomTests(unittest.TestCase):
         self.assertNotIn("http-equiv=\"refresh\"", page)
         self.assertIn('id="refresh-toggle"', page)
         self.assertIn("toggleAutoRefresh", page)
+
+    def test_telemetry_summary_shows_five_target_fields_and_drilldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "context_percent": 12.4,
+                        "session_cost_usd": 0.42,
+                        "current_mission_id": "M1",
+                        "current_mission_cost_usd": 0.15,
+                        "last_request_usage": {
+                            "input_tokens": 1000,
+                            "input_tokens_provenance": EXACT_API,
+                            "cached_input_tokens": 400,
+                            "cached_input_tokens_provenance": EXACT_API,
+                            "uncached_input_tokens": 600,
+                            "uncached_input_tokens_provenance": "LOCAL_DERIVED",
+                            "output_tokens": 200,
+                            "output_tokens_provenance": EXACT_API,
+                            "reasoning_tokens": 50,
+                            "reasoning_tokens_provenance": EXACT_API,
+                            "server_tool_count": 1,
+                            "server_tool_count_provenance": EXACT_API,
+                            "service_tier": "default",
+                            "service_tier_provenance": EXACT_API,
+                            "cache_hit_pct": 40.0,
+                            "cache_hit_pct_provenance": "LOCAL_DERIVED",
+                        },
+                    }
+                )
+            )
+            project = self._project(repo)
+            html = _telemetry_summary_html(project)
+
+        self.assertIn(">MODEL<", html)
+        self.assertIn(">CONTEXT %<", html)
+        self.assertIn(">SESSION COST<", html)
+        self.assertIn(">CURRENT MISSION COST<", html)
+        self.assertIn(">CACHE HIT %<", html)
+        self.assertIn("$0.420", html)
+        self.assertIn("$0.150", html)
+        self.assertIn("40%", html)
+        self.assertIn("Per-request detail", html)
+        self.assertIn("Reasoning tokens", html)
+        self.assertIn(EXACT_API, html)
+
+    def test_telemetry_summary_absent_when_no_telemetry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            html = _telemetry_summary_html(self._project(repo))
+
+        self.assertEqual(html, "")
+
+    def test_cost_guzzler_table_ranks_missions_by_exact_cost(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "validator.json").write_text(json.dumps({"id": "validator"}))
+            record_snapshot(
+                repo, provider="grok", model="Grok 4.6", session_id="s1",
+                cumulative_session_cost_usd=0.83, cumulative_session_cost_provenance=EXACT_API,
+                usage={"cost_in_usd_ticks": 8_300_000_000, "prompt_tokens": 1000, "prompt_tokens_details": {"cached_tokens": 760}},
+            )
+            html = _cost_guzzler_html(self._project(repo))
+
+        self.assertIn("COST GUZZLERS", html)
+        self.assertIn("validator", html)
+        self.assertIn("$0.830", html)
+        self.assertIn("76%", html)
+
+    def test_cost_guzzler_table_absent_with_no_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            html = _cost_guzzler_html(self._project(repo))
+
+        self.assertEqual(html, "")
 
 
 if __name__ == "__main__":
