@@ -179,6 +179,22 @@ If yes, include the smallest foreseeable documentation target in allowed scope/v
 
 The executing worker still reassesses documentation impact before handoff. Use an `architect` for substantial structural documentation and a `validator` when independent truth-checking is warranted. Do not create a documentation-auditor role by default.
 
+### Research visualization routing
+
+For quantitative/data-science missions, do not assume that more charts or a larger dashboard are better outputs.
+
+Route to the smallest useful surface:
+
+- **text/table** for exact values, rankings, inventories, and pass/fail gates;
+- **diagnostic plot** when shape/path/tails/calibration/missingness/PIT/relationship structure is the uncertainty;
+- **durable panel** when the same stable view will be reused across missions or stages;
+- **research dashboard** only when several stable panels support one recurring operator workflow;
+- **live monitor** only when wall-clock freshness can change an action and decision-time availability is explicit.
+
+A research worker may create a bounded diagnostic inside its mission when it directly answers the mission question. Do not let a worker opportunistically turn an experiment into a dashboard build. When a durable dashboard is warranted, construct a separate bounded `architect`/`engineer` mission with explicit panel questions, authoritative sources, sample/timestamp semantics, freshness/failure states, and operator actions.
+
+For dashboard design, prefer organizing around current decisions (`Overview`, `Evidence`, `Data/PIT`, `Candidates/Model`, later `Live`, later `Drift`) rather than one tab per historical experiment. See `docs/RESEARCH_VISUALIZATION.md` in the OODA doctrine repo when available.
+
 ### 3. CONTROL
 
 Use for cross-project status and next-action questions.

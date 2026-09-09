@@ -114,6 +114,20 @@ verification:
 
 When impact is unknown until implementation, the worker assesses it before `/handoff`.
 
+## Research visualization stewardship
+
+Plots and dashboards are durable explanatory surfaces only when they help a recurring research/operator decision. Do not treat chart production as a default documentation requirement.
+
+For quantitative/data-science work, follow [`RESEARCH_VISUALIZATION.md`](RESEARCH_VISUALIZATION.md):
+
+- prefer text/table when exact values or pass/fail gates are sufficient;
+- use a bounded diagnostic plot when shape/path/relationship matters;
+- promote a view into a durable panel only when the same question will be revisited;
+- build a dashboard only from several stable panels serving one recurring workflow;
+- keep live panels separate from historical-only research evidence and expose freshness/PIT semantics.
+
+A dashboard is a derived observation surface, not a second source of research truth.
+
 ## Trace / handoff guidance
 
 A useful handoff or trace should record one of:
