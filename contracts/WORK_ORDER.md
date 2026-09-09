@@ -23,6 +23,7 @@ current truth / authority / constraints
     v
 ORIENT
 role + profile + lenses + uncertainty
++ real decision / value bottleneck when material
     |
     v
 DECIDE
@@ -50,6 +51,13 @@ Do not turn the contract into a transcript of orientation. Preserve only the dec
 - budget;
 - stop conditions;
 - authority.
+
+For consequential domain/data missions, also preserve these compact orientation fields when they are meaningful and known:
+
+- **decision served** — the real operator/user/business decision this work is intended to improve;
+- **value hypothesis** — why resolving this uncertainty is expected to create value, reduce loss/risk, or remove a critical-path blocker.
+
+Do not invent these fields to make a mission look complete. If the Controller cannot connect a proposed mission to the domain decision/value function, it should orient first rather than dispatching a larger worker task. See `docs/DOMAIN_DECISION_ORIENTATION.md`.
 
 ## Human-friendly construction
 
