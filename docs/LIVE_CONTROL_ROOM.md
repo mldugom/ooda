@@ -44,17 +44,92 @@ The durable JSON schema remains `at | decision | so_what | bigger_idea`. Human-f
 
 Timeline rows should read like a data scientist briefing a CTO: plain language, but specific. Name the dataset, model, experiment, gate, feature family, system, decisive number/constraint, and authorization boundary when they materially drove the decision. Do not simplify away a fact that changes what the project may do next.
 
+## Mission economics aggregation
+
+`ooda.mission_economics` is the one reusable rollup layer behind the cost
+surfaces below. It never infers economics from filesystem modification
+times, never manufactures a mission's cost when no telemetry covers it
+(reports `None`/`UNAVAILABLE`, not `$0`), and never backfills missions
+that predate the telemetry ledger.
+
+**Mission lifecycle.** A mission is a work order plus its trace: `created_at`
+(work order), `completed_at` (trace), `elapsed_minutes` (derived), result
+state, and a verified flag. An open mission (no trace yet) has no
+`completed_at`/`elapsed_minutes`.
+
+**Mission spend — attribution by delta INTERVAL, not by point timestamp.**
+Live attribution (`telemetry_ledger.record_snapshot`) can only attribute a
+delta to "the one work order with no trace yet" *at the moment the
+snapshot is appended*. Grok's status-line hook reports a *cumulative*
+session cost roughly every ~10 minutes (or on session change) rather than
+per request, so a mission that is created and traced-complete before the
+next refresh has its real spend appended *after* the trace already exists
+— at that instant zero work orders are "open", so the live rule alone
+puts the whole delta in `session/unattributed`.
+
+A first retroactive fix compared each ledger event's own `at` timestamp to
+a completed mission's window and still missed this case: a delta recorded
+at 10:10 can represent spend accrued since the *previous* snapshot at
+10:00, so a mission that ran and completed at 10:02–10:07 falls entirely
+inside that accrual period even though 10:10 itself is after the mission
+completed. `mission_economics.attribute_events` therefore reasons over
+each delta's real claim — an INTERVAL, not a point: `interval_start` is
+the previous recorded snapshot's `at` for the same `session_id`
+(`None` for a session's first recorded snapshot — that interval is
+genuinely unknown, not zero-length, so it is never attributed even if it
+lands inside a mission's window), `interval_end` is this event's own `at`.
+A delta is attributed to a mission only when the mission's
+`[created_at, completed_at]` window overlaps that interval and exactly
+one mission's window does — two sequential missions inside one coarse
+refresh interval, or two genuinely concurrent ones, both leave the delta
+unattributed, because OODA cannot tell which one it belongs to. This does
+not proportionally split a delta by wall-clock duration, and it cannot
+distinguish a mission's own spend from unrelated activity that happened
+in the same coarse interval — mission spend from this layer is useful for
+OODA's own feedback-efficiency measurement, but it is not request-level
+billing. The result is always `LOCAL_DERIVED` (never `EXACT_API`, even
+when every per-event delta that fed it was itself
+`EXACT_API`/`PROVIDER_REPORTED`): attribution to a named mission is
+always OODA's own inference, never a billed fact.
+
+**Rollups.** `mission_economics.session_spend`, `project_rollup` (today /
+7d / 30d / all recorded telemetry / top missions / by-provider), and
+`portfolio_rollup` (spend by discovered OODA project + portfolio total)
+all reuse the same ledger and lifecycle data, with the same honesty rules.
+
 ## Feedback-loop Efficiency
 
 The chart plots one bounded mission per point:
 
-- x-axis = recorded mission cost;
+- only completed, **verified** missions are eligible (an explicit
+  `created_at`, an explicit `completed_at`, and a result state other than
+  `blocked`/`budget_exhausted`/no-trace);
+- x-axis = mission spend — an explicit `trace.economics.cost_usd` when one
+  was manually recorded, otherwise the ledger's interval-based attribution
+  above (a manual figure is never required if the ledger can defensibly
+  provide the spend);
 - y-axis = minutes from explicit work-order `created_at` to trace `completed_at`;
-- point state = completed, negative finding, blocked, budget exhausted, or human gate.
+- point state = completed, negative finding, or needs human gate
+  (blocked/budget-exhausted missions are excluded as unverified, not
+  merely recolored);
+- hover/detail includes mission id, provider, spend, minutes, result/gate
+  state, and cost provenance.
 
-Lower-left is generally better: cheaper and faster verified feedback. The chart intentionally measures feedback efficiency rather than task volume.
+Lower-left is generally better: cheaper and faster verified feedback. The chart intentionally measures feedback efficiency rather than task volume. It only renders once at least 3 valid points exist; below that it shows a one-line note instead of an empty chart.
 
-OODA does **not** infer missing cost or timestamps from filesystem modification times. Old or incomplete missions remain absent from the chart until exact economics/timing are recorded.
+OODA does **not** infer missing cost or timestamps from filesystem modification times. Old or incomplete missions remain absent from the chart until real economics/timing are recorded.
+
+## Cost surfaces
+
+The project panel shows a compact **COST** register (Today / 7 days /
+Recorded, top mission, dominant provider) from `project_rollup`, and keeps
+**COST GUZZLERS** as a ranked table of missions by attributed spend (same
+windowed attribution as above, falling back to an in-flight mission's live
+attribution when no completed window exists yet). A **SPEND OVER TIME**
+chart appears only once there are at least 5 distinct dated telemetry
+observations for a meaningful trend — otherwise it is omitted entirely
+rather than shown empty. The hero KPI row adds a **Recorded spend** figure
+only once at least one project on the page has recorded telemetry.
 
 ## Provider telemetry
 
