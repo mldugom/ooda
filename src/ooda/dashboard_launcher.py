@@ -17,8 +17,7 @@ PORT_SEARCH_SPAN = 20
 CURRENT_UI_MARKERS = (
     "project-sidebar",
     "efficiency-chart",
-    "attention-strip",
-    "domain-orientation-grid",
+    "domain-compact-control-room",
 )
 
 
@@ -53,8 +52,8 @@ def _is_ooda_dashboard(port: int, root: Path) -> bool:
     A browser refresh cannot replace an already-running Python process after OODA is
     upgraded. Reusing any page with the right title/root therefore served stale UI
     indefinitely. The stable structural markers below let the launcher distinguish
-    the current domain-first Control Room from an older process without killing
-    arbitrary local processes.
+    the current compact domain-first Control Room from an older process without
+    killing arbitrary local processes.
     """
     body = _dashboard_body(port)
     if body is None:
