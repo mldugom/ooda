@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ooda.control_room import _cost_guzzler_html, _session_context, _telemetry_summary_html, render_html
 from ooda.telemetry_ledger import record_snapshot
-from ooda.xai_usage import EXACT_API
+from ooda.xai_usage import EXACT_API, PROVIDER_REPORTED
 
 
 class ControlRoomTests(unittest.TestCase):
@@ -257,7 +257,7 @@ class ControlRoomTests(unittest.TestCase):
                         "context_percent": 12.4,
                         "session_cost_usd": 0.42,
                         "effort": "medium",
-                        "effort_provenance": EXACT_API,
+                        "effort_provenance": PROVIDER_REPORTED,
                         "current_mission_id": "M1",
                         "current_mission_attributed_spend_usd": 0.15,
                         "current_mission_attributed_spend_provenance": "LOCAL_DERIVED",
@@ -302,6 +302,9 @@ class ControlRoomTests(unittest.TestCase):
         # be presented as if xAI billed "M1" directly
         self.assertIn("LOCAL_DERIVED", html)
         self.assertNotIn("CURRENT MISSION COST", html)
+        # effort came from Grok's own runtime report, not the raw xAI API —
+        # it must be tagged PROVIDER_REPORTED, never EXACT_API
+        self.assertIn(PROVIDER_REPORTED, html)
 
     def test_effort_renders_unavailable_when_grok_does_not_supply_it(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -333,7 +336,7 @@ class ControlRoomTests(unittest.TestCase):
                         "provider": "grok",
                         "model": "Grok 4.6",
                         "effort": "high",
-                        "effort_provenance": EXACT_API,
+                        "effort_provenance": PROVIDER_REPORTED,
                         "session_cost_usd": 0.1,
                     }
                 )
@@ -364,7 +367,7 @@ class ControlRoomTests(unittest.TestCase):
             (repo / ".ooda" / "work-orders" / "validator.json").write_text(json.dumps({"id": "validator"}))
             record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.83, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.83, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 usage={"cost_in_usd_ticks": 8_300_000_000, "prompt_tokens": 1000, "prompt_tokens_details": {"cached_tokens": 760}},
             )
             html = _cost_guzzler_html(self._project(repo))

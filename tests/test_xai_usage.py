@@ -3,7 +3,16 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ooda.xai_usage import EXACT_API, LOCAL_DERIVED, UNAVAILABLE, is_present, parse_usage, ticks_to_usd
+from ooda.xai_usage import (
+    ESTIMATED,
+    EXACT_API,
+    LOCAL_DERIVED,
+    PROVIDER_REPORTED,
+    UNAVAILABLE,
+    is_present,
+    parse_usage,
+    ticks_to_usd,
+)
 
 
 class XaiUsageTests(unittest.TestCase):
@@ -75,10 +84,24 @@ class XaiUsageTests(unittest.TestCase):
 
     def test_never_reports_estimated_provenance_from_this_parser(self):
         # This parser only ever produces EXACT_API, LOCAL_DERIVED, or
-        # UNAVAILABLE — it has no source of estimates to report.
+        # UNAVAILABLE — it has no source of estimates to report, and it
+        # never emits PROVIDER_REPORTED (that category is for a runtime's
+        # own self-report, e.g. Grok's effort/context/session-cost fields,
+        # not for raw xAI usage-object parsing).
         result = parse_usage({"cost_in_usd_ticks": 1})
         provenances = {v for k, v in result.items() if k.endswith("_provenance")}
         self.assertTrue(provenances.issubset({EXACT_API, LOCAL_DERIVED, UNAVAILABLE}))
+        self.assertNotIn(PROVIDER_REPORTED, provenances)
+        self.assertNotIn(ESTIMATED, provenances)
+
+    def test_provenance_taxonomy_has_five_distinct_categories(self):
+        categories = {EXACT_API, PROVIDER_REPORTED, LOCAL_DERIVED, ESTIMATED, UNAVAILABLE}
+        self.assertEqual(len(categories), 5)
+        self.assertEqual(EXACT_API, "EXACT_API")
+        self.assertEqual(PROVIDER_REPORTED, "PROVIDER_REPORTED")
+        self.assertEqual(LOCAL_DERIVED, "LOCAL_DERIVED")
+        self.assertEqual(ESTIMATED, "ESTIMATED")
+        self.assertEqual(UNAVAILABLE, "UNAVAILABLE")
 
 
 if __name__ == "__main__":

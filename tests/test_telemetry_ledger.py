@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ooda import telemetry_ledger as ledger
-from ooda.xai_usage import EXACT_API, LOCAL_DERIVED, UNAVAILABLE
+from ooda.xai_usage import EXACT_API, LOCAL_DERIVED, PROVIDER_REPORTED, UNAVAILABLE
 
 
 class TelemetryLedgerTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class TelemetryLedgerTests(unittest.TestCase):
                 model="Grok 4.6",
                 session_id="s1",
                 cumulative_session_cost_usd=0.10,
-                cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 context_used=1000,
                 session_input_tokens=800,
                 session_output_tokens=200,
@@ -46,11 +46,11 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.37, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.37, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             events = ledger.read_events(repo)
 
@@ -65,7 +65,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             for _ in range(3):
                 ledger.record_snapshot(
                     repo, provider="grok", model="Grok 4.6", session_id="s1",
-                    cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                    cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                     context_used=500, session_input_tokens=400, session_output_tokens=100,
                 )
             events = ledger.read_events(repo)
@@ -77,11 +77,11 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.50, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.50, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.02, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.02, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 context_used=10,
             )
             events = ledger.read_events(repo)
@@ -96,7 +96,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             (repo / ".ooda" / "work-orders").mkdir(parents=True)
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             events = ledger.read_events(repo)
 
@@ -109,7 +109,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             (repo / ".ooda" / "work-orders" / "M2.json").write_text(json.dumps({"id": "M2"}))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             events = ledger.read_events(repo)
 
@@ -121,7 +121,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             (repo / ".ooda" / "traces" / "M1.json").write_text(json.dumps({"work_order_id": "M1"}))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             events = ledger.read_events(repo)
 
@@ -132,7 +132,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=1.00, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=1.00, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 usage={"cost_in_usd_ticks": 8_300_000, "prompt_tokens": 100, "completion_tokens": 20},
             )
             events = ledger.read_events(repo)
@@ -158,11 +158,11 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp), "M1")
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.20, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.20, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.55, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.55, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             totals = ledger.cumulative_mission_cost(repo)
 
@@ -174,7 +174,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo_a = self._repo_with_open_mission(root, "cheap-mission")
             ledger.record_snapshot(
                 repo_a, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.05, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.05, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             repo_b = root / "other"
             (repo_b / ".ooda" / "work-orders").mkdir(parents=True)
@@ -183,7 +183,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             )
             ledger.record_snapshot(
                 repo_b, provider="grok", model="Grok 4.6", session_id="s2",
-                cumulative_session_cost_usd=0.90, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.90, cumulative_session_cost_provenance=PROVIDER_REPORTED,
             )
             rows_a = ledger.cost_guzzlers(repo_a)
             rows_b = ledger.cost_guzzlers(repo_b)
@@ -201,7 +201,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp), "M1")
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=1.00, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=1.00, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 usage={"cost_in_usd_ticks": 8_300_000, "prompt_tokens": 100, "completion_tokens": 20},
             )
             events = ledger.read_events(repo)
@@ -216,7 +216,7 @@ class TelemetryLedgerTests(unittest.TestCase):
             repo = self._repo_with_open_mission(Path(tmp))
             ledger.record_snapshot(
                 repo, provider="grok", model="Grok 4.6", session_id="s1",
-                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_usd=0.10, cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 usage={"cost_in_usd_ticks": 100},
             )
             raw_text = ledger.ledger_path(repo).read_text(encoding="utf-8")

@@ -112,7 +112,7 @@ class DomainControlRoomTests(unittest.TestCase):
 
     def test_grok_cost_telemetry_and_cost_guzzlers_render_when_present(self):
         from ooda.telemetry_ledger import record_snapshot
-        from ooda.xai_usage import EXACT_API
+        from ooda.xai_usage import PROVIDER_REPORTED
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -129,7 +129,7 @@ class DomainControlRoomTests(unittest.TestCase):
                 model="Grok 4.6",
                 session_id="s1",
                 cumulative_session_cost_usd=0.83,
-                cumulative_session_cost_provenance=EXACT_API,
+                cumulative_session_cost_provenance=PROVIDER_REPORTED,
                 usage={
                     "cost_in_usd_ticks": 8_300_000_000,
                     "prompt_tokens": 1000,
@@ -146,7 +146,7 @@ class DomainControlRoomTests(unittest.TestCase):
                         "context_percent": 12.4,
                         "session_cost_usd": 0.83,
                         "effort": "high",
-                        "effort_provenance": EXACT_API,
+                        "effort_provenance": PROVIDER_REPORTED,
                         "current_mission_id": "tk-r7-compute",
                         "current_mission_attributed_spend_usd": 0.83,
                         "current_mission_attributed_spend_provenance": "LOCAL_DERIVED",
@@ -189,6 +189,8 @@ class DomainControlRoomTests(unittest.TestCase):
         self.assertIn("tk-r7-compute", page)
         self.assertIn(">SOURCE<", page)
         self.assertIn("Worker/child effort", page)
+        self.assertIn("PROVIDER_REPORTED", page)
+        self.assertNotIn("EFFORT</small><b>high</b><i>EXACT_API</i>", page)
 
 
 if __name__ == "__main__":

@@ -51,6 +51,7 @@ def _session_context(repo: Path) -> Optional[Dict[str, Any]]:
         "worker_effort_provenance": str(data.get("worker_effort_provenance") or UNAVAILABLE),
         "session_cost": float(data["session_cost_usd"]) if isinstance(data.get("session_cost_usd"), (int, float)) else None,
         "session_cost_kind": str(data.get("session_cost_kind") or ""),
+        "session_cost_provenance": str(data.get("session_cost_provenance") or UNAVAILABLE),
         "balance": float(data["account_balance"]) if isinstance(data.get("account_balance"), (int, float)) else None,
         "currency": str(data.get("account_currency") or "USD"),
         "updated_at": str(data.get("updated_at") or ""),
@@ -149,6 +150,7 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
 
     model = telemetry["model"] or telemetry["provider"].upper()
     effort_label = telemetry["effort"] or UNAVAILABLE
+    effort_tag = f'<i>{_e(telemetry["effort_provenance"])}</i>' if telemetry["effort"] else ""
     pct = telemetry["pct"]
     ctx_label = f"{pct:.0f}%" if isinstance(pct, float) else "n/a"
     bar_width = f"{pct:.2f}%" if isinstance(pct, float) else "0%"
@@ -156,6 +158,9 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
         f"{'~' if telemetry['session_cost_kind'] == 'tui-estimate' else ''}${telemetry['session_cost']:.3f}"
         if telemetry["session_cost"] is not None
         else "n/a"
+    )
+    session_cost_tag = (
+        f'<i>{_e(telemetry["session_cost_provenance"])}</i>' if telemetry["session_cost"] is not None else ""
     )
     mission_spend = telemetry["current_mission_attributed_spend"]
     mission_spend_label = f"${mission_spend:.3f}" if mission_spend is not None else "n/a"
@@ -169,9 +174,9 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
     summary = f"""
     <div class="telemetry-summary">
       <div><small>MODEL</small><b>{_e(model)}</b></div>
-      <div><small>EFFORT</small><b>{_e(effort_label)}</b></div>
+      <div><small>EFFORT</small><b>{_e(effort_label)}</b>{effort_tag}</div>
       <div><small>CONTEXT %</small><b>{_e(ctx_label)}</b></div>
-      <div><small>SESSION COST</small><b>{_e(session_cost)}</b></div>
+      <div><small>SESSION COST</small><b>{_e(session_cost)}</b>{session_cost_tag}</div>
       <div><small>CURRENT MISSION ATTRIBUTED SPEND</small><b>{_e(mission_spend_label)}</b>{mission_spend_tag}</div>
       <div><small>CACHE HIT %</small><b>{_e(cache_label)}</b></div>
     </div>

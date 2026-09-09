@@ -1,29 +1,63 @@
 from __future__ import annotations
 
-"""Parsing/derivation for xAI-shaped inference `usage` objects.
+"""OODA telemetry provenance taxonomy, plus parsing/derivation for
+xAI-shaped inference `usage` objects.
 
-OODA does not proxy model traffic and does not scrape provider UIs. This
-module only interprets a `usage`-shaped mapping if one is actually present
-in a payload OODA is handed (today: Grok Build's supported status-line
-JSON hook; potentially a future payload). It never fabricates a value.
+OODA does not proxy model traffic and does not scrape provider UIs. The
+`usage`-object parsing in this module only interprets a `usage`-shaped
+mapping if one is actually present in a payload OODA is handed (today:
+Grok Build's supported status-line JSON hook; potentially a future
+payload, or a future provider). It never fabricates a value.
 
 Ground truth (xAI): `usage.cost_in_usd_ticks` is exact billed cost in
 hundred-billionths of a dollar -> USD = ticks / 1e10.
 
-Every derived field carries an explicit provenance so a caller can never
-present an estimate as exact:
+## Provenance taxonomy
 
-- EXACT_API      the provider's own billed-usage field, verbatim or a pure
-                  unit conversion of it (e.g. ticks -> USD).
-- LOCAL_DERIVED  computed locally from two or more EXACT_API readings
-                  (e.g. a delta between two cumulative session totals).
-- ESTIMATED      a non-authoritative guess (e.g. a runner's own estimate).
-- UNAVAILABLE    the source field was not present.
+Every telemetry field OODA surfaces — from any provider adapter, not only
+this xAI-specific parser — must carry one of these five provenance
+labels so a caller can never present a runtime's self-report, a local
+inference, or an estimate as if it were raw billed-API truth:
+
+- EXACT_API          a value read from an actual raw provider *inference
+                      API* usage field — e.g. xAI's `usage.cost_in_usd_ticks`
+                      and its sibling token-count fields, verbatim or a
+                      pure unit conversion of one (ticks -> USD). This is
+                      the strongest claim and must be reserved for values
+                      that actually came from that raw API surface.
+- PROVIDER_REPORTED  a value the provider's own *runtime/CLI* directly
+                      reports through its supported status/telemetry
+                      interface, but which did not come from the raw
+                      inference API itself — e.g. Grok Build's status-line
+                      payload reporting its own `effort.level`,
+                      `cost.total_cost_usd` session meter, or
+                      `context_window` occupancy. It may well be exact —
+                      Grok's own meter is authoritative for its own
+                      number — but the *source* is the runtime's report,
+                      not a raw API usage object, so it must not be
+                      labeled EXACT_API.
+- LOCAL_DERIVED      OODA computed or attributed this locally from one or
+                      more EXACT_API / PROVIDER_REPORTED observations
+                      (e.g. a delta between two cumulative session
+                      readings, or attributing spend to a named mission).
+                      This label is categorical: it describes the
+                      inference step, not how precise its inputs were —
+                      an attribution built from exact inputs is still
+                      LOCAL_DERIVED, never EXACT_API.
+- ESTIMATED          a genuine non-authoritative guess with no reported
+                      or derived backing (e.g. a runner's own heuristic
+                      session-cost estimate, such as DeepSeek's
+                      `tui-estimate` cost kind). Do not introduce an
+                      estimate where a real observation is unavailable —
+                      use UNAVAILABLE instead.
+- UNAVAILABLE        the source field was not present. Never rendered as
+                      zero or inferred from something else.
 """
 
 from typing import Any, Dict, Optional
 
 EXACT_API = "EXACT_API"
+PROVIDER_REPORTED = "PROVIDER_REPORTED"
 LOCAL_DERIVED = "LOCAL_DERIVED"
 ESTIMATED = "ESTIMATED"
 UNAVAILABLE = "UNAVAILABLE"

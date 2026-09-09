@@ -46,6 +46,11 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertEqual(data["context_limit"], 500000)
         self.assertEqual(data["session_cost_usd"], 0.37)
         self.assertEqual(data["session_cost_kind"], "provider-metered")
+        # Grok's own session-cost meter, reported through its runtime — not
+        # a raw xAI API usage field, so PROVIDER_REPORTED, never EXACT_API.
+        self.assertEqual(data["session_cost_provenance"], "PROVIDER_REPORTED")
+        self.assertEqual(data["effort"], "medium")
+        self.assertEqual(data["effort_provenance"], "PROVIDER_REPORTED")
 
     def test_grok_payload_never_persists_secrets(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,7 +147,11 @@ class ProviderTelemetryTests(unittest.TestCase):
             data = json.loads(target.read_text(encoding="utf-8"))
 
         self.assertEqual(data["effort"], "xhigh")
-        self.assertEqual(data["effort_provenance"], "EXACT_API")
+        # Grok's own status-line runtime reports this about itself — it is
+        # not a raw xAI inference-API usage field, so it must be
+        # PROVIDER_REPORTED, never EXACT_API.
+        self.assertEqual(data["effort_provenance"], "PROVIDER_REPORTED")
+        self.assertNotEqual(data["effort_provenance"], "EXACT_API")
 
     def test_effort_absent_is_unavailable_not_fabricated(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -213,6 +222,10 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertAlmostEqual(data["context_percent"], 8.4)
         self.assertEqual(data["session_cost_usd"], 0.07)
         self.assertEqual(data["session_cost_kind"], "tui-estimate")
+        # A genuine runner-side guess with no reported/derived backing —
+        # the taxonomy's canonical ESTIMATED case, never EXACT_API or
+        # PROVIDER_REPORTED.
+        self.assertEqual(data["session_cost_provenance"], "ESTIMATED")
         self.assertEqual(data["account_balance"], 9.62)
         self.assertEqual(data["account_currency"], "USD")
 
