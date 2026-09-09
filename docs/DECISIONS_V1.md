@@ -69,6 +69,20 @@ Default: one role + one profile + no more than three lenses for one bounded acti
 
 Rigor scales with claim, use, materiality, and downside.
 
+## Research visualization
+
+Visual output follows an escalation ladder rather than a “plot everything” default:
+
+1. text/table for exact values and gates;
+2. diagnostic plot when visual shape/path/relationship changes the decision;
+3. durable panel only for a stable view that will be revisited;
+4. research dashboard only when several stable panels support one recurring workflow;
+5. live monitor only when wall-clock freshness can change an action and decision-time availability is explicit.
+
+A dashboard is a curated derived observation surface, not a folder browser and not a second source of research truth. Historical experiment numbering should not become the permanent dashboard navigation model by default.
+
+See `docs/RESEARCH_VISUALIZATION.md`.
+
 ## Control Room
 
 Remain separate and read-only.
