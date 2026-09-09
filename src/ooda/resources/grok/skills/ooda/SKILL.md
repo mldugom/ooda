@@ -132,6 +132,44 @@ For substantial structural changes, an `architect` review may be warranted. For 
 
 See `docs/DOCUMENTATION_STEWARDSHIP.md` in the OODA doctrine repo when available.
 
+### Quantitative research feedback loop
+
+When the active profile is `quantitative-research`, `statistics`, `data-science`, `ml-research`, `quant-markets`, or an equivalent project-specific quantitative profile, do not return only terminal prose after a material empirical result.
+
+Run a compact research-feedback loop automatically:
+
+1. **OBSERVE THE DATA** — record authoritative dataset/snapshot, sample/support, PIT/as-of semantics, material missingness/coverage, and source SHA when relevant.
+2. **ORIENT THE QUESTION** — state the hypothesis/uncertainty, claim ceiling, primary metric/comparison, and the main leakage/alternative-explanation risk.
+3. **DECIDE THE EVIDENCE SURFACE** — choose the smallest useful summary/table/diagram/diagnostic/panel before generating artifacts.
+4. **ACT + REDUCE** — preserve the new evidence in the smallest durable artifact that makes the result easy to re-observe.
+5. **VERIFY THE INTERPRETATION** — report effect/metric, support, sensitivity/uncertainty, explicit non-claims, and the next highest-value unknown.
+
+For material quantitative evidence, the default handoff/research packet should contain or point to:
+
+```text
+QUESTION
+DATA
+ANALYSIS
+KEY EVIDENCE
+INTERPRETATION
+ARTIFACT DECISION
+ARTIFACTS
+DASHBOARD IMPACT
+NEXT UNKNOWN
+```
+
+`KEY EVIDENCE` should usually be a compact table with `n`, metric/effect, sensitivity/uncertainty when available, and verdict/status. A diagram is appropriate when the data flow, experiment design, feature/target boundary, model stack, or stage progression would otherwise be hard to remember.
+
+Do not create redundant files. Existing research markdown, CSV/JSON, HTML reports, TRACE, or project dashboard panels may satisfy the packet when they already carry the needed information.
+
+If a project has a stable research-dashboard contract, assess dashboard impact automatically. Refresh an existing durable panel when the result directly changes that panel and doing so is inside scope. If a new panel is warranted but dashboard work is outside scope, return a proposed panel contract instead of silently expanding the mission.
+
+For dashboard changes, visual verification should include desktop/narrow screenshots when the environment supports browser capture. If capture is unavailable, run structural/smoke checks and report visual inspection as pending rather than claiming the dashboard looks good.
+
+Skip new artifacts for purely administrative/design-only/no-new-evidence tasks when existing artifacts already make the state legible; record `ARTIFACT DECISION: none` with a short reason when the choice is material.
+
+See `docs/QUANTITATIVE_RESEARCH_LOOP.md` in the OODA doctrine repo when available.
+
 ### Research-visualization gate
 
 For quantitative/data-science/research work, visual output must earn its complexity.
@@ -167,6 +205,8 @@ At completion return a concise OODA TRACE summary:
 - DOCUMENTATION: none or durable docs updated/created;
 - COST: turns/tool calls/cost when available;
 - NEXT GATE: human/ChatGPT decision or next bounded loop.
+
+For material quantitative research, also make the research-feedback packet above easy to find in the TRACE or authoritative result artifact. The operator should not have to ask later what sample was used, what analysis ran, what the key numbers were, what artifacts exist, or what uncertainty comes next.
 
 `SO WHAT` and `BIGGER IDEA` are not marketing summaries. Name the concrete dataset, model, experiment, gate, feature family, system, or user decision whenever possible. Avoid vague relative pronouns such as “it”, “this”, or “the idea” when the actual noun is available.
 
