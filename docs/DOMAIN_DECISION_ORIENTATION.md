@@ -93,12 +93,39 @@ A model that predicts market movement magnitude may be scientifically useful whi
 
 ## Relationship to the objective ladder
 
-The objective ladder is the project's current theory of the critical path. Domain-first orientation strengthens it:
+The objective ladder is the project's current theory of the **value critical path**, not a commitment to research-stage chronology.
 
 - every current rung should connect to a real decision/value bottleneck;
+- completed rungs should represent material capabilities/evidence that cleared a bottleneck, not merely completed task numbers;
 - provisional downstream rungs are hypotheses, not commitments;
 - a material domain insight may reorder or replace downstream rungs;
 - completion of a technically successful rung does not force execution of the next historical stage.
+
+For example, after a successful R7 market-movement study, a tennis trading project may legitimately move the current rung to `Establish signed fair value versus executable price` rather than automatically making `R8` the next rung if signed fair value is the larger business bottleneck.
+
+## Project view and Control Room mapping
+
+Domain-first orientation should be visible without creating a second dashboard source of truth.
+
+Use the existing `.ooda/project-view.json` as the compact derived surface:
+
+- **`objective_ladder`** — write it as the value critical path whenever the domain/value structure materially affects priority;
+- **current rung** — name the current decision bottleneck, not merely the next stage identifier;
+- **`stakeholder_summary`** — for domain-driven projects prefer concise wording such as:
+
+```text
+Goal: <real value outcome>.
+Current bottleneck: <what blocks the important decision>.
+What we know: <durable evidence/capability>.
+Current mission: <bounded question/action>.
+Why now: <value-of-information / critical-path reason>.
+```
+
+- **timeline `bigger_idea`** — connect each material pivot to the real domain/value objective.
+
+The Control Room already renders the stakeholder summary and objective ladder. This makes the paradigm visible in the dashboard without adding redundant dashboard-only state. The dashboard remains derived; the domain brief, project state, evidence, work orders, traces, and Git remain authoritative.
+
+When a later UI revision adds dedicated `GOAL`, `BOTTLENECK`, or `CRITICAL PATH` labels, those should still derive from the same durable project orientation rather than becoming separate project-management truth.
 
 ## Work-order consequence
 
@@ -110,6 +137,30 @@ VALUE HYPOTHESIS: why resolving this uncertainty is expected to create value or 
 ```
 
 These are orientation outputs, not invitations to invent business facts. If they cannot be stated honestly, stop and orient before execution.
+
+## Agile / iterative implication
+
+Domain-first does not mean pretending the long-range path is knowable in advance. The critical path itself is a hypothesis that should change when evidence changes.
+
+That is why the loop is:
+
+```text
+domain decision + value
+        |
+        v
+current bottleneck
+        |
+        v
+highest-information bounded mission
+        |
+        v
+artifact / evidence / result
+        |
+        v
+re-evaluate the critical path
+```
+
+A project can therefore be uncertain about what comes three steps later while still being explicit about why the current step deserves resources.
 
 ## Design principle
 
