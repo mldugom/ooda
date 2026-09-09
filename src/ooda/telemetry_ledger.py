@@ -33,6 +33,15 @@ from typing import Any, Dict, List, Optional
 
 from .xai_usage import EXACT_API, LOCAL_DERIVED, UNAVAILABLE, is_present, parse_usage
 
+# Mission/work-order attribution is always OODA's own inference — the
+# "exactly one uncompleted work order" rule plus a subtraction between two
+# cumulative session readings. xAI never bills a named OODA mission, even
+# when the underlying per-request cost was itself EXACT_API. Any spend
+# number keyed by mission or by "unattributed" is therefore always
+# LOCAL_DERIVED — this is categorical, not a function of the per-request
+# usage precision that fed into it. Never render/label it EXACT_API.
+ATTRIBUTED_SPEND_PROVENANCE = LOCAL_DERIVED
+
 SCHEMA = "ooda/telemetry-event/v1"
 LEDGER_RELATIVE_PATH = Path(".ooda") / "telemetry" / "events.jsonl"
 
@@ -216,9 +225,9 @@ def read_events(repo: Path) -> List[Dict[str, Any]]:
 
 
 def cumulative_mission_cost(repo: Path) -> Dict[str, float]:
-    """Sum of attributed exact/derived deltas per work-order id. Never
-    includes unattributed spend — that would be inventing mission
-    economics."""
+    """Sum of attributed deltas per work-order id — always LOCAL_DERIVED
+    (see ATTRIBUTED_SPEND_PROVENANCE). Never includes unattributed spend —
+    that would be inventing mission economics."""
     totals: Dict[str, float] = {}
     for event in read_events(repo):
         work_order_id = event.get("work_order_id")
@@ -229,21 +238,25 @@ def cumulative_mission_cost(repo: Path) -> Dict[str, float]:
 
 
 def cost_guzzlers(repo: Path, limit: int = 5) -> List[Dict[str, Any]]:
-    """Top missions/requests by exact cost, most expensive first. Each row
-    aggregates by work_order_id (or 'unattributed session spend' when
-    none), carrying total cost, token totals, and cache-hit% when the
-    contributing events had exact per-request usage."""
+    """Top missions/requests by attributed spend, most expensive first.
+
+    Each row aggregates by work_order_id (or a session/unattributed bucket
+    when none), carrying total spend, token totals, and cache-hit% when the
+    contributing events had exact per-request usage. `provenance` is always
+    LOCAL_DERIVED (see ATTRIBUTED_SPEND_PROVENANCE) — a row's underlying
+    per-request costs may individually be EXACT_API, but the grouping by
+    mission is never itself a billed fact."""
     groups: Dict[str, Dict[str, Any]] = {}
     for event in read_events(repo):
         key = event.get("work_order_id") or f"unattributed:{event.get('session_id')}"
-        label = event.get("work_order_id") or "session (unattributed)"
+        label = event.get("work_order_id") or "session/unattributed"
         group = groups.setdefault(
             key,
-            {"label": label, "cost_usd": 0.0, "input_tokens": 0, "cached_input_tokens": 0, "has_exact_usage": False},
+            {"label": label, "spend_usd": 0.0, "input_tokens": 0, "cached_input_tokens": 0, "has_exact_usage": False},
         )
         delta = event.get("delta_cost_usd")
         if isinstance(delta, (int, float)):
-            group["cost_usd"] += delta
+            group["spend_usd"] += delta
         usage = event.get("request_usage") or {}
         if usage.get("input_tokens") is not None:
             group["input_tokens"] += usage["input_tokens"]
@@ -253,9 +266,10 @@ def cost_guzzlers(repo: Path, limit: int = 5) -> List[Dict[str, Any]]:
 
     rows = list(groups.values())
     for row in rows:
+        row["provenance"] = ATTRIBUTED_SPEND_PROVENANCE
         if row["has_exact_usage"] and row["input_tokens"]:
             row["cache_hit_pct"] = max(0.0, min(100.0, row["cached_input_tokens"] / row["input_tokens"] * 100.0))
         else:
             row["cache_hit_pct"] = None
-    rows.sort(key=lambda r: r["cost_usd"], reverse=True)
+    rows.sort(key=lambda r: r["spend_usd"], reverse=True)
     return rows[:limit]

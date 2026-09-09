@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .telemetry_ledger import _current_open_work_order_id, cumulative_mission_cost, record_snapshot
+from .telemetry_ledger import ATTRIBUTED_SPEND_PROVENANCE, _current_open_work_order_id, cumulative_mission_cost, record_snapshot
 from .xai_usage import EXACT_API, UNAVAILABLE, is_present, parse_usage
 
 SCHEMA = "ooda/session-telemetry/v1"
@@ -73,12 +73,23 @@ def record_grok_payload(payload: Dict[str, Any]) -> Optional[Path]:
     cost = payload.get("cost") if isinstance(payload.get("cost"), dict) else {}
     effort = payload.get("effort") if isinstance(payload.get("effort"), dict) else {}
 
+    parent_effort_level = str(effort.get("level") or "")
+
     data: Dict[str, Any] = {
         "schema": SCHEMA,
         "provider": "grok",
         "model": str(model.get("display_name") or model.get("id") or "Grok"),
         "model_id": str(model.get("id") or ""),
-        "effort": str(effort.get("level") or ""),
+        # "effort" is the parent/Controller session's effort level, read
+        # verbatim from Grok's own supported status-line payload
+        # (effort.level) — kept for backward compatibility.
+        "effort": parent_effort_level,
+        "effort_provenance": EXACT_API if parent_effort_level else UNAVAILABLE,
+        # Grok owns the Workflow/subagent panel; child/worker sessions have
+        # no supported hook of their own, so their effort is never
+        # observable here and must never be assumed to match the parent's.
+        "worker_effort": None,
+        "worker_effort_provenance": UNAVAILABLE,
         "session_id": str(payload.get("session_id") or ""),
         "updated_at": _now_iso(),
         "telemetry_source": "grok-status-line-json",
@@ -127,6 +138,13 @@ def record_grok_payload(payload: Dict[str, Any]) -> Optional[Path]:
             costs = cumulative_mission_cost(repo)
             if current_mission in costs:
                 data["current_mission_id"] = current_mission
+                # Always LOCAL_DERIVED: attribution to a mission is OODA's
+                # own inference (the "one open work order" rule applied to
+                # a subtraction between cumulative session readings), never
+                # a fact xAI billed. See telemetry_ledger.ATTRIBUTED_SPEND_PROVENANCE.
+                data["current_mission_attributed_spend_usd"] = costs[current_mission]
+                data["current_mission_attributed_spend_provenance"] = ATTRIBUTED_SPEND_PROVENANCE
+                # Deprecated alias, kept one release for compatibility.
                 data["current_mission_cost_usd"] = costs[current_mission]
 
     _write(repo, data)

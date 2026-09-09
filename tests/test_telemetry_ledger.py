@@ -190,7 +190,26 @@ class TelemetryLedgerTests(unittest.TestCase):
 
         self.assertEqual(rows_a[0]["label"], "cheap-mission")
         self.assertEqual(rows_b[0]["label"], "expensive-mission")
-        self.assertGreater(rows_b[0]["cost_usd"], rows_a[0]["cost_usd"])
+        self.assertGreater(rows_b[0]["spend_usd"], rows_a[0]["spend_usd"])
+        self.assertEqual(rows_a[0]["provenance"], ledger.ATTRIBUTED_SPEND_PROVENANCE)
+        self.assertEqual(rows_b[0]["provenance"], ledger.ATTRIBUTED_SPEND_PROVENANCE)
+
+    def test_mission_spend_never_labeled_exact_api_even_from_exact_deltas(self):
+        # The per-request delta can be EXACT_API (billed ticks), but the
+        # mission attribution wrapping it is always OODA's own inference.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo_with_open_mission(Path(tmp), "M1")
+            ledger.record_snapshot(
+                repo, provider="grok", model="Grok 4.6", session_id="s1",
+                cumulative_session_cost_usd=1.00, cumulative_session_cost_provenance=EXACT_API,
+                usage={"cost_in_usd_ticks": 8_300_000, "prompt_tokens": 100, "completion_tokens": 20},
+            )
+            events = ledger.read_events(repo)
+            rows = ledger.cost_guzzlers(repo)
+
+        self.assertEqual(events[0]["delta_cost_provenance"], "EXACT_API")
+        self.assertEqual(rows[0]["provenance"], "LOCAL_DERIVED")
+        self.assertNotEqual(rows[0]["provenance"], "EXACT_API")
 
     def test_no_secrets_or_prompts_ever_written_to_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:

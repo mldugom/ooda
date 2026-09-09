@@ -256,8 +256,11 @@ class ControlRoomTests(unittest.TestCase):
                         "model": "Grok 4.6",
                         "context_percent": 12.4,
                         "session_cost_usd": 0.42,
+                        "effort": "medium",
+                        "effort_provenance": EXACT_API,
                         "current_mission_id": "M1",
-                        "current_mission_cost_usd": 0.15,
+                        "current_mission_attributed_spend_usd": 0.15,
+                        "current_mission_attributed_spend_provenance": "LOCAL_DERIVED",
                         "last_request_usage": {
                             "input_tokens": 1000,
                             "input_tokens_provenance": EXACT_API,
@@ -283,16 +286,67 @@ class ControlRoomTests(unittest.TestCase):
             html = _telemetry_summary_html(project)
 
         self.assertIn(">MODEL<", html)
+        self.assertIn(">EFFORT<", html)
         self.assertIn(">CONTEXT %<", html)
         self.assertIn(">SESSION COST<", html)
-        self.assertIn(">CURRENT MISSION COST<", html)
+        self.assertIn(">CURRENT MISSION ATTRIBUTED SPEND<", html)
         self.assertIn(">CACHE HIT %<", html)
+        self.assertIn("medium", html)
         self.assertIn("$0.420", html)
         self.assertIn("$0.150", html)
         self.assertIn("40%", html)
         self.assertIn("Per-request detail", html)
         self.assertIn("Reasoning tokens", html)
         self.assertIn(EXACT_API, html)
+        # the mission-spend figure must carry a LOCAL_DERIVED tag, never
+        # be presented as if xAI billed "M1" directly
+        self.assertIn("LOCAL_DERIVED", html)
+        self.assertNotIn("CURRENT MISSION COST", html)
+
+    def test_effort_renders_unavailable_when_grok_does_not_supply_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "session_cost_usd": 0.1,
+                    }
+                )
+            )
+            html = _telemetry_summary_html(self._project(repo))
+
+        self.assertIn(">EFFORT<", html)
+        self.assertIn("UNAVAILABLE", html)
+
+    def test_worker_effort_never_inherits_parent_and_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "tenniskal"
+            (repo / ".ooda").mkdir(parents=True)
+            (repo / ".ooda" / "session-telemetry.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "ooda/session-telemetry/v1",
+                        "provider": "grok",
+                        "model": "Grok 4.6",
+                        "effort": "high",
+                        "effort_provenance": EXACT_API,
+                        "session_cost_usd": 0.1,
+                    }
+                )
+            )
+            html = _telemetry_summary_html(self._project(repo))
+
+        # Parent effort renders as "high", but nothing in the page may
+        # claim the worker/child shares it — that would be an unsupported
+        # inheritance assumption.
+        self.assertIn(">EFFORT<", html)
+        self.assertIn("high", html)
+        self.assertIn("Worker/child effort", html)
+        self.assertIn("<span>Worker/child effort</span><b>UNAVAILABLE</b>", html)
 
     def test_telemetry_summary_absent_when_no_telemetry(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -302,7 +356,7 @@ class ControlRoomTests(unittest.TestCase):
 
         self.assertEqual(html, "")
 
-    def test_cost_guzzler_table_ranks_missions_by_exact_cost(self):
+    def test_cost_guzzler_table_ranks_missions_by_attributed_spend_with_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "tenniskal"
             (repo / ".ooda" / "work-orders").mkdir(parents=True)
@@ -319,6 +373,11 @@ class ControlRoomTests(unittest.TestCase):
         self.assertIn("validator", html)
         self.assertIn("$0.830", html)
         self.assertIn("76%", html)
+        self.assertIn(">SOURCE<", html)
+        self.assertIn("LOCAL_DERIVED", html)
+        # never imply xAI billed a named mission directly
+        self.assertNotIn("exact-cost", html.lower())
+        self.assertNotIn(EXACT_API, html)
 
     def test_cost_guzzler_table_absent_with_no_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:

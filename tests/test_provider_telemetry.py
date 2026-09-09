@@ -88,9 +88,32 @@ class ProviderTelemetryTests(unittest.TestCase):
         self.assertIn("last_request_usage", data)
         self.assertAlmostEqual(data["last_request_usage"]["cost_usd"], 0.00083)
         self.assertEqual(data["current_mission_id"], "M1")
-        self.assertAlmostEqual(data["current_mission_cost_usd"], 0.00083)
+        self.assertAlmostEqual(data["current_mission_attributed_spend_usd"], 0.00083)
+        self.assertEqual(data["current_mission_attributed_spend_provenance"], "LOCAL_DERIVED")
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["attribution"], "mission")
+
+    def test_mission_attributed_spend_never_marked_exact_api(self):
+        # Even though the underlying per-request usage was itself exact
+        # (billed ticks), attribution to a named mission is always OODA's
+        # own inference — it must never be labeled EXACT_API.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            (repo / ".ooda" / "work-orders").mkdir(parents=True)
+            (repo / ".ooda" / "traces").mkdir(parents=True)
+            (repo / ".ooda" / "work-orders" / "M1.json").write_text(json.dumps({"id": "M1"}))
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "session_id": "sess-1",
+                "cost": {"total_cost_usd": 0.00083},
+                "usage": {"cost_in_usd_ticks": 8_300_000, "prompt_tokens": 100, "completion_tokens": 20},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["current_mission_attributed_spend_provenance"], "LOCAL_DERIVED")
+        self.assertNotEqual(data["current_mission_attributed_spend_provenance"], "EXACT_API")
 
     def test_grok_payload_without_usage_leaves_last_request_and_mission_cost_absent(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -105,7 +128,50 @@ class ProviderTelemetryTests(unittest.TestCase):
 
         self.assertNotIn("last_request_usage", data)
         self.assertNotIn("current_mission_id", data)
-        self.assertNotIn("current_mission_cost_usd", data)
+        self.assertNotIn("current_mission_attributed_spend_usd", data)
+
+    def test_effort_present_recorded_with_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "effort": {"level": "xhigh"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "xhigh")
+        self.assertEqual(data["effort_provenance"], "EXACT_API")
+
+    def test_effort_absent_is_unavailable_not_fabricated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "")
+        self.assertEqual(data["effort_provenance"], "UNAVAILABLE")
+
+    def test_worker_effort_always_unavailable_never_inherits_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp), "tenniskal")
+            payload = {
+                "workspace": {"current_dir": str(repo)},
+                "model": {"display_name": "Grok 4.6"},
+                "effort": {"level": "high"},
+            }
+            target = provider_telemetry.record_grok_payload(payload)
+            data = json.loads(target.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["effort"], "high")
+        self.assertIsNone(data["worker_effort"])
+        self.assertEqual(data["worker_effort_provenance"], "UNAVAILABLE")
+        self.assertNotEqual(data["worker_effort"], data["effort"])
 
     def test_deepseek_turn_persists_context_estimate_and_balance(self):
         with tempfile.TemporaryDirectory() as tmp:

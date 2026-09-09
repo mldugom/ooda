@@ -145,8 +145,11 @@ class DomainControlRoomTests(unittest.TestCase):
                         "model": "Grok 4.6",
                         "context_percent": 12.4,
                         "session_cost_usd": 0.83,
+                        "effort": "high",
+                        "effort_provenance": EXACT_API,
                         "current_mission_id": "tk-r7-compute",
-                        "current_mission_cost_usd": 0.83,
+                        "current_mission_attributed_spend_usd": 0.83,
+                        "current_mission_attributed_spend_provenance": "LOCAL_DERIVED",
                         "last_request_usage": {
                             "cache_hit_pct": 76.0,
                             "cache_hit_pct_provenance": "LOCAL_DERIVED",
@@ -178,11 +181,14 @@ class DomainControlRoomTests(unittest.TestCase):
             page = render_html([project], 0, root)
 
         self.assertIn("SESSION TELEMETRY", page)
-        self.assertIn("CURRENT MISSION COST", page)
+        self.assertIn("CURRENT MISSION ATTRIBUTED SPEND", page)
+        self.assertIn("high", page)
         self.assertIn("$0.830", page)
         self.assertIn("76%", page)
         self.assertIn("COST GUZZLERS", page)
         self.assertIn("tk-r7-compute", page)
+        self.assertIn(">SOURCE<", page)
+        self.assertIn("Worker/child effort", page)
 
 
 if __name__ == "__main__":

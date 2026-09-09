@@ -46,15 +46,21 @@ def _session_context(repo: Path) -> Optional[Dict[str, Any]]:
         "provider": str(data.get("provider") or "provider"),
         "model": str(data.get("model") or data.get("model_id") or ""),
         "effort": str(data.get("effort") or ""),
+        "effort_provenance": str(data.get("effort_provenance") or UNAVAILABLE),
+        "worker_effort": data.get("worker_effort"),
+        "worker_effort_provenance": str(data.get("worker_effort_provenance") or UNAVAILABLE),
         "session_cost": float(data["session_cost_usd"]) if isinstance(data.get("session_cost_usd"), (int, float)) else None,
         "session_cost_kind": str(data.get("session_cost_kind") or ""),
         "balance": float(data["account_balance"]) if isinstance(data.get("account_balance"), (int, float)) else None,
         "currency": str(data.get("account_currency") or "USD"),
         "updated_at": str(data.get("updated_at") or ""),
         "current_mission_id": data.get("current_mission_id"),
-        "current_mission_cost": float(data["current_mission_cost_usd"])
-        if isinstance(data.get("current_mission_cost_usd"), (int, float))
+        "current_mission_attributed_spend": float(data["current_mission_attributed_spend_usd"])
+        if isinstance(data.get("current_mission_attributed_spend_usd"), (int, float))
         else None,
+        "current_mission_attributed_spend_provenance": str(
+            data.get("current_mission_attributed_spend_provenance") or UNAVAILABLE
+        ),
         "last_request_usage": data.get("last_request_usage") if isinstance(data.get("last_request_usage"), dict) else None,
     }
 
@@ -125,17 +131,24 @@ _DRILL_DOWN_FIELDS = [
 
 
 def _telemetry_summary_html(project: Dict[str, Any]) -> str:
-    """Compact MODEL / CONTEXT % / SESSION COST / CURRENT MISSION COST /
-    CACHE HIT % summary with progressive disclosure for per-request detail.
-    Returns "" when no telemetry exists — same absent-when-empty rule as
-    the rest of the telemetry register. This is one register, not another
-    same-weight hero card: no chart here, text/numbers only."""
+    """Compact MODEL / EFFORT / CONTEXT % / SESSION COST / CURRENT MISSION
+    ATTRIBUTED SPEND / CACHE HIT % summary with progressive disclosure for
+    per-request detail. Returns "" when no telemetry exists — same
+    absent-when-empty rule as the rest of the telemetry register. This is
+    one register, not another same-weight hero card: no chart here, text/
+    numbers only.
+
+    "Attributed spend" (never "cost") is used deliberately for the mission
+    figure: it is always OODA's own LOCAL_DERIVED inference from cumulative
+    session readings plus the "one open work order" rule, never a fact xAI
+    billed against a named mission — see telemetry_ledger.py."""
     repo = project.get("repo")
     telemetry = _session_context(repo) if isinstance(repo, Path) else None
     if not telemetry:
         return ""
 
     model = telemetry["model"] or telemetry["provider"].upper()
+    effort_label = telemetry["effort"] or UNAVAILABLE
     pct = telemetry["pct"]
     ctx_label = f"{pct:.0f}%" if isinstance(pct, float) else "n/a"
     bar_width = f"{pct:.2f}%" if isinstance(pct, float) else "0%"
@@ -144,7 +157,11 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
         if telemetry["session_cost"] is not None
         else "n/a"
     )
-    mission_cost = f"${telemetry['current_mission_cost']:.3f}" if telemetry["current_mission_cost"] is not None else "n/a"
+    mission_spend = telemetry["current_mission_attributed_spend"]
+    mission_spend_label = f"${mission_spend:.3f}" if mission_spend is not None else "n/a"
+    mission_spend_tag = (
+        f'<i>{_e(telemetry["current_mission_attributed_spend_provenance"])}</i>' if mission_spend is not None else ""
+    )
     usage = telemetry["last_request_usage"] or {}
     cache_pct = usage.get("cache_hit_pct")
     cache_label = f"{cache_pct:.0f}%" if isinstance(cache_pct, (int, float)) else "n/a"
@@ -152,9 +169,10 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
     summary = f"""
     <div class="telemetry-summary">
       <div><small>MODEL</small><b>{_e(model)}</b></div>
+      <div><small>EFFORT</small><b>{_e(effort_label)}</b></div>
       <div><small>CONTEXT %</small><b>{_e(ctx_label)}</b></div>
       <div><small>SESSION COST</small><b>{_e(session_cost)}</b></div>
-      <div><small>CURRENT MISSION COST</small><b>{_e(mission_cost)}</b></div>
+      <div><small>CURRENT MISSION ATTRIBUTED SPEND</small><b>{_e(mission_spend_label)}</b>{mission_spend_tag}</div>
       <div><small>CACHE HIT %</small><b>{_e(cache_label)}</b></div>
     </div>
     <div class="context-bar"><i style="width:{_e(bar_width)}"></i></div>
@@ -171,37 +189,51 @@ def _telemetry_summary_html(project: Dict[str, Any]) -> str:
             f'<div class="telemetry-drill-row"><span>{_e(label)}</span><b>{_e(display)}</b>'
             f'<i>{_e(provenance)}</i></div>'
         )
-    drill = (
-        '<details class="telemetry-drill"><summary>Per-request detail</summary>' + "".join(drill_rows) + "</details>"
-        if drill_rows
-        else ""
+    drill_rows.append(
+        '<div class="telemetry-drill-row"><span>Worker/child effort</span><b>'
+        f'{_e(telemetry["worker_effort"] if telemetry["worker_effort"] is not None else UNAVAILABLE)}</b>'
+        f'<i>{_e(telemetry["worker_effort_provenance"])}</i></div>'
     )
+    drill_rows.append(
+        '<div class="telemetry-note">Grok owns the Workflow/subagent panel: child/worker sessions have no '
+        "supported telemetry hook of their own. Inline children run inside this session and are not "
+        "separable from the session cost above; a standalone worker session (a separate grok-safe launch) "
+        "reports its own session cost independently, not as a delta of this one. Worker effort is never "
+        "assumed to match the parent's.</div>"
+    )
+    drill = '<details class="telemetry-drill"><summary>Per-request detail</summary>' + "".join(drill_rows) + "</details>"
     return summary + drill
 
 
 def _cost_guzzler_html(project: Dict[str, Any]) -> str:
-    """Top recent missions/requests by exact cost. Text/table first, no
+    """Top recent missions by attributed spend. Text/table first, no
     chart — a decorative chart is not warranted until this shape is
     repeatedly revisited (see RESEARCH_VISUALIZATION.md). Absent (not an
-    empty pane) until the ledger has at least one attributable row."""
+    empty pane) until the ledger has at least one attributable row.
+
+    Every row carries an explicit SOURCE/provenance column. This is
+    deliberately never labeled "exact-cost" — attribution to a mission is
+    always OODA's own inference (telemetry_ledger.ATTRIBUTED_SPEND_PROVENANCE),
+    never a fact xAI billed against a named mission."""
     repo = project.get("repo")
     if not isinstance(repo, Path):
         return ""
     rows = cost_guzzlers(repo, limit=5)
     if not rows:
         return ""
-    body = ['<div class="guzzler-row guzzler-head"><b>MISSION</b><b>COST</b><b>CACHE</b></div>']
+    body = ['<div class="guzzler-row guzzler-head"><b>MISSION</b><b>SPEND</b><b>CACHE</b><b>SOURCE</b></div>']
     for row in rows:
         cache_hit = row.get("cache_hit_pct")
         cache_label = f"{cache_hit:.0f}%" if isinstance(cache_hit, (int, float)) else "n/a"
         body.append(
             '<div class="guzzler-row">'
-            f'<span>{_e(row["label"])}</span><span>${row["cost_usd"]:.3f}</span><span>{_e(cache_label)}</span>'
+            f'<span>{_e(row["label"])}</span><span>${row["spend_usd"]:.3f}</span><span>{_e(cache_label)}</span>'
+            f'<span class="guzzler-source">{_e(row["provenance"])}</span>'
             "</div>"
         )
     return (
         '<div class="pane guzzler-pane"><div class="pane-head"><b>COST GUZZLERS</b>'
-        '<span>top exact-cost missions</span></div>'
+        '<span>attributed spend, not billed-per-mission fact</span></div>'
         f'<div class="guzzler-table">{"".join(body)}</div></div>'
     )
 
@@ -558,9 +590,10 @@ button{{font:inherit}}.hero button{{background:var(--paper);color:var(--ink);bor
 .gate-band{{margin-top:12px;border-left:4px solid #b7904b;background:var(--gate);padding:9px 11px}}.gate-band small,.gate-band b{{display:block}}.gate-band b{{margin-top:2px;font-size:14px}}
 .summary-context{{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);gap:9px;margin:9px 0 10px}}.stakeholder,.context-card{{background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:10px 11px}}.stakeholder small,.stakeholder b{{display:block}}.stakeholder b{{margin-top:3px}}
 .context-top,.context-foot{{display:flex;justify-content:space-between;gap:12px}}.context-top{{font-size:11px;font-weight:800;letter-spacing:.04em}}.context-foot{{font-size:10px;color:var(--muted);margin-top:5px}}.context-bar{{height:6px;background:#e7decd;border:1px solid var(--rule);border-radius:99px;overflow:hidden;margin-top:7px}}.context-bar i{{display:block;height:100%;background:var(--accent)}}
-.telemetry-summary{{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}}.telemetry-summary>div{{min-width:0}}.telemetry-summary small{{font-size:10px;display:block}}.telemetry-summary b{{display:block;margin-top:2px;font-size:13px;font-family:Georgia,"Times New Roman",serif}}
-.telemetry-drill{{margin-top:8px;font-size:11px;color:var(--muted)}}.telemetry-drill summary{{cursor:pointer;font-weight:700}}.telemetry-drill-row{{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #ebe2d2}}.telemetry-drill-row b{{color:var(--ink)}}.telemetry-drill-row i{{font-style:normal;font-size:9px;color:#a99b7f;text-transform:uppercase}}
-.guzzler-pane{{margin-top:10px}}.guzzler-table{{padding:0}}.guzzler-row{{display:grid;grid-template-columns:1fr 80px 70px;gap:8px;padding:7px 11px;border-bottom:1px solid #ebe2d2;font-size:12px}}.guzzler-row:last-child{{border-bottom:0}}.guzzler-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.guzzler-row span:nth-child(2),.guzzler-row span:nth-child(3){{text-align:right}}
+.telemetry-summary{{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}}.telemetry-summary>div{{min-width:0}}.telemetry-summary small{{font-size:10px;display:block}}.telemetry-summary b{{display:block;margin-top:2px;font-size:13px;font-family:Georgia,"Times New Roman",serif}}
+.telemetry-drill{{margin-top:8px;font-size:11px;color:var(--muted)}}.telemetry-drill summary{{cursor:pointer;font-weight:700}}.telemetry-drill-row{{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #ebe2d2}}.telemetry-drill-row b{{color:var(--ink)}}.telemetry-drill-row i{{font-style:normal;font-size:9px;color:#a99b7f;text-transform:uppercase}}.telemetry-note{{padding:7px 0 2px;font-size:10px;line-height:1.5;color:var(--muted)}}
+.telemetry-summary>div>i{{display:block;margin-top:1px;font-style:normal;font-size:8px;color:#a99b7f;text-transform:uppercase;letter-spacing:.04em}}
+.guzzler-pane{{margin-top:10px}}.guzzler-table{{padding:0}}.guzzler-row{{display:grid;grid-template-columns:1fr 70px 60px 90px;gap:8px;padding:7px 11px;border-bottom:1px solid #ebe2d2;font-size:12px}}.guzzler-row:last-child{{border-bottom:0}}.guzzler-head{{font-size:10px;color:var(--muted);background:var(--paper2);letter-spacing:.05em}}.guzzler-row span:nth-child(2),.guzzler-row span:nth-child(3){{text-align:right}}.guzzler-source{{font-size:9px;color:var(--muted);text-transform:uppercase;text-align:right;align-self:center}}
 .ooda-rail{{display:flex;align-items:center;gap:8px;padding:6px 2px;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.08em}}.rail-step{{padding:2px 5px;border-radius:99px}}.rail-step.current{{background:var(--accent);color:white}}.rail-arrow{{color:#aa9e89}}
 .attention-strip{{display:grid;grid-template-columns:1fr 1.15fr 1fr;border:1px solid var(--rule);border-radius:7px;overflow:hidden;margin:2px 0 12px}}.attention-strip>div{{padding:8px 10px;background:var(--paper2);border-right:1px solid var(--rule)}}.attention-strip>div:last-child{{border-right:0}}.attention-strip small,.attention-strip b{{display:block}}.attention-strip b{{font-size:12px;margin-top:2px}}
 .cockpit-grid{{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.75fr);gap:11px;align-items:start}}.left-stack{{display:grid;gap:11px;align-content:start}}.pane{{border:1px solid var(--rule);background:var(--paper);border-radius:8px;overflow:hidden}}.pane-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--paper2)}}.pane-head span{{font-size:11px;color:var(--muted)}}

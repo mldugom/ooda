@@ -216,10 +216,12 @@ def _project_card(project: Dict[str, Any]) -> str:
         .compact-timeline-row span{{min-width:0;line-height:1.4}}
         .cockpit-grid{{grid-template-columns:minmax(320px,.9fr) minmax(0,1.4fr)}}
         .ooda-rail{{margin-top:10px}}
-        .telemetry-register{{margin-top:10px;max-width:360px}}
-        .telemetry-register .pane-head{{border:1px solid var(--rule);border-bottom:0;border-radius:7px 7px 0 0;padding:6px 11px;background:var(--paper2)}}
+        .telemetry-register{{margin-top:10px;max-width:640px;border:1px solid var(--rule);border-top:0;border-radius:0 0 7px 7px;padding:11px 13px 9px}}
+        .telemetry-register .pane-head{{margin:-11px -13px 9px;border:1px solid var(--rule);border-bottom:0;border-radius:7px 7px 0 0;padding:6px 11px;background:var(--paper2)}}
         .telemetry-register .pane-head b{{font-size:11px}}
+        .telemetry-register .telemetry-summary{{grid-template-columns:repeat(3,1fr)}}
         .telemetry-register .context-card{{border-radius:0 0 7px 7px;border-top:0}}
+        @media(max-width:640px){{.telemetry-register .telemetry-summary{{grid-template-columns:repeat(2,1fr)}}}}
         @media(max-width:1050px){{.domain-orientation-grid,.cockpit-grid,.human-gate-body{{grid-template-columns:1fr}}.human-gate-ask{{border-left:0;border-right:0;border-top:1px solid rgba(122,90,32,.3);border-bottom:1px solid rgba(122,90,32,.3);padding:8px 0}}.compact-timeline-row{{grid-template-columns:76px 1fr}}.compact-timeline-row span:last-child{{grid-column:2}}}}
       </style>
       <div class="project-title">
