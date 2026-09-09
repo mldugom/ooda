@@ -53,19 +53,22 @@ class DashboardLauncherTests(unittest.TestCase):
         self.assertEqual(port, 8793)
         self.assertTrue(reuse)
 
-    def test_current_generation_requires_sidebar_rail_and_efficiency_markers(self):
+    def test_current_generation_requires_domain_first_markers(self):
         root = Path("/tmp/repos")
         current = (
             "<title>OODA Control Room</title> /tmp/repos "
+            "project-sidebar efficiency-chart attention-strip domain-orientation-grid"
+        )
+        previous = (
+            "<title>OODA Control Room</title> /tmp/repos "
             "project-sidebar efficiency-chart attention-strip"
         )
-        legacy = "<title>OODA Control Room</title> /tmp/repos project tabs live ooda loop"
 
         with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=current):
             self.assertTrue(dashboard_launcher._is_ooda_dashboard(8792, root))
             self.assertTrue(dashboard_launcher._is_any_ooda_dashboard(8792, root))
 
-        with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=legacy):
+        with mock.patch.object(dashboard_launcher, "_dashboard_body", return_value=previous):
             self.assertFalse(dashboard_launcher._is_ooda_dashboard(8792, root))
             self.assertTrue(dashboard_launcher._is_any_ooda_dashboard(8792, root))
 
