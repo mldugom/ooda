@@ -226,15 +226,25 @@ they do not bar exploration but must be re-typed before supporting a claim.
 
 ## Truth hierarchy
 
-```
-runtime > git > frozen artifact > trace > project state > project view/dashboard
-```
+**Authority is scoped to the kind of question**, so no single source outranks
+every other globally:
 
-Fresher authoritative evidence beats stale summary prose, always. PROJECT_STATE
-carries durable orientation — goal, current decision, bottleneck, strongest
-evidence, claim ceilings, active blocker, next unknown, human gate, pointers. It
-does **not** carry mutable runtime facts that can be queried authoritatively, and
-it never outranks them.
+| Question | Authority |
+|---|---|
+| Is it running now? live clocks, locks, data source | **runtime** |
+| What branch / HEAD / PR exists? | **git** |
+| What target, prereg, or spec was frozen? | **frozen artifact** |
+| What did the last validated mission conclude? | **verified trace** |
+
+`PROJECT_STATE` is compact durable orientation; project view and Control Room are
+derived convenience. Neither ever outranks the surface that owns the fact. A
+later runtime reading does not retroactively change what was preregistered, and a
+frozen prereg does not know whether the collector is running now.
+
+PROJECT_STATE carries durable orientation — goal, current decision, bottleneck,
+strongest evidence, claim ceilings, active blocker, next unknown, human gate,
+pointers. It does **not** carry mutable runtime facts that can be queried
+authoritatively, and it never outranks them. `ooda state-check` flags them.
 
 ## Environment preflight
 

@@ -34,12 +34,24 @@ current claim or authority ceiling?*
 
 ### Truth hierarchy
 
-`runtime > git > frozen artifact > trace > project state > project view/dashboard`
+Authority is scoped to the kind of question, so no one source outranks every
+other globally (`ooda.policy.FACT_DOMAINS`):
 
-Fresher authoritative evidence beats stale summary prose, always. When
-PROJECT_STATE disagrees with runtime or Git, the Controller flags it stale rather
-than propagating it. If it cannot see the runtime, it says so rather than
-inferring live state from prose.
+| Question | Authority |
+|---|---|
+| Is it running now? live clocks, locks, data source | **runtime** |
+| What branch / HEAD / PR exists? | **git** |
+| What target, prereg, or spec was frozen? | **frozen artifact** |
+| What did the last validated mission conclude? | **verified trace** |
+
+`PROJECT_STATE` is compact durable orientation; project view and Control Room are
+derived convenience. Neither ever outranks the surface that owns the fact. A
+later runtime reading does not retroactively change what was preregistered, and a
+frozen prereg does not know whether the collector is running now.
+
+When PROJECT_STATE disagrees with the owner of the fact, the Controller flags it
+stale rather than propagating it. If it cannot see the runtime, it says so rather
+than inferring live state from prose.
 
 ### Environment preflight
 
