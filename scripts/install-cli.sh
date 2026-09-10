@@ -10,105 +10,77 @@ SAFE_DST="$BIN_DIR/grok-safe"
 SAFE_LEGACY_SRC="$ROOT/scripts/grok-safe"
 SAFE_MARKER="# OODA grok-safe source: $ROOT"
 LEGACY_SAFE_MARKER="# OODA source: $ROOT"
-DEEPSEEK_SAFE_DST="$BIN_DIR/deepseek-safe"
-DEEPSEEK_SAFE_MARKER="# OODA deepseek-safe source: $ROOT"
+OLD_DEEPSEEK_DST="$BIN_DIR/deepseek-safe"
+OLD_DEEPSEEK_MARKER="# OODA deepseek-safe source: $ROOT"
 OS_NAME="${OODA_OS_NAME:-$(uname -s)}"
 LEGACY_GROK_SKILLS_SOURCE='source "$HOME/repos/grok-skills/shell/grok-safe.zsh"'
 LEGACY_GROK_SKILLS_COMMENT='# Grok safe launcher (managed by ~/repos/grok-skills)'
 
 mkdir -p "$BIN_DIR"
 
-install_ooda_wrapper() {
-  cat > "$OODA_DST" <<EOF
+install_wrapper() {
+  local dst="$1"
+  local marker="$2"
+  local module="$3"
+  cat > "$dst" <<EOF
 #!/usr/bin/env bash
-$OODA_MARKER
+$marker
 set -euo pipefail
 ROOT="$ROOT"
-PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_entrypoint "\$@"
+PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m $module "\$@"
 EOF
-  chmod +x "$OODA_DST"
+  chmod +x "$dst"
 }
 
 if [ -f "$OODA_DST" ] && grep -Fqx "$OODA_MARKER" "$OODA_DST"; then
   echo "Already installed $OODA_DST"
 elif [ -L "$OODA_DST" ] && [ "$(readlink "$OODA_DST")" = "$OODA_LEGACY_SRC" ]; then
   rm "$OODA_DST"
-  install_ooda_wrapper
+  install_wrapper "$OODA_DST" "$OODA_MARKER" ooda.compat_entrypoint
   echo "Upgraded legacy OODA $OODA_DST"
 elif [ -e "$OODA_DST" ] || [ -L "$OODA_DST" ]; then
   echo "Refusing to replace existing $OODA_DST" >&2
   echo "Remove or move it deliberately, then rerun install." >&2
   exit 2
 else
-  install_ooda_wrapper
+  install_wrapper "$OODA_DST" "$OODA_MARKER" ooda.compat_entrypoint
   echo "Installed $OODA_DST"
 fi
-
-install_safe_wrapper() {
-  cat > "$SAFE_DST" <<EOF
-#!/usr/bin/env bash
-$SAFE_MARKER
-set -euo pipefail
-ROOT="$ROOT"
-PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_grok_safe "\$@"
-EOF
-  chmod +x "$SAFE_DST"
-}
 
 if [ -f "$SAFE_DST" ] && grep -Fqx "$SAFE_MARKER" "$SAFE_DST"; then
   echo "Already installed $SAFE_DST"
 elif [ -f "$SAFE_DST" ] && grep -Fqx "$LEGACY_SAFE_MARKER" "$SAFE_DST"; then
   rm "$SAFE_DST"
-  install_safe_wrapper
+  install_wrapper "$SAFE_DST" "$SAFE_MARKER" ooda.compat_grok_safe
   echo "Upgraded legacy OODA $SAFE_DST"
 elif [ -L "$SAFE_DST" ] && [ "$(readlink "$SAFE_DST")" = "$SAFE_LEGACY_SRC" ]; then
   rm "$SAFE_DST"
-  install_safe_wrapper
+  install_wrapper "$SAFE_DST" "$SAFE_MARKER" ooda.compat_grok_safe
   echo "Upgraded legacy OODA $SAFE_DST"
 elif [ -e "$SAFE_DST" ] || [ -L "$SAFE_DST" ]; then
   echo "Refusing to replace existing $SAFE_DST" >&2
   echo "Remove or move it deliberately, then rerun install." >&2
   exit 2
 else
-  install_safe_wrapper
+  install_wrapper "$SAFE_DST" "$SAFE_MARKER" ooda.compat_grok_safe
   echo "Installed $SAFE_DST"
 fi
 
-install_deepseek_safe_wrapper() {
-  cat > "$DEEPSEEK_SAFE_DST" <<EOF
-#!/usr/bin/env bash
-$DEEPSEEK_SAFE_MARKER
-set -euo pipefail
-ROOT="$ROOT"
-PYTHONPATH="\$ROOT/src\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m ooda.compat_deepseek_safe "\$@"
-EOF
-  chmod +x "$DEEPSEEK_SAFE_DST"
-}
-
-if [ -f "$DEEPSEEK_SAFE_DST" ] && grep -Fqx "$DEEPSEEK_SAFE_MARKER" "$DEEPSEEK_SAFE_DST"; then
-  echo "Already installed $DEEPSEEK_SAFE_DST"
-elif [ -e "$DEEPSEEK_SAFE_DST" ] || [ -L "$DEEPSEEK_SAFE_DST" ]; then
-  echo "Refusing to replace existing $DEEPSEEK_SAFE_DST" >&2
-  echo "Remove or move it deliberately, then rerun install." >&2
-  exit 2
-else
-  install_deepseek_safe_wrapper
-  echo "Installed $DEEPSEEK_SAFE_DST"
+# DeepSeek/CodeWhale was an unqualified experiment. Remove only the wrapper this
+# checkout itself installed; never touch an unrelated executable with the same name.
+if [ -f "$OLD_DEEPSEEK_DST" ] && grep -Fqx "$OLD_DEEPSEEK_MARKER" "$OLD_DEEPSEEK_DST"; then
+  rm "$OLD_DEEPSEEK_DST"
+  echo "Removed obsolete OODA-managed $OLD_DEEPSEEK_DST"
 fi
 
 case ":${PATH:-}:" in
-  *":$BIN_DIR:"*)
-    ;;
+  *":$BIN_DIR:"*) ;;
   *)
     shell_name="$(basename "${SHELL:-sh}")"
     case "$shell_name" in
       zsh) rc_file="$HOME/.zshrc" ;;
       bash)
-        if [ "$OS_NAME" = "Darwin" ]; then
-          rc_file="$HOME/.bash_profile"
-        else
-          rc_file="$HOME/.bashrc"
-        fi
+        if [ "$OS_NAME" = "Darwin" ]; then rc_file="$HOME/.bash_profile"; else rc_file="$HOME/.bashrc"; fi
         ;;
       *) rc_file="$HOME/.profile" ;;
     esac
@@ -126,10 +98,7 @@ case ":${PATH:-}:" in
     ;;
 esac
 
-# Migrate the exact legacy grok-skills shell hook when present. That hook defines
-# a shell function named grok-safe, which shadows OODA's installed executable
-# and disables subagents by default. Only the known managed lines are removed;
-# unrelated shell configuration is untouched.
+# Remove only the exact legacy grok-skills hook known to shadow OODA's launcher.
 shell_name="$(basename "${SHELL:-sh}")"
 case "$shell_name" in
   zsh) rc_file="$HOME/.zshrc" ;;
