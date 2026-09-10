@@ -1,5 +1,7 @@
 # LDPS as a Practice Corpus — carried-forward lessons and pipeline anatomy
 
+> **Partly superseded.** `LDPS_GAPS_AND_ABANDONED.md` corrects § *One structural failure in the chain*: `ldps_parser_path` is **not** a dangling reference. The `external/` directory it names is deliberately gitignored with a written justification (a vendored tool with its own repo and a 76 MB dataset), so it is documented exclusion rather than drift, and the program-wide dangling count drops from three cases to two. The original finding is left as written.
+
 | Repo | SHA |
 |---|---|
 | `ldps` | `194ae57cc5110bd9b6ee5329a9aff40ef6dcef57` (`194ae57`) |

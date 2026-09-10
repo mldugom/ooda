@@ -2,6 +2,8 @@
 
 > **Partly superseded.** `LDPS_PRACTICE_CORPUS.md` corrects two conclusions below from a structural reading of the code: the baseline count (§ *Stages that never appeared*) and the calibration timing (§ *Where the sequence doubled back*). The original findings are left as written.
 
+> **Further superseded.** `LDPS_GAPS_AND_ABANDONED.md` corrects the claim in § *Approaches abandoned* (echoed in § *What this data cannot answer*) that ldps has no negative-findings register. One exists at the doc layer: a 535-line experimentation narrative naming an archived catalog and the reason it was invalidated, a decision log, and 84 `T-<TAG>` decision IDs. The per-file half of the claim — that archived modules carry no verdict — survives. The original findings are left as written.
+
 | Repo | SHA | Depth |
 |---|---|---|
 | `ooda` | `0cc4303` (`0cc43037e21f8c073a7ae7fecab86eb66fa6b292`, origin/main) | full |

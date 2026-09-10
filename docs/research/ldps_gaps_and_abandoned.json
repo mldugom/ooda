@@ -1,0 +1,64 @@
+{
+  "schema": "ooda/gaps-inventory/v1",
+  "assessed": {"ldps": "194ae57", "tenniskal": "8b541e9", "crypto-innout": "670c334", "ooda": "0cc4303"},
+  "supersedes": [
+    {"doc": "LDPS_LIFECYCLE_ARCHAEOLOGY.md",
+     "claim": "there is no negative-findings register and the reason must be inferred by reading each module",
+     "correction": "a register exists at the doc layer (a 535-line experimentation narrative naming an archived catalog and its reason, a decision log, and 84 T-tag decision IDs); the per-file half of the claim stands"},
+    {"doc": "LDPS_PRACTICE_CORPUS.md",
+     "claim": "ldps_parser_path cites an external path never committed - the third such dangling reference in this program",
+     "correction": "external/ is deliberately gitignored with a written reason (vendored tool with its own repo and a 76M dataset); this is documented exclusion, not drift, and does not belong with the other two cases"}
+  ],
+  "c1_calibration": {
+    "finding": "lane-partitioned, not globally disconnected",
+    "kalshi_lane": {"calibration_modules": 6, "platt_files": 4, "brier_files": 19,
+      "live_card_status": "calibration policy explicitly set to none, with a written precondition (no calibration report history to fit on yet) and a named policy module",
+      "verdict": "DELIBERATE AND DOCUMENTED, incomplete by stated precondition"},
+    "mlb_lane": {"calibration_modules": 0, "platt_files": 0, "isotonic_files": 0, "brier_files": 4, "reliability_files": 2,
+      "live_paths_referencing_calibration": 0, "live_paths_total": 6,
+      "alternate_route_found": true,
+      "alternate_route": "Brier IS computed at development time - a walk-forward module uses sklearn brier_score_loss, and two research modules compute model Brier against baseline Brier (a skill score vs the market)",
+      "still_absent": "no reliability/calibration curve on the live probability, and no calibration transform applied before position sizing",
+      "verdict": "no evidence of evaluation-and-rejection and no evidence of partial wiring; absence of evidence, not evidence of a decision"}
+  },
+  "c2_guards": {
+    "guard_package": "data/mlb/eda/honesty/",
+    "reachability": [
+      {"dir": "data/mlb/eda", "modules": 85, "imports_guard": 20},
+      {"dir": "data/mlb/eda/atlas", "modules": 10, "imports_guard": 6},
+      {"dir": "data/mlb/eda/selector", "modules": 4, "imports_guard": 0},
+      {"dir": "data/mlb/modeling (all subtrees)", "modules": 116, "imports_guard": 0},
+      {"dir": "data/mlb/pipeline", "modules": 9, "imports_guard": 0},
+      {"dir": "data/mlb/ingestion", "modules": 12, "imports_guard": 0},
+      {"dir": "data/kalshi", "modules": 42, "imports_guard": 1}
+    ],
+    "boundary": "guards stop at the eda/atlas discovery layer; selector, modeling, market factory, trends and live cards all run outside them",
+    "reimplementation": {"count": 4, "seeds": [7, 11, 17, 18],
+      "stated_invariant": "the guard module declares itself the ONLY place shuffling is allowed",
+      "invariant_holds": false,
+      "fairness_note": "the four copies use a DIFFERENT scheme (permute the feature within a date block) from the guard (permute the outcome label within a season); defensible for a daily-slate grain, arguably stricter - the cost is four untested implementations and a false invariant, not a wrong method"},
+    "realised_failure_mode": "a documented incident where an input feed was archived and silently stale for roughly three months at 0% coverage before an audit caught and re-wired it"
+  },
+  "part_d_abandoned": {
+    "archived_in_place": {"files": 26, "lines": 13447,
+      "clusters": [
+        {"dir": "data/mlb/eda/archive", "files": 14, "lines": 9084},
+        {"dir": "data/mlb/pipeline/archive", "files": 6, "lines": 1902},
+        {"dir": "data/mlb/archive", "files": 3, "lines": 1455},
+        {"dir": "data/mlb/ingestion/archive", "files": 2, "lines": 833},
+        {"dir": "notebooks/archive", "files": 1, "lines": 173}
+      ]},
+    "deleted": {"files": 4, "nature": "two terminal/command scratch files and two generated report directories - all in categories the .gitignore already excludes"},
+    "why_recoverable": {"per_file": "1 of 26 archived modules carries an archival reason in its header; commit messages touching archive paths are 'updates' and 'system explore'",
+      "per_cluster": "recoverable from docs: the experimentation narrative names an archived catalog and the reason it was invalidated, and a doc registry carries supersession status markers",
+      "verdict": "preserved at cluster level, lost at file level"}
+  },
+  "cross_cutting_unpersisted_references": {
+    "ldps_absolute_paths": {"files": 105, "of_total": 376, "occurrences": 148},
+    "ldps_dangling_doc_refs": {"distinct_unresolvable": 118, "explained_by_gitignore": 55,
+      "after_relative_path_resolution": 30, "truly_dangling": 19,
+      "by_ext": {"py": 9, "md": 7, "json": 3}},
+    "ldps_empty_by_design_mechanism": "the .gitignore carries a reasoned exception committing forward ledgers as git-timestamped, tamper-evident proof that picks preceded outcomes; zero ledger files are committed",
+    "program_wide_pattern": "of the four candidate cases, one (ldps external/) is deliberate documented exclusion and does not belong; the remaining three plus the empty ledger share one property - a committed artifact names a path, and nothing checks that the path resolves"
+  }
+}
