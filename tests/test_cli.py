@@ -130,23 +130,16 @@ class ContractTests(unittest.TestCase):
                 "skills/ooda/SKILL.md",
                 "skills/ooda-controller/SKILL.md",
                 "policies/EFFICIENT_AGENT.md",
+                "skills/ooda/reference/predictive-science.md",
+                "skills/ooda-controller/reference/blocker-semantics.md",
             ):
                 self.assertTrue((root / rel).is_file(), rel)
 
-    def test_packaged_skills_match_canonical_provider_files(self):
-        pairs = [
-            (
-                Path("providers/grok/skills/ooda/SKILL.md"),
-                Path("src/ooda/resources/grok/skills/ooda/SKILL.md"),
-            ),
-            (
-                Path("providers/grok/skills/ooda-controller/SKILL.md"),
-                Path("src/ooda/resources/grok/skills/ooda-controller/SKILL.md"),
-            ),
-        ]
-        for canonical, packaged in pairs:
-            with self.subTest(canonical=canonical):
-                self.assertEqual(canonical.read_text(), packaged.read_text())
+    def test_skill_sources_are_not_duplicated(self):
+        """providers/*/skills used to hold an editable copy that could drift past
+        CI. src/ooda/resources is now the single source; nothing may shadow it."""
+        self.assertFalse(Path("providers/grok/skills").exists())
+        self.assertTrue(Path("src/ooda/resources/grok/skills/ooda/SKILL.md").is_file())
 
 
 if __name__ == "__main__":

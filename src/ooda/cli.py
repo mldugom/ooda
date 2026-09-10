@@ -14,6 +14,8 @@ from .charter import SCHEMA as CHARTER_SCHEMA, diff_charter, new_charter, valida
 from .layout import GROK_SKILLS, SKILL_REFERENCES
 from .policy import (
     BLOCKED_FOR,
+    BlockerError,
+    lens_budget_ok,
     BLOCKER_CHALLENGE,
     BLOCKER_TYPES,
     CLAIM_CEILINGS,
@@ -106,10 +108,12 @@ def validate_work_order(d):
     errors = []
     if d.get("schema") != "ooda/work-order/v1":
         errors.append("schema must be ooda/work-order/v1")
-    for key in ("id", "project_id", "objective", "role", "profile", "claim_level"):
+    for key in ("id", "project_id", "objective", "claim_level"):
         if not d.get(key):
             errors.append(f"{key} is required")
-    if d.get("role") not in ROLES:
+    # role/profile are optional routing aids: the vnext ablation found no
+    # measurable gain from them on ordinary work, so they are never required.
+    if d.get("role") and d.get("role") not in ROLES:
         errors.append("unknown role")
     if d.get("claim_level") not in CLAIMS:
         errors.append("unknown claim_level")
@@ -120,8 +124,9 @@ def validate_work_order(d):
         unknown = [x for x in lenses if x not in LENSES]
         if unknown:
             errors.append("unknown lenses: " + ", ".join(unknown))
-        if len(lenses) > 3:
-            errors.append("normally no more than three lenses per bounded action")
+        ok, why = lens_budget_ok(lenses, justification=d.get("lens_justification", ""))
+        if not ok:
+            errors.append(why)
     if not isinstance(d.get("authority"), dict):
         errors.append("authority object is required")
     return errors
@@ -137,8 +142,21 @@ def validate_trace(d):
         errors.append("project_id is required")
     if not isinstance(d.get("ooda"), dict):
         errors.append("ooda object is required")
-    if not isinstance(d.get("result"), dict):
+    result = d.get("result")
+    if not isinstance(result, dict):
         errors.append("result object is required")
+    elif result.get("state") == "blocked":
+        try:
+            blocker = parse_blocker(result.get("blocker") or "blocked")
+        except BlockerError as exc:
+            errors.append(f"invalid blocker: {exc}")
+        else:
+            if blocker.needs_retyping:
+                # Readable, not fatal: old traces must keep loading.
+                errors.append(
+                    "WARN blocked result carries no typed blocker; re-type it "
+                    "(blocker_type/blocked_for/claim_ceiling) before relying on it"
+                )
     return errors
 
 
@@ -235,9 +253,6 @@ def cmd_work_order(a):
         "id": work_order_id,
         "project_id": a.project_id or Path.cwd().name,
         "objective": objective,
-        "role": a.role,
-        "profile": a.profile,
-        "lenses": lenses,
         "claim_level": a.claim_level,
         "scope": {"allowed": [], "forbidden": []},
         "verification": [],
@@ -263,6 +278,19 @@ def cmd_work_order(a):
         for error in errors:
             print(f"FAIL {error}", file=sys.stderr)
         return 2
+    # Optional routing aids appear only when they were actually chosen.
+    if a.role:
+        data["role"] = a.role
+    if a.profile:
+        data["profile"] = a.profile
+    if lenses:
+        data["lenses"] = lenses
+    if getattr(a, "lens_justification", ""):
+        data["lens_justification"] = a.lens_justification
+    env_requires = getattr(a, "env_requires", None) or []
+    if env_requires:
+        data["environment_requirements"] = list(env_requires)
+
     target = Path(a.output or f".ooda/work-orders/{work_order_id}.json")
     dump(target, data)
     print(target)
@@ -281,19 +309,117 @@ def cmd_trace(a):
         "work_order_id": work_order["id"],
         "project_id": work_order["project_id"],
         "provider": a.provider,
-        "role": work_order["role"],
-        "profile": work_order["profile"],
-        "lenses": work_order.get("lenses", []),
         "claim_level": work_order["claim_level"],
         "ooda": {"observe": "", "orient": "", "decide": "", "act": ""},
         "result": {"state": a.result_state, "summary": a.summary},
+        "non_claims": "",
+        "next_unknown": "",
         "verification": {"status": "not_recorded", "tests": [], "artifacts": []},
         "economics": {"turns": None, "tool_calls": None, "cost_usd": None},
         "next_gate": "Human/ChatGPT review",
     }
+    # Optional descriptors survive into the trace only when the mission used them.
+    for key in ("role", "profile"):
+        if work_order.get(key):
+            data[key] = work_order[key]
+    if work_order.get("lenses"):
+        data["lenses"] = work_order["lenses"]
+
+    if a.result_state == "blocked":
+        if not a.blocker_type:
+            print(
+                "FAIL a blocked result needs --blocker-type "
+                f"({'|'.join(BLOCKER_TYPES[:-1])}). A bare `blocked` loses the "
+                "information that decides what may still happen.",
+                file=sys.stderr,
+            )
+            return 2
+        blocker = Blocker(
+            blocker_type=a.blocker_type,
+            blocked_for=tuple(a.blocked_for or ()),
+            claim_ceiling=a.claim_ceiling or "n-a",
+            target=a.blocker_target,
+            note=a.summary,
+        )
+        data["result"]["blocker"] = blocker.to_dict()
+        if blocker.exploration_allowed:
+            print(
+                "NOTE exploration remains allowed under this blocker. "
+                f"Answer before idling: {BLOCKER_CHALLENGE}",
+                file=sys.stderr,
+            )
+    elif a.blocker_type:
+        print("FAIL --blocker-type only applies to --result blocked", file=sys.stderr)
+        return 2
     target = Path(a.output or f".ooda/traces/{work_order['id']}.json")
     dump(target, data)
     print(target)
+    return 0
+
+
+def cmd_preflight(a):
+    """Check the environment before a data-dependent mission, not after."""
+    requirements = list(a.requires or [])
+    route_to = a.route_to
+    if a.work_order:
+        mission = load(Path(a.work_order))
+        requirements += list(mission.get("environment_requirements") or [])
+        route_to = route_to or mission.get("environment_route_to")
+    if not requirements:
+        print("PREFLIGHT no environment requirements declared; nothing to verify")
+        return 0
+    report = preflight(requirements, route_to=route_to)
+    for result in report.results:
+        mark = "OK  " if result.satisfied else "MISS"
+        print(f"{mark} {result.requirement.kind}:{result.requirement.value} — {result.detail}")
+    if report.satisfied:
+        print("PREFLIGHT ok")
+        return 0
+    print(f"PREFLIGHT blocked — {report.handoff()}", file=sys.stderr)
+    return 3
+
+
+def cmd_charter(a):
+    """Freeze the prediction target so it cannot move quietly."""
+    if a.diff:
+        old, new = (load(Path(x)) for x in a.diff)
+        change = diff_charter(old, new)
+        if not change.requires_reorientation:
+            print("CHARTER unchanged on frozen fields")
+            return 0
+        print("CHARTER re-orientation required: " + ", ".join(change.changed))
+        print(change.reason, file=sys.stderr)
+        return 4
+    if a.check:
+        data = load(Path(a.check))
+        errors = validate_charter(data)
+        for error in errors:
+            print(f"FAIL charter: {error}", file=sys.stderr)
+        if errors:
+            return 2
+        print("CHARTER ok")
+        return 0
+    if a.new:
+        template = new_charter(**{k: f"<{k}>" for k in (
+            "decision", "target", "why_target_matters", "decision_time", "baseline",
+            "primary_metrics", "holdout", "stop_rule", "resource_budget")})
+        target = Path(a.output)
+        if target.exists():
+            print(f"REFUSE {target} exists", file=sys.stderr)
+            return 1
+        dump(target, template)
+        print(target)
+        return 0
+    print("FAIL choose one of --new, --check FILE, --diff OLD NEW", file=sys.stderr)
+    return 2
+
+
+def cmd_route_validation(a):
+    route = validation_route(a.signal, elevated_uncertainty=a.uncertain)
+    print(f"CONSEQUENCE {route.consequence}")
+    print(f"INDEPENDENT VALIDATOR {route.independent_validator}")
+    print(f"DETERMINISTIC CHECKS {'yes' if route.deterministic_checks else 'no'}")
+    print(route.reason)
     return 0
 
 
@@ -394,9 +520,13 @@ def cmd_help(_a):
 def _add_work_order_arguments(q):
     q.add_argument("objective_text", nargs="?", help="bounded objective; may also be supplied with --objective")
     q.add_argument("--objective", help="compatibility form of the objective")
-    q.add_argument("--role", required=True, choices=sorted(ROLES))
-    q.add_argument("--profile", required=True)
-    q.add_argument("--lenses", default="")
+    q.add_argument("--role", choices=sorted(ROLES), help="optional accountability descriptor")
+    q.add_argument("--profile", help="optional expertise descriptor")
+    q.add_argument("--lenses", default="", help="0-1 by default; 2+ needs --lens-why")
+    q.add_argument("--lens-why", dest="lens_justification", default="",
+                   help="concrete reason two or more lenses are warranted")
+    q.add_argument("--env-requires", action="append", default=[], metavar="KIND:VALUE",
+                   help="environment requirement, e.g. path:/data/tape.sqlite (repeatable)")
     q.add_argument("--claim", "--claim-level", dest="claim_level", required=True, choices=sorted(CLAIMS))
     q.add_argument("--project-id")
     q.add_argument("--id")
@@ -442,8 +572,33 @@ def parser():
     )
     q.add_argument("--summary", required=True)
     q.add_argument("--provider", default="grok")
+    q.add_argument("--blocker-type", choices=sorted(t for t in BLOCKER_TYPES if t != "legacy"),
+                   help="required when --result blocked")
+    q.add_argument("--blocked-for", action="append", choices=sorted(BLOCKED_FOR), default=[],
+                   help="what the blocker prevents (repeatable)")
+    q.add_argument("--claim-ceiling", choices=sorted(CLAIM_CEILINGS))
+    q.add_argument("--blocker-target", help="scientific blockers: the exact unidentifiable quantity")
     q.add_argument("--output", help="defaults to .ooda/traces/<work-order-id>.json")
     q.set_defaults(func=cmd_trace)
+
+    q = subs.add_parser("preflight", help="check this environment can run a mission")
+    q.add_argument("--requires", action="append", default=[], metavar="KIND:VALUE",
+                   help="path:/data/x.sqlite | command:psql | env:API_KEY | host_service:collector")
+    q.add_argument("--work-order", help="read environment_requirements from a mission file")
+    q.add_argument("--route-to", help="where the mission should run instead")
+    q.set_defaults(func=cmd_preflight)
+
+    q = subs.add_parser("charter", help="freeze or diff a prediction target charter")
+    q.add_argument("--new", action="store_true", help="write a charter template")
+    q.add_argument("--check", metavar="FILE", help="validate a charter")
+    q.add_argument("--diff", nargs=2, metavar=("OLD", "NEW"), help="detect goalpost movement")
+    q.add_argument("--output", default=".ooda/charter.json")
+    q.set_defaults(func=cmd_charter)
+
+    q = subs.add_parser("route-validation", help="route validation by consequence")
+    q.add_argument("--signal", action="append", default=[], help="repeatable consequence signal")
+    q.add_argument("--uncertain", action="store_true", help="elevated uncertainty or risk")
+    q.set_defaults(func=cmd_route_validation)
 
     q = subs.add_parser("setup", help="install OODA Grok skills and efficiency policy into ~/.grok")
     q.add_argument("--force", action="store_true", help="replace differing OODA skill/policy files")

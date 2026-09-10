@@ -7,6 +7,8 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from .policy import BlockerError, parse_blocker
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -596,12 +598,18 @@ _ATTENTION_RANK = {
 }
 
 
+
 def _attention_rank(project: Dict[str, Any]) -> int:
     """Lower rank = needs the Integration Owner sooner. Derived only from
     existing controller/stage state — no new durable field."""
     controller = str(project.get("controller") or "").lower()
     if controller in _ATTENTION_RANK:
         return _ATTENTION_RANK[controller]
+    if controller.startswith("blocked:"):
+        # A typed blocker that still permits exploration is not waiting on the
+        # Integration Owner, so it must not outrank work that genuinely cannot
+        # move. Only a hard block keeps the high-attention slot.
+        return 2 if "exploration open" in controller else _ATTENTION_RANK["blocked"]
     if str(project.get("stage") or "").lower() == "review":
         return _ATTENTION_RANK["awaiting review"]
     return 5

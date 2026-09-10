@@ -1,157 +1,88 @@
 # `ooda/trace/v1`
 
-A trace records decision provenance without storing private chain-of-thought.
+A trace records decision provenance. It is not a transcript, and it is not a
+place to restate the work order.
 
-It is not a transcript.
+Its only job is to let a fresh session re-orient cheaply. Anything that does not
+serve that job is weight.
 
-## OODA meaning
-
-The trace is the durable feedback edge from one action into the next observation.
-
-```text
-WORK ORDER
-   |
-   v
-ACT
-worker executes bounded mission
-   |
-   v
-RE-OBSERVE
-what actually happened?
-   |
-   v
-TRACE
-concise O / O / D / A + verification + result
-   |
-   v
-NEXT ORIENTATION
-Controller / Lawrence / ChatGPT decide what follows
-```
-
-The trace exists so future sessions do not need to reconstruct the same reasoning from commits, chat history, and stale summaries.
-
-## What a trace records
-
-- work-order ID;
-- provider/model/agent when known;
-- repository base/head and PR when relevant;
-- concise Observe / Orient / Decide / Act summaries;
-- result state;
-- verification;
-- costs/turns/tool calls when known;
-- material findings, especially negative findings;
-- documentation impact/result when material;
-- human gate or next decision.
-
-## OODA fields
-
-### OBSERVE
-Record the verified state that mattered to the result, especially when it differed from assumptions.
-
-Examples:
-
-- branch/PR/base truth;
-- actual available data/support;
-- test/reliability state;
-- missing dependency;
-- stale or contradictory project state.
-
-### ORIENT
-Record the **decision-relevant orientation**, not private chain-of-thought.
-
-Useful content includes:
-
-- role/profile/lenses used;
-- key uncertainty or risk;
-- important alternative explanation;
-- reason a previously attractive path was rejected.
-
-### DECIDE
-Record the bounded action actually chosen, including any legitimate in-mission correction.
-
-If the objective materially changed and execution stopped, say so rather than pretending the original mission completed.
-
-### ACT
-Record what was changed/tested/executed and the evidence produced.
-
-## Quantitative research feedback
-
-For material work under `quantitative-research`, `statistics`, `data-science`, `ml-research`, `quant-markets`, or an equivalent project profile, preserve the smallest useful research evidence packet so the next loop does not depend on terminal prose.
-
-The packet may be embedded in the trace or point to an authoritative research artifact. Useful fields are:
+## The compact durable record
 
 ```text
-QUESTION: decision uncertainty tested
-DATA: sample / snapshot / support / PIT-as-of semantics
-ANALYSIS: statistic, model, comparison, or experiment run
-KEY EVIDENCE: compact n + metric/effect + sensitivity/uncertainty + verdict table
-INTERPRETATION: what can and cannot now be claimed
-ARTIFACT DECISION: none | table | diagram | diagnostic | durable-panel | dashboard
-ARTIFACTS: durable markdown/CSV/JSON/HTML/figure paths
-DASHBOARD IMPACT: none | refresh existing panel | proposed panel | dashboard update required
-NEXT UNKNOWN: highest-value uncertainty exposed by the result
+RESULT        completed | negative_finding | blocked | budget_exhausted | needs_human_gate
+EVIDENCE      the finding, with sample/metric/uncertainty where empirical
+ARTIFACTS     pointers, not contents
+NON-CLAIMS    what this does NOT establish, and the claim ceiling reached
+BLOCKER       typed, when blocked (below)
+NEXT UNKNOWN  the highest-value uncertainty this exposed
+HUMAN GATE    the decision needed, or none
+STATE         branch / commit / PR pointer
 ```
 
-Do not create redundant artifacts when an existing result document/report already contains this information. The requirement is legible durable feedback, not file count.
+**Do not duplicate mutable facts.** Branch, writer status, data clocks, PR state,
+and evidence counts belong to the authoritative surface that owns them; a trace
+that copies them is stale the moment it is written. Point instead.
 
-See `docs/QUANTITATIVE_RESEARCH_LOOP.md` and `docs/RESEARCH_VISUALIZATION.md`.
+`NON-CLAIMS` is not optional politeness. It is the field that stops a discovery
+being read later as evidence.
 
-## Documentation result
+## Typed blockers
 
-When documentation impact was assessed, the trace/handoff should state either:
+A bare `blocked` is not a valid result. It loses the information that decides
+what may still happen, and a controller that prioritises blocked missions will
+then keep re-surfacing a stall that was never real.
 
 ```text
-DOCUMENTATION: none — conceptual/domain/interface/process surface unchanged
+blocker_type        scientific | data | environment | authority | promotion | sequencing
+blocked_for         exploration | evidence | qualification | production | capital
+claim_ceiling       discovery | evidence | qualification | n-a
+exploration_allowed yes | no
+target              scientific/data blockers: the exact quantity or comparison affected
 ```
 
-or a concise list such as:
+Two rules the system enforces in code (`ooda.policy`):
 
-```text
-DOCUMENTATION:
-- updated docs/ARCHITECTURE.md data-flow diagram
-- updated README CLI example
-- validator checked diagram against final interfaces
-```
+- **Stages describe evidence, not permission.** `sequencing` never bars work.
+- **A claim ceiling is not a work ceiling.** Exploration survives every blocker
+  except a scientific one covering exploration, and that binds only its target.
 
-This is an audit signal, not a requirement to create documentation for every task. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+Before recording `blocked`, answer in writing: *is there a cheap, scientifically
+honest experiment available now that does not violate the claim ceiling?*
+
+See `reference/blocker-semantics.md` for worked cases.
 
 ## Result states
 
-Typical result states are:
+- `completed` — objective met with stated verification
+- `negative_finding` — **a success.** No signal, insufficient sample, weak
+  features, poorly conditioned target, not identifiable. Preserve it; it is what
+  stops the next session repeating the work. Do not respond by adding features,
+  trying more models, or moving the target.
+- `blocked` — a typed, concrete dependency
+- `budget_exhausted` — continuing needs a new resource decision
+- `needs_human_gate` — an authority boundary was reached
 
-- `completed` — bounded objective completed with stated verification;
-- `negative_finding` — useful evidence says the candidate/path did not survive;
-- `blocked` — external/state/authority dependency prevents valid execution;
-- `budget_exhausted` — more work requires a new resource decision;
-- `needs_human_gate` — execution/review reached an authority boundary.
+## Quantitative evidence
 
-A negative finding is a successful trace outcome when it prevents repeated wasted work.
+For material quantitative work, preserve the smallest useful packet — question,
+data and PIT semantics, analysis, key evidence table, interpretation, artifacts,
+next unknown. It may live in the trace or in an authoritative research artifact
+the trace points at. Do not write it twice.
 
-## Trace quality
+## Backward compatibility
 
-A useful trace is small enough for the Controller to read cheaply and strong enough that a future worker does not need to replay the session.
+Traces written before vnext carry `result.state == "blocked"` with no blocker
+object. They still load: `ooda.policy.parse_blocker` reads them as
+`blocker_type: legacy`, which does not bar exploration but must be re-typed
+before it can support a claim or a promotion.
 
-Prefer:
+## Control Room
 
-- concrete facts;
-- artifact/test references;
-- explicit limitations;
-- negative results;
-- next gate.
-
-Avoid:
-
-- private chain-of-thought;
-- long chronological logs;
-- raw terminal output unless it is itself the relevant artifact;
-- claims stronger than the work order's allowed claim level.
-
-## Control Room use
-
-The trace is intended to become a provider-neutral input to the OODA Control Room / Agent Ops Monitor.
-
-The dashboard may index the latest useful trace and historical trace chain, but it remains a view. The trace and underlying project/Git evidence are authoritative.
+The trace is an input to the Control Room, which remains a derived view. A
+blocker that still permits exploration renders as such, so a project that can
+keep moving is never displayed as one that cannot.
 
 ## Design principle
 
-> The action is not operationally complete until its useful feedback can enter the next OODA loop.
+> The action is not operationally complete until its useful feedback can enter
+> the next OODA loop — and no earlier than that.

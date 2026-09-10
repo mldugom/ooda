@@ -185,13 +185,16 @@ def work_permitted(blocker: Optional[Blocker], intent: str, *, target: Optional[
             "sequencing is a historical stage label, not a dependency; it never bars work",
         )
 
+    # A blocker that names a target bites only that target. This is what keeps a
+    # missing sportsbook baseline from reading as "all research is blocked", and
+    # an unidentifiable MFE from closing every other endpoint.
+    if blocker.target is not None and target is not None and blocker.target != target:
+        return Permission(
+            True,
+            f"{blocker.blocker_type} blocker applies to {blocker.target!r}, not {target!r}",
+        )
+
     if blocker.blocker_type == "scientific":
-        same_target = blocker.target is None or target is None or blocker.target == target
-        if not same_target:
-            return Permission(
-                True,
-                f"scientific blocker applies to {blocker.target!r}, not {target!r}",
-            )
         if scope in blocker.blocked_for:
             return Permission(False, f"scientifically blocked for {scope}: {blocker.note or blocker.target or 'not identifiable'}")
         return Permission(True, f"scientific blocker does not cover {scope}")

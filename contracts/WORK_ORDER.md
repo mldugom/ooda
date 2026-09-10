@@ -1,94 +1,88 @@
 # `ooda/work-order/v1`
 
-A work order is the durable execution contract behind an OODA **mission**.
-
-Human-facing CLI terminology is deliberately simpler:
+A work order is the durable execution contract behind an OODA **mission**. It is
+the boundary between creative discussion and bounded execution: small enough to
+read in seconds, precise enough to prevent silent scope expansion.
 
 ```bash
 ooda mission ...
 ```
 
-The underlying provider-neutral schema remains `ooda/work-order/v1` so workers/providers do not depend on product wording.
+The schema stays `ooda/work-order/v1` so workers and providers do not depend on
+product wording.
 
-A mission/work order is the boundary between creative discussion and bounded execution. It should be small enough to read quickly and precise enough to prevent silent scope expansion.
+## The lean default
 
-## OODA placement
-
-The work order is the compact durable result of:
-
-```text
-OBSERVE
-current truth / authority / constraints
-    |
-    v
-ORIENT
-role + profile + lenses + uncertainty
-+ real decision / value bottleneck when material
-    |
-    v
-DECIDE
-one bounded move worth taking now
-    |
-    v
-WORK ORDER / MISSION
-scope + verification + budget + stops + authority
-    |
-    v
-ACT
-worker execution
-```
-
-Do not turn the contract into a transcript of orientation. Preserve only the decision-relevant result.
-
-## Required concepts
-
-- project and task identity;
-- objective;
-- role, profile, and selected lenses;
-- claim level;
-- allowed and forbidden scope;
-- verification or expected evidence;
-- budget;
-- stop conditions;
-- authority.
-
-For consequential domain/data missions, also preserve these compact orientation fields when they are meaningful and known:
-
-- **decision served** — the real operator/user/business decision this work is intended to improve;
-- **value hypothesis** — why resolving this uncertainty is expected to create value, reduce loss/risk, or remove a critical-path blocker.
-
-Do not invent these fields to make a mission look complete. If the Controller cannot connect a proposed mission to the domain decision/value function, it should orient first rather than dispatching a larger worker task. See `docs/DOMAIN_DECISION_ORIENTATION.md`.
-
-## Human-friendly construction
-
-Typical direct CLI use:
-
-```bash
-ooda mission \
-  "Test one non-overlapping lead/lag hypothesis" \
-  --role researcher \
-  --profile quantitative-research \
-  --lenses scientific,statistical,market-microstructure \
-  --claim discovery \
-  --id R6E-01
-```
-
-By default this writes:
+Eight fields. This is what an ordinary mission carries:
 
 ```text
-.ooda/work-orders/R6E-01.json
+OBJECTIVE             one bounded outcome
+WHY NOW               the decision served, and why this is the highest-value move
+AUTHORITATIVE INPUTS  pointers to the truth the worker should read
+CRITICAL FACTS        <= 10 facts the worker cannot safely discover late
+ALLOWED               scope
+FORBIDDEN             scope
+EXPECTED OUTPUT       what comes back
+STOP CONDITION        when to stop, always present
 ```
 
-The Controller may construct the same contract conversationally. If it lacks facts required to bound the mission correctly, it should first request a short orientation spike rather than pulling deep project context into the Controller session.
+**Pointers, not history.** Do not pre-load old traces, whole research histories,
+PROJECT_STATE prose, doctrine, dashboards, or unrelated PRs. The worker fetches
+depth on demand. Context is a cost the mission pays on every turn.
 
-## Documentation impact
+## Optional, only when they bind
 
-For substantial changes, the mission may identify likely documentation targets such as architecture, domain model, process/data flow, interface contract, methodology, or command/operator guide.
+```text
+CLAIM CEILING     discovery | evidence | qualification | n-a
+AUTHORITY         when the default deny-list is not enough
+BUDGET            small | medium | large, or explicit turns/tool calls
+ROLE              accountability descriptor
+PROFILE           expertise descriptor
+LENSES            0-1 by default
+ENVIRONMENT       requirements this mission needs from its execution environment
+```
 
-This is a planning hint, not a mandatory documentation deliverable for every change. The active worker reassesses documentation impact before handoff. See `docs/DOCUMENTATION_STEWARDSHIP.md`.
+`role`, `profile`, and `lenses` are **optional routing aids, not required
+fields**. The vnext ablation found no measurable gain from them on ordinary
+data-science work, where a worker given none scored joint-top. Attach one only
+when it will materially change worker behavior; state the scientific constraints
+directly otherwise. Two or more lenses require `lens_justification`; three is the
+hard cap. See `reference/routing-vocabulary.md` for where they do earn a place.
 
-## Stop/re-orient rule
+## Environment preflight
 
-If current durable state materially conflicts with the assumptions used to construct the mission, the worker should stop and return for re-orientation rather than silently changing scope.
+A mission that needs local datasets, an operator-host runtime, private files,
+live processes, GPUs, or credentials declares them:
 
-See `examples/work-order.json` for the underlying JSON shape.
+```json
+"environment_requirements": ["path:data/tape.sqlite", "env:XAI_API_KEY"],
+"environment_route_to": "the operator host that holds the snapshot"
+```
+
+`ooda preflight --work-order FILE` verifies them **before** dispatch. An entire
+remote research cycle was once implemented against data the environment did not
+have; this check is what prevents the repeat.
+
+## Mission economics
+
+A consequential mission states the decision served, what result would change it,
+and a resource budget. If those cannot be stated honestly, the answer is KEEP
+THINKING or a small orientation spike — not a larger mission. Do not create work
+because a historical stage number comes next.
+
+## Stop conditions
+
+Every mission has one. "Once baseline metrics are computed", "once the bug is
+reproduced and fixed", "after N candidate families", "if the environment lacks
+the data", "if the target is not identifiable". Never "find the best possible
+model".
+
+## Stop and re-orient
+
+If durable state materially conflicts with the assumptions the mission was built
+on, the worker stops and returns for re-orientation rather than adapting scope
+silently.
+
+See `examples/work-order.json` for the lean shape and
+`examples/work-order-specialist.json` for a case where descriptors earn their
+tokens.

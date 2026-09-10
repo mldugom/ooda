@@ -1,0 +1,29 @@
+{
+  "schema": "ooda/work-order/v1",
+  "id": "example-002",
+  "project_id": "example-execution-study",
+  "objective": "Establish whether the modelled edge survives real spread, depth, and timing at decision time.",
+  "why_now": "Sizing cannot be decided until executable cost is known; a paper edge is not a tradable one.",
+  "role": "trader",
+  "profile": "market-microstructure",
+  "lenses": ["market-microstructure", "portfolio"],
+  "lens_justification": "live execution sizing against a thin book: fill realism and book-level concentration are separate failure modes",
+  "claim_level": "evidence",
+  "critical_facts": [
+    "executable quotes are joined at the decision timestamp, not the settlement timestamp",
+    "no capital is authorised at this claim level"
+  ],
+  "scope": {
+    "allowed": ["research/execution/**", "tests/**"],
+    "forbidden": ["live order placement", "capital deployment", "promotion to production"]
+  },
+  "verification": ["fills modelled against quoted depth", "slippage reported with uncertainty"],
+  "budget": {"max_turns": 8, "max_investigation_steps": 10},
+  "stop_conditions": ["executable cost is measured", "objective materially changes"],
+  "authority": {
+    "may_merge": false,
+    "may_promote_model": false,
+    "may_modify_live_runtime": false,
+    "may_spend_real_money": false
+  }
+}
