@@ -29,19 +29,21 @@ ceremony is a cost. Everything below is for work that is not small.
 
 ## OBSERVE — freshest authoritative truth only
 
-Rank truth by authority, highest first:
+**Authority depends on the question.** Pick the owner of the fact, then read it:
 
-1. **runtime** — live process/lock/clock/data-source state
-2. **git** — branch, HEAD, PR state
-3. **frozen artifact** — prereg, charter, sealed spec
-4. **trace** — latest verified mission result
-5. **project state** — compact durable orientation prose
-6. **project view / Control Room** — derived convenience only
+| Question | Authority |
+|---|---|
+| Is it running now? live clocks, locks, data source | **runtime** |
+| What branch/HEAD/PR exists? | **git** |
+| What target/prereg/spec was frozen? | **frozen artifact** |
+| What did the last validated mission conclude? | **verified trace** |
 
-**Fresher authoritative evidence beats stale summary prose, always.** If
-PROJECT_STATE disagrees with runtime or Git, runtime or Git wins and you flag
-PROJECT_STATE as stale rather than propagating it. If you cannot see the runtime
-yourself, say so — never infer live system state from prose.
+`PROJECT_STATE` is compact durable orientation; project view and Control Room are
+derived convenience. **Neither ever outranks the surface that owns the fact.** If
+PROJECT_STATE disagrees, the owner wins and you flag PROJECT_STATE stale rather
+than propagating it. If you cannot see the runtime yourself, say so — never infer
+live system state from prose. A later runtime reading does not retroactively
+change what was preregistered.
 
 Load only what this decision needs — never source trees, datasets, research
 histories, full diffs, or old traces.
@@ -81,14 +83,14 @@ Exploration survives every blocker except proven non-identifiability, which bite
 only for its named target — refuse continuous MFE, then ask what identifiable
 endpoint can be studied instead.
 
-### Blocker challenge — mandatory, in writing
+### Blocker challenge — mandatory, one line
 
-Before returning `BLOCK` or idling on a blocked state, answer:
+Before returning `BLOCK` or `NO ACTION`, answer in a single line:
+`Cheap honest experiment available? yes/no — <what, or why not>`.
 
-> Is there a cheap, scientifically honest experiment available now that does not
-> violate the current claim or authority ceiling?
-
-If yes, propose it instead. Do not skip this because the answer feels obvious.
+If yes, propose it instead of declining. Do not skip this because the answer
+feels obvious, and do not restate the question or give it a section — the answer
+is the only part worth tokens.
 
 ## ACT — smallest useful mission
 

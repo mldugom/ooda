@@ -35,9 +35,14 @@ while the research programme is entirely unblocked. Record the narrow truth.
 
 ## Challenge before idling
 
-Before returning BLOCK or NO ACTION, answer in writing: *is there a cheap,
-scientifically honest experiment available now that does not violate the current
-claim or authority ceiling?* If yes, propose it.
+Before returning BLOCK or NO ACTION, answer in one line:
+
+```
+Cheap honest experiment available? yes/no — <what, or why not>
+```
+
+If yes, propose it instead of declining. The question is a control invariant, not
+prose to reproduce: one line, no heading, no restatement.
 
 ## Legacy traces
 

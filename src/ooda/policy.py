@@ -90,19 +90,21 @@ class Blocker:
 
     @property
     def exploration_allowed(self) -> bool:
-        """Exploration survives every blocker except proven non-identifiability.
+        """Whether exploration of this blocker's own subject may proceed.
 
-        Exploration makes no claim, so it cannot violate scientific integrity
-        on its own; claims can, and claims are governed by ``claim_ceiling``.
-        The single exception is a scientific blocker that explicitly covers
-        exploration -- there is nothing honest to explore about a quantity the
-        data cannot identify.
+        Derived from :func:`work_permitted` rather than re-deriving the rule, so
+        a serialized blocker can never contradict the permission the system
+        actually enforces. An earlier version answered this independently and
+        reported ``True`` for a data/environment/authority/promotion blocker whose
+        ``blocked_for`` included exploration, while ``work_permitted`` correctly
+        refused -- a serialized field disagreeing with enforcement is exactly the
+        class of defect typed blockers exist to remove.
+
+        Evaluated on the blocker's own terms: a blocker naming a target speaks
+        only about that target, which callers express by passing ``target`` to
+        ``work_permitted`` directly.
         """
-        if self.blocker_type == "sequencing":
-            return True
-        if self.blocker_type == "scientific" and "exploration" in self.blocked_for:
-            return False
-        return True
+        return work_permitted(self, "explore").allowed
 
     @property
     def is_real_dependency(self) -> bool:
@@ -229,20 +231,53 @@ BLOCKER_CHALLENGE = (
     "violate the current claim or authority ceiling?"
 )
 
+# Compact form for output. The question is a control invariant, not a thing to
+# reproduce in every answer -- restating it costs tokens on every blocked path
+# and adds nothing a reader did not already know.
+CHALLENGE_TAG = "Cheap honest experiment available?"
+
 
 def blocker_challenge_required(blocker: Optional[Blocker]) -> bool:
-    """Every idle-on-block path must answer the challenge in writing first."""
+    """Whether the controller must answer the challenge before declining to work.
+
+    ``None`` returns True deliberately. The invariant guards a false negative --
+    not working when useful work exists -- and that risk is present in both
+    idle-on-block paths: returning BLOCK under a blocker that still permits
+    exploration, and returning NO ACTION with no blocker at all. The second is
+    the easier one to get wrong, so it is not exempt.
+
+    This governs the *decision*, not the prose. Callers should render the answer
+    with ``challenge_line``; the question itself does not need reproducing.
+    """
     if blocker is None:
         return True
     return blocker.exploration_allowed
+
+
+def challenge_line(answer_yes: bool, detail: str = "") -> str:
+    """One-line rendering of the challenge answer.
+
+    A `yes` names the experiment; a `no` must justify itself, because declining
+    available work is the failure this whole mechanism exists to catch.
+    """
+    verdict = "yes" if answer_yes else "no"
+    detail = detail.strip()
+    if not detail:
+        return f"{CHALLENGE_TAG} {verdict}"
+    return f"{CHALLENGE_TAG} {verdict} — {detail}"
 
 
 # --------------------------------------------------------------------------
 # Truth freshness / authority hierarchy
 # --------------------------------------------------------------------------
 
-# Higher wins. Prose summaries sit below every authoritative surface, which is
-# the inversion of the pre-vnext controller's stale-first context ordering.
+# Authority is a property of the QUESTION, not a global ranking. A single global
+# order gets live operational facts right and scientific contracts wrong: the
+# runtime does not know what target was frozen, and a frozen prereg does not know
+# whether the collector is running now.
+#
+# Four domains is the whole ontology. Each tuple is weakest -> strongest, and
+# derived surfaces stay lowest everywhere.
 TRUTH_SOURCES = (
     "dashboard",       # derived convenience only
     "project_view",    # derived human orientation
@@ -253,7 +288,34 @@ TRUTH_SOURCES = (
     "runtime",         # live operational fact
 )
 
-TRUTH_RANK = {name: i for i, name in enumerate(TRUTH_SOURCES)}
+_DERIVED_TAIL = ("dashboard", "project_view", "project_state")
+
+FACT_DOMAINS = {
+    # "is the collector running?" -- only the runtime knows.
+    "operational": _DERIVED_TAIL + ("frozen_artifact", "trace", "git", "runtime"),
+    # "what branch/HEAD exists?" -- Git owns repository truth.
+    "repository": _DERIVED_TAIL + ("frozen_artifact", "trace", "runtime", "git"),
+    # "what target/prereg was frozen?" -- the frozen artifact is the contract;
+    # a later runtime or trace cannot retroactively change what was preregistered.
+    "scientific_contract": _DERIVED_TAIL + ("runtime", "git", "trace", "frozen_artifact"),
+    # "what did the last validated mission conclude?" -- the verified trace.
+    "mission_outcome": _DERIVED_TAIL + ("runtime", "git", "frozen_artifact", "trace"),
+}
+
+DEFAULT_FACT_DOMAIN = "operational"
+
+# Kept for callers that want the plain default ordering.
+TRUTH_RANK = {name: i for i, name in enumerate(FACT_DOMAINS[DEFAULT_FACT_DOMAIN])}
+
+
+def truth_rank(source: str, domain: str = DEFAULT_FACT_DOMAIN) -> int:
+    """Authority of `source` for a question in `domain`. Higher wins."""
+    if domain not in FACT_DOMAINS:
+        raise ValueError(f"unknown fact domain: {domain!r}")
+    order = FACT_DOMAINS[domain]
+    if source not in order:
+        raise ValueError(f"unknown truth source: {source!r}")
+    return order.index(source)
 
 DERIVED_SOURCES = frozenset({"dashboard", "project_view"})
 PROSE_SOURCES = frozenset({"project_state", "project_view", "dashboard"})
@@ -266,7 +328,7 @@ class TruthClaim:
     note: str = ""
 
     def __post_init__(self) -> None:
-        if self.source not in TRUTH_RANK:
+        if self.source not in TRUTH_SOURCES:
             raise ValueError(f"unknown truth source: {self.source!r}")
 
 
@@ -275,24 +337,30 @@ class TruthResolution:
     winner: TruthClaim
     stale: Tuple[TruthClaim, ...] = ()
     conflict: bool = False
+    domain: str = DEFAULT_FACT_DOMAIN
 
     @property
     def stale_sources(self) -> Tuple[str, ...]:
         return tuple(c.source for c in self.stale)
 
 
-def resolve_truth(claims: Sequence[TruthClaim]) -> TruthResolution:
-    """Highest-authority claim wins; disagreeing lower sources are flagged stale.
+def resolve_truth(
+    claims: Sequence[TruthClaim], domain: str = DEFAULT_FACT_DOMAIN
+) -> TruthResolution:
+    """Highest-authority claim for this kind of question wins.
 
-    For a live operational fact ("is the collector running?") this is what stops
-    a stale PROJECT_STATE line from overriding a fresh runtime read.
+    Disagreeing lower-authority sources are flagged stale rather than silently
+    dropped. `domain` scopes the ranking so no single source type outranks every
+    other globally -- the runtime wins "is the collector running?", Git wins
+    "what branch exists?", the frozen artifact wins "what was preregistered?",
+    and the verified trace wins "what did the last mission conclude?".
     """
     if not claims:
         raise ValueError("resolve_truth requires at least one claim")
-    ordered = sorted(claims, key=lambda c: TRUTH_RANK[c.source], reverse=True)
+    ordered = sorted(claims, key=lambda c: truth_rank(c.source, domain), reverse=True)
     winner = ordered[0]
     stale = tuple(c for c in ordered[1:] if c.value != winner.value)
-    return TruthResolution(winner=winner, stale=stale, conflict=bool(stale))
+    return TruthResolution(winner=winner, stale=stale, conflict=bool(stale), domain=domain)
 
 
 def is_derived(source: str) -> bool:

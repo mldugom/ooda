@@ -16,7 +16,7 @@ from .policy import (
     BLOCKED_FOR,
     BlockerError,
     lens_budget_ok,
-    BLOCKER_CHALLENGE,
+    CHALLENGE_TAG,
     BLOCKER_TYPES,
     CLAIM_CEILINGS,
     Blocker,
@@ -365,8 +365,7 @@ def cmd_trace(a):
         data["result"]["blocker"] = blocker.to_dict()
         if blocker.exploration_allowed:
             print(
-                "NOTE exploration remains allowed under this blocker. "
-                f"Answer before idling: {BLOCKER_CHALLENGE}",
+                f"NOTE exploration remains allowed under this blocker. {CHALLENGE_TAG}",
                 file=sys.stderr,
             )
     elif a.blocker_type:

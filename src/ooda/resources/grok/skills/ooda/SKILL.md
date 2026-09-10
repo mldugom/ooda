@@ -27,9 +27,11 @@ update. Skip the rest of this file.
 ## 1. Observe
 
 Establish branch/HEAD/dirty truth and read only the durable state the objective
-needs. **Fresher authoritative evidence beats stale prose:** runtime > git >
-frozen artifact > trace > project state > dashboard. Flag stale state rather than
-acting on it; if you cannot see the runtime, say so instead of inferring it.
+needs. **Authority depends on the question:** the runtime owns live state, Git
+owns repository state, the frozen artifact owns the preregistered contract, the
+verified trace owns what a mission concluded. PROJECT_STATE and dashboards never
+outrank the owner of the fact. Flag stale state rather than acting on it; if you
+cannot see the runtime, say so instead of inferring it.
 
 If the mission depends on local datasets, an operator-host runtime, private
 files, live processes, GPUs, or credentials — **verify they are present here
@@ -109,8 +111,9 @@ target:              (scientific only — the exact unidentifiable quantity)
 ```
 
 Stages describe evidence, never permission. `sequencing` alone never stops work.
-Before reporting blocked, answer in writing: *is there a cheap, scientifically
-honest experiment available now that does not violate the claim ceiling?*
+Before reporting blocked, answer in one line:
+`Cheap honest experiment available? yes/no — <what, or why not>`. Do not restate
+the question or give it a section.
 
 ## Load on demand
 
