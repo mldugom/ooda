@@ -110,6 +110,15 @@ class TestSingleSource(unittest.TestCase):
         names = [p.name for p in refs]
         self.assertEqual(sorted(names), sorted(set(names)), "duplicate reference sources")
 
+    def test_no_doc_duplicates_a_reference_body(self):
+        """Copying reference prose into docs/ recreates the drift this replaced."""
+        for ref in (RES / "reference").glob("*.md"):
+            body = ref.read_text(encoding="utf-8")
+            fingerprint = max(body.split("\n\n"), key=len).strip()[:120]
+            for doc in (ROOT / "docs").glob("*.md"):
+                self.assertNotIn(fingerprint, doc.read_text(encoding="utf-8"),
+                                 f"{doc.name} duplicates {ref.name}; link to it instead")
+
     def test_packaging_ships_the_references(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         self.assertIn("resources/reference/*.md", pyproject)

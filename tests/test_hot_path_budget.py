@@ -18,7 +18,9 @@ RES = ROOT / "src/ooda/resources"
 BUDGETS = [
     (RES / "grok/skills/ooda-controller/SKILL.md", 1700, 2100),
     (RES / "grok/skills/ooda/SKILL.md", 1350, 1650),
-    (RES / "EFFICIENT_AGENT.md", 1500, 1900),
+    # Grew deliberately at vnext: the worker context budget and one-subject-per-
+    # session rules were added, net of trimming doctrine the skills now carry.
+    (RES / "EFFICIENT_AGENT.md", 1600, 2000),
 ]
 
 # Pre-vnext measurements, for the reduction assertion and the record.
