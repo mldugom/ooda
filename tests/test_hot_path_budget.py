@@ -16,7 +16,11 @@ RES = ROOT / "src/ooda/resources"
 
 # (path, lo budget, hi budget)
 BUDGETS = [
-    (RES / "grok/skills/ooda-controller/SKILL.md", 1700, 2100),
+    # The thin-output pass added a print contract (+77 lo) after condensing
+    # everything that was not a rule. It trades a small always-loaded increase
+    # for a large reduction in per-answer output, which is where Grok telemetry
+    # showed the cost. Still -53% against the 3,750 pre-vnext baseline.
+    (RES / "grok/skills/ooda-controller/SKILL.md", 1800, 2200),
     # Grew deliberately in the locality pass: execution routing, derived-artifact
     # reuse, Python-first, and output hygiene are new worker policy. Still -27%
     # against the 1,912 pre-vnext baseline.

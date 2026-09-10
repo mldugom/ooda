@@ -1,5 +1,11 @@
 from pathlib import Path
+import re
 import unittest
+
+
+def flat(text: str) -> str:
+    """Collapse line wrapping so assertions test meaning, not formatting."""
+    return re.sub(r"\s+", " ", text).strip()
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,10 +19,12 @@ class DomainOrientationTests(unittest.TestCase):
         vnext folded the standalone `## Domain/value preflight` section into
         ORIENT and moved the long form to reference/predictive-science.md, but
         the questions themselves are load-bearing and must stay in the hot path.
+        The thin-output pass later demoted the loop headings to internal
+        subsections, so this asserts the questions survive -- not a heading level.
         """
-        text = CONTROLLER.read_text(encoding="utf-8")
+        text = flat(CONTROLLER.read_text(encoding="utf-8"))
         for marker in (
-            "## ORIENT",
+            "Orient",
             "operator decision",
             "outcome actually matters",
             "current bottleneck",
@@ -25,7 +33,7 @@ class DomainOrientationTests(unittest.TestCase):
             self.assertIn(marker, text)
 
     def test_controller_still_demands_decision_served_for_consequential_work(self):
-        text = CONTROLLER.read_text(encoding="utf-8")
+        text = flat(CONTROLLER.read_text(encoding="utf-8"))
         self.assertIn("decision served", text)
         self.assertIn("KEEP THINKING", text)
 
