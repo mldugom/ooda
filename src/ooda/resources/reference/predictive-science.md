@@ -15,8 +15,8 @@ Answer those before feature programmes, complex models, or qualification chains.
 A simple end-to-end baseline that produces a measured number beats a large
 feature effort that produces none.
 
-Tennis: results → Elo → probability metrics → compare with market.
-Crypto: buy-time features → target → C0/C1/C2 → evaluate.
+Concretely: raw outcomes → a simple rating or feature set → probability metrics
+→ compare against the baseline and, where one exists, the market.
 
 ## Data stays where it lives; code moves to the data
 
@@ -64,9 +64,9 @@ Before replaying expensive upstream work, ask whether a derived artifact already
 answers the downstream question. **Reuse it while its upstream contract holds.**
 A fresh session or a new worker is not a reason to recompute.
 
-Tenniskal: the Elo replay processed ~38k eligible matches into a frozen 1,042-row
-evaluation set. An Elo-vs-Kalshi comparison reads that artifact. It replays the
-history only if the Elo construction itself is what is being challenged.
+If an expensive replay already produced a frozen evaluation set, a downstream
+comparison reads that set. It replays the history only when the construction of
+the artifact itself is what the mission is challenging.
 
 Recompute when the upstream contract changed — source, target definition,
 filters, split, as-of date — or when the mission challenges how the artifact was
@@ -78,7 +78,7 @@ Deterministic output should be machine-readable and bounded — a small JSON
 summary plus artifact pointers, not a large stdout dump:
 
 ```json
-{"experiment": "broad_baseline", "dataset_sha256": "...", "n": 13411,
+{"experiment": "broad_baseline", "dataset_sha256": "...", "n": 10000,
  "target": "...", "target_prevalence": 0.47,
  "metrics": {"C0": {}, "C1": {}, "C2": {}},
  "invariants": {"pit": "PASS", "holdout_overlap": 0, "prospective_inspected": false},

@@ -22,8 +22,16 @@ BUDGETS = [
     # showed the cost. Still -53% against the 3,750 pre-vnext baseline.
     # Forensic pass closed two provable loopholes: a confirmation-read trigger
     # and the "must act on it themselves" clause that let a whole work order
-    # print. Both are mechanical rules, not prose. Still -52% vs pre-vnext.
-    (RES / "grok/skills/ooda-controller/SKILL.md", 1820, 2250),
+    # print. Both are mechanical rules, not prose.
+    # Boundary pass added four rules the controller must decide without any
+    # reference: a missing comparator scopes to its own claims, an unreachable
+    # environment routes rather than invalidates, ordinary routing opens no
+    # reference at all, and unresolved uncertainty escalates to KEEP THINKING or
+    # a bounded orientation worker instead of controller self-research. Net +161
+    # lo after condensing every non-rule paragraph in the file. The trade is a
+    # slightly larger always-loaded surface against the extra turns and reference
+    # reads it removes. Still -48% vs the 3,750 pre-vnext baseline.
+    (RES / "grok/skills/ooda-controller/SKILL.md", 1990, 2450),
     # Grew deliberately in the locality pass: execution routing, derived-artifact
     # reuse, Python-first, and output hygiene are new worker policy. Still -27%
     # against the 1,912 pre-vnext baseline.

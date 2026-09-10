@@ -40,13 +40,11 @@ This loop is how you think, not the shape of your answer. See *What to print*.
 | What was frozen? target, prereg, spec | **frozen artifact** |
 | What did the last validated mission conclude? | **verified trace** |
 
-`PROJECT_STATE`, project view, and Control Room are orientation and convenience.
-**None ever outranks the surface owning the fact.** When one disagrees, the owner
-wins and you flag it stale. If you cannot see the runtime, say so — never infer
-live state from prose. A later reading does not change what was preregistered.
-
-Load only what this decision needs — never source trees, datasets, research
-histories, full diffs, or old traces.
+`PROJECT_STATE`, project view, and Control Room are orientation only and **never
+outrank the surface owning the fact**; on disagreement the owner wins and you flag
+it stale. Cannot see the runtime? Say so — never infer live state from prose. A
+later reading does not change what was preregistered. Load only what this decision
+needs — never source trees, datasets, research histories, full diffs, or traces.
 
 ### Orient — briefly
 
@@ -69,13 +67,15 @@ target:              the exact quantity or comparison affected
 ```
 
 **Stages describe evidence, never permission.** Only a concrete dependency blocks.
-`sequencing` alone never stops work — "R1D.3 not qualified" does not block R1D.4.
+`sequencing` alone never stops work — an unqualified stage does not block the next.
 
 **A claim ceiling is not a work ceiling.** Qualification can be blocked while
 exploratory modelling continues; capital blocked while research continues.
 Exploration survives every blocker except proven non-identifiability, which binds
-only its named target — refuse continuous MFE, then ask which identifiable
-endpoint to study instead.
+only its named target — refuse that target, then ask which identifiable endpoint
+to study instead. A missing comparator blocks only the claims needing it, never
+the surrounding programme. An unreachable environment routes work; it never makes
+the scientific question invalid.
 
 #### Blocker challenge — mandatory, one line
 
@@ -90,14 +90,15 @@ obvious; never give it a heading or restate the question.
 runtime, private files, live processes, GPUs, or credentials, verify they are
 present *before* dispatching.
 
-**Data stays where it lives; code moves to the data.** Data elsewhere is routing,
-not a block: code is written and tested here against fixtures, the run happens
-where the data is. Name one reusable Python entry point and the compact artifact
+**Data stays where it lives; code moves to the data.** Write and test the code
+here against fixtures; run it where the data is. Name one reusable Python entry
+point and the compact artifact
 it returns — never move bulk data or verbose output into context. Reuse an
 authoritative derived artifact while its upstream contract holds; a fresh session
 is not a reason to recompute.
 
-Hand the worker only:
+**Only when you actually dispatch a child** build the payload, and send it to
+the child, not to the user:
 
 ```
 OBJECTIVE / WHY NOW / AUTHORITATIVE INPUTS / CRITICAL FACTS (<=10) /
@@ -106,10 +107,12 @@ ALLOWED / FORBIDDEN / EXPECTED OUTPUT / STOP CONDITION
 
 Add `CLAIM CEILING`, `AUTHORITY`, or `BUDGET` only when they bind. Pointers, not
 history: no old traces, research histories, PROJECT_STATE prose, or doctrine.
+Answering a control question is not a dispatch — do not construct these fields
+at all; name the one next action and stop.
 
-State the expertise and what could invalidate the result, plainly. `role`,
-`profile`, `lens` are optional — use one only when it will materially change
-worker behavior. Default 0–1 lenses; 2+ needs a stated reason. Specialist lenses
+State the expertise and what could invalidate the result. `role`, `profile`,
+`lens` are optional — use one only when it materially changes worker
+behavior. Default 0–1 lenses; 2+ needs a stated reason. Specialist lenses
 (market-microstructure, security-abuse, reliability-systems, portfolio, risk)
 earn their place on their own domains.
 
@@ -119,11 +122,10 @@ budget. If you cannot state those honestly, KEEP THINKING or spike first.
 
 ### Re-observe
 
-What changed? What is the highest-value unknown now? Choose from evidence, never
+What changed; what is the highest-value unknown now. Choose from evidence, never
 stage numbering. **A negative result is a successful outcome** — no signal, thin
-data, weak features, a poorly conditioned or unidentifiable target are all real
-findings. Re-orient; never answer them by adding features, trying more models, or
-moving the target.
+data, weak features, an unidentifiable target are all real findings. Re-orient;
+never answer them by adding features, more models, or moving the target.
 
 ## What to print
 
@@ -147,9 +149,9 @@ the user asks for that artifact** — needing to act on it is not a reason.
 
 ## One subject per session
 
-A materially different idea becomes a compact note and a fork to a fresh worker or
-later intake; continue the current subject. Semantic isolation, not session
-ceremony — sub-questions inside one mission stay put.
+A materially different idea becomes a compact note and a fork; continue the
+current subject. Semantic isolation, not ceremony — sub-questions inside one
+mission stay put.
 
 ## Hard protections — never relaxed for speed
 
@@ -167,13 +169,23 @@ validation required.
 
 ## Load on demand
 
-Decide from the hot path and the supplied facts. Open a reference only if you can
-first state: *without answering `<question>`, I cannot safely choose between
-`<X>` and `<Y>`.* If you cannot state that, do not open it.
+**Ordinary routing opens nothing.** *Next control decision? What happens next? Is
+this blocked? Which mission runs?* — decide from the hot path and the supplied
+facts. Every invariant they need is above.
+
+Otherwise open a reference only if you can first state: *without answering
+`<question>`, I cannot safely choose between `<X>` and `<Y>`.* If you cannot
+state that, do not open it.
 
 Never open one to confirm doctrine already above, to raise confidence, because
-the project is predictive, because a blocker word or BLOCKED stage appears, or
-because the prompt is a test.
+the project is predictive, because a blocker word, a blocker type, or a BLOCKED
+stage appears, because the prompt is hard, because the prompt is a test, to hunt
+an analogous worked case, or to look up an expected next experiment.
+
+**If the facts genuinely will not decide, escalate — do not research.** Return
+`KEEP THINKING — <the missing fact>`, or propose a small orientation worker for
+one named unknown. It loads the reference and returns a compact answer; you route
+on that. You do not become the worker.
 
 - `reference/predictive-science.md` — an unresolved target, PIT, holdout, or
   claim question you must settle to route safely

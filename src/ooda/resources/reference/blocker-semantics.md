@@ -14,7 +14,7 @@ target              scientific only — the exact unidentifiable quantity
 ## The two rules
 
 **Stages describe evidence, not permission.** `sequencing` is a historical label.
-It never bars work on its own. "R1D.3C not qualified" does not block R1D.4.
+It never bars work on its own. An unqualified stage does not block the next one.
 
 **A claim ceiling is not a work ceiling.** Exploration survives every blocker
 except a `scientific` one whose `blocked_for` includes exploration — and that
@@ -25,13 +25,14 @@ applies only to its named target.
 | Situation | type | blocked_for | exploration |
 |---|---|---|---|
 | Multi-regime qualification not ready | promotion | qualification | **yes** |
-| Continuous MFE, only five scheduled observations | scientific | exploration, evidence, qualification (target: continuous MFE/MAE) | **no, for that target only** |
-| Sportsbook B1 never joined, n=0 | data | evidence (the B1 comparison only) | **yes** |
+| A path-dependent quantity, observed only at sparse snapshots | scientific | exploration, evidence, qualification (target: that quantity) | **no, for that target only** |
+| A comparator source never joined, n=0 | data | evidence (that comparison only) | **yes** |
 | Remote environment lacks the host snapshot | environment | evidence, qualification | **yes** (code, not evaluation) |
 | Real-money trading | authority | capital | **yes** |
 
-The Tenniskal case is the trap: a named F1-vs-B1 test can be genuinely undefined
-while the research programme is entirely unblocked. Record the narrow truth.
+The trap is the second row of scope: a single named comparison can be genuinely
+undefined while the research programme around it is entirely unblocked. Record the
+narrow truth, not the broad one.
 
 ## Challenge before idling
 

@@ -28,6 +28,11 @@ names a specific quantity or comparison.
 - A blocker naming a target binds only that target — a missing sportsbook
   baseline does not close an Elo-vs-market comparison.
 
+The case names above are this repository's record of where the rules came from.
+The *installed* controller and references state them generically: a benchmark
+answer key in general-purpose doctrine is doctrine a model can pattern-match
+instead of reasoning from. Real case facts live in tests and `research/`.
+
 Before returning BLOCK or idling, the Controller answers in writing: *is there a
 cheap, scientifically honest experiment available now that does not violate the
 current claim or authority ceiling?*
