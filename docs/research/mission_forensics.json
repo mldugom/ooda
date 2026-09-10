@@ -1,0 +1,38 @@
+{
+  "repo_head": "8b541e93830e04e4ecea4cfb29c9fed6d2d2c05e",
+  "n_work_orders": 22,
+  "n_traces": 23,
+  "orphan_traces": [
+    {
+      "trace_key": "tk-r7-prereg-amend-validate-2026-09-08",
+      "trace_key_used": "work_order_id",
+      "trace_sha": "64829eb3c"
+    }
+  ],
+  "rework": [
+    {
+      "dir": "PROJECT_STATE.md",
+      "n_distinct_commits": 17,
+      "n_missions": 22,
+      "n_pairs": 216
+    },
+    {
+      "dir": "research",
+      "n_distinct_commits": 11,
+      "n_missions": 16,
+      "n_pairs": 105
+    },
+    {
+      "dir": "research",
+      "n_distinct_commits": 2,
+      "n_missions": 2,
+      "n_pairs": 1
+    },
+    {
+      "dir": "research",
+      "n_distinct_commits": 2,
+      "n_missions": 2,
+      "n_pairs": 1
+    }
+  ]
+}
