@@ -1,71 +1,205 @@
 {
-  "schema": "ooda/retrospective-results/v1",
-  "date": "2026-09-10",
-  "status": "experiment_complete_no_production_change",
-  "verdict": "EFFECTIVE_BUT_OVERWEIGHT",
-  "method_notes": {
-    "tokenizer": "cl100k pre-tokenizer regex; BPE weights unavailable (blocked egress). All token values are [lo,hi] estimate bands, not point values.",
-    "blinding": "evaluator blind to variant; output order shuffled; key sealed until scoring returned",
-    "not_measured": ["population-level false_block/unsafe_unlock/stage_sequencing/stale_state rates","provider cost","wall clock","validator ablation","work-order ablation","grading of actual historical Crypto/Tennis outputs"]
+ "schema": "ooda/retrospective-results/v1",
+ "date": "2026-09-10",
+ "status": "experiment_complete_no_production_change",
+ "verdict": "EFFECTIVE_BUT_OVERWEIGHT",
+ "method_notes": {
+  "tokenizer": "cl100k pre-tokenizer regex; BPE weights unavailable (blocked egress). All token values are [lo,hi] estimate bands, not point values.",
+  "blinding": "evaluator blind to variant; output order shuffled; key sealed until scoring returned",
+  "not_measured": [
+   "population-level false_block/unsafe_unlock/stage_sequencing/stale_state rates",
+   "provider cost",
+   "wall clock",
+   "validator ablation",
+   "work-order ablation",
+   "grading of actual historical Crypto/Tennis outputs"
+  ]
+ },
+ "hot_path_tokens": {
+  "EFFICIENT_AGENT.md": {
+   "lo": 1313,
+   "hi": 1697,
+   "load": "always"
   },
-  "hot_path_tokens": {
-    "EFFICIENT_AGENT.md":            {"lo": 1313, "hi": 1697, "load": "always"},
-    "grok/ooda-controller/SKILL.md": {"lo": 3750, "hi": 4911, "load": "on /ooda-controller"},
-    "grok/ooda/SKILL.md":            {"lo": 1912, "hi": 2533, "load": "on /ooda"},
-    "deepseek/ooda-controller":      {"lo": 1389, "hi": 1785, "load": "on invoke"},
-    "variant_A_total":               {"lo": 5064, "hi": 6609},
-    "variant_B_total":               {"lo": 5246, "hi": 6856},
-    "variant_C_total":               {"lo":  814, "hi": 1067}
+  "grok/ooda-controller/SKILL.md": {
+   "lo": 3750,
+   "hi": 4911,
+   "load": "on /ooda-controller"
   },
-  "never_loaded_doctrine": {
-    "core_doctrine_tokens": {"lo": 8786, "hi": 11464, "files": 11},
-    "docs_corpus_tokens":   {"lo": 28836, "hi": 37191, "files": 29, "installed": 0},
-    "orphaned": ["core/lenses","core/roles","core/profiles","policies/CLAIM_LEVELS.md","policies/AUTHORITY.md","contracts/WORK_ORDER.md","contracts/TRACE.md","docs/DOMAIN_DECISION_ORIENTATION.md","docs/RESEARCH_VISUALIZATION.md","docs/DOCUMENTATION_STEWARDSHIP.md","docs/QUANTITATIVE_RESEARCH_LOOP.md"]
+  "grok/ooda/SKILL.md": {
+   "lo": 1912,
+   "hi": 2533,
+   "load": "on /ooda"
   },
-  "prior_claim_verification": {
-    "1_controller_5k":        "PARTIAL_overstated",
-    "2_efficient_agent_1.7k": "TRUE",
-    "3_session_6_7k":         "PARTIAL_top_of_band",
-    "4_deepseek_smaller":     "TRUE",
-    "5_docs_referenced":      "TRUE",
-    "6_docs_unreachable":     "TRUE",
-    "7_duplication_weak_drift_check": "TRUE"
+  "deepseek/ooda-controller": {
+   "lo": 1389,
+   "hi": 1785,
+   "load": "on invoke"
   },
-  "abc_quality_blind": {
-    "rubric_points": 14,
-    "A_current":            {"tennis": 12, "crypto": 11, "total": 23},
-    "B_blocker_semantics":  {"tennis": 13, "crypto": 14, "total": 27},
-    "C_lean":               {"tennis": 14, "crypto": 13, "total": 27}
+  "variant_A_total": {
+   "lo": 5064,
+   "hi": 6609
   },
-  "counts_out_of_trials": {
-    "note": "counts, NOT population rates",
-    "false_block":      {"A": "2/2", "B": "0/2", "C": "0/2"},
-    "unsafe_unlock":    {"A": "0/2", "B": "0/2", "C": "0/2"},
-    "stage_sequencing": {"all": "0/6", "note": "single-turn substrate cannot reproduce state-propagated failure"},
-    "stale_state":      {"all": "not_triggered"},
-    "reorientation_success": {"all": "6/6"}
+  "variant_B_total": {
+   "lo": 5246,
+   "hi": 6856
   },
-  "lens_ablation_blind": {
-    "checklist_points": 13,
-    "L0_generic_no_routing":        13,
-    "L1_role_profile":              12,
-    "L2_one_lens":                  13,
-    "L3_three_lenses_names_only":   13,
-    "L4_three_lenses_with_defs":    11,
-    "conclusion": "no detectable benefit from any routing layer; n=1 per arm",
-    "disconfirmed_prediction": "shipping lens definitions (L4) was predicted to help; it scored lowest"
+  "variant_C_total": {
+   "lo": 814,
+   "hi": 1067
+  }
+ },
+ "never_loaded_doctrine": {
+  "core_doctrine_tokens": {
+   "lo": 8786,
+   "hi": 11464,
+   "files": 11
   },
-  "trivial_task_ceremony": {
-    "A_current_tokens": {"lo": 420, "hi": 531},
-    "C_lean_tokens":    {"lo": 616, "hi": 763},
-    "conclusion": "Failure Case 7 does NOT reproduce; current doctrine handled trivial task more concisely than the lean variant"
+  "docs_corpus_tokens": {
+   "lo": 28836,
+   "hi": 37191,
+   "files": 29,
+   "installed": 0
   },
-  "root_cause": "untyped 'blocked' token propagates through TRACE/PROJECT_STATE and is structurally privileged by controller L269 'prioritize blocked missions'; anti-sequencing doctrine exists as prose 4x and loses to the propagating state token",
-  "top_recommendations": [
-    "type the blocker (blocker_type/blocked_for/exploration_allowed) + rule that sequencing alone never stops work",
-    "rank runtime/Git truth above prose summaries; current Allowed-context list is ordered stale-first",
-    "install or delete the orphaned doctrine",
-    "add diff gate to check.sh between providers/ and src/ooda/resources/"
-  ],
-  "human_gate": "IO must choose B vs C, authorize Grok re-run, and rule on the role/profile/lens finding before any implementation"
+  "orphaned": [
+   "core/lenses",
+   "core/roles",
+   "core/profiles",
+   "policies/CLAIM_LEVELS.md",
+   "policies/AUTHORITY.md",
+   "contracts/WORK_ORDER.md",
+   "contracts/TRACE.md",
+   "docs/DOMAIN_DECISION_ORIENTATION.md",
+   "docs/RESEARCH_VISUALIZATION.md",
+   "docs/DOCUMENTATION_STEWARDSHIP.md",
+   "docs/QUANTITATIVE_RESEARCH_LOOP.md"
+  ]
+ },
+ "prior_claim_verification": {
+  "1_controller_5k": "PARTIAL_overstated",
+  "2_efficient_agent_1.7k": "TRUE",
+  "3_session_6_7k": "PARTIAL_top_of_band",
+  "4_deepseek_smaller": "TRUE",
+  "5_docs_referenced": "TRUE",
+  "6_docs_unreachable": "TRUE",
+  "7_duplication_weak_drift_check": "TRUE"
+ },
+ "abc_quality_blind": {
+  "rubric_points": 14,
+  "A_current": {
+   "tennis": 12,
+   "crypto": 11,
+   "total": 23
+  },
+  "B_blocker_semantics": {
+   "tennis": 13,
+   "crypto": 14,
+   "total": 27
+  },
+  "C_lean": {
+   "tennis": 14,
+   "crypto": 13,
+   "total": 27
+  }
+ },
+ "counts_out_of_trials": {
+  "note": "counts, NOT population rates",
+  "false_block": {
+   "A": "2/2",
+   "B": "0/2",
+   "C": "0/2"
+  },
+  "unsafe_unlock": {
+   "A": "0/2",
+   "B": "0/2",
+   "C": "0/2"
+  },
+  "stage_sequencing": {
+   "all": "0/6",
+   "note": "single-turn substrate cannot reproduce state-propagated failure"
+  },
+  "stale_state": {
+   "all": "not_triggered"
+  },
+  "reorientation_success": {
+   "all": "6/6"
+  }
+ },
+ "lens_ablation_blind": {
+  "checklist_points": 13,
+  "L0_generic_no_routing": 13,
+  "L1_role_profile": 12,
+  "L2_one_lens": 13,
+  "L3_three_lenses_names_only": 13,
+  "L4_three_lenses_with_defs": 11,
+  "conclusion": "no detectable benefit from any routing layer; n=1 per arm",
+  "disconfirmed_prediction": "shipping lens definitions (L4) was predicted to help; it scored lowest"
+ },
+ "trivial_task_ceremony": {
+  "A_current_tokens": {
+   "lo": 420,
+   "hi": 531
+  },
+  "C_lean_tokens": {
+   "lo": 616,
+   "hi": 763
+  },
+  "conclusion": "Failure Case 7 does NOT reproduce; current doctrine handled trivial task more concisely than the lean variant"
+ },
+ "root_cause": "untyped 'blocked' token propagates through TRACE/PROJECT_STATE and is structurally privileged by controller L269 'prioritize blocked missions'; anti-sequencing doctrine exists as prose 4x and loses to the propagating state token",
+ "top_recommendations": [
+  "type the blocker (blocker_type/blocked_for/exploration_allowed) + rule that sequencing alone never stops work",
+  "rank runtime/Git truth above prose summaries; current Allowed-context list is ordered stale-first",
+  "install or delete the orphaned doctrine",
+  "add diff gate to check.sh between providers/ and src/ooda/resources/"
+ ],
+ "human_gate": "IO must choose B vs C, authorize Grok re-run, and rule on the role/profile/lens finding before any implementation",
+ "vnext_implementation": {
+  "branch": "claude/ooda-vnext-lean-science",
+  "note": "Token values here use src/ooda/tokens.py (offline, deterministic). The audit above used a cl100k pre-tokenizer regex; the two agree closely but are not identical, so compare within a column, not across.",
+  "hot_path_after": {
+   "controller": [
+    1561,
+    1949
+   ],
+   "worker": [
+    1165,
+    1469
+   ],
+   "runner_policy": [
+    1548,
+    1947
+   ]
+  },
+  "hot_path_before": {
+   "controller": [
+    3750,
+    4911
+   ],
+   "worker": [
+    1912,
+    2533
+   ],
+   "runner_policy": [
+    1425,
+    1806
+   ]
+  },
+  "conditional_doctrine_now_reachable_lo": 2503,
+  "previously_unreachable_doctrine_lo": 8786,
+  "trivial_case_response_tokens": {
+   "current_OODA": [
+    445,
+    552
+   ],
+   "early_lean_prototype": [
+    655,
+    796
+   ],
+   "vnext": [
+    88,
+    108
+   ]
+  }
+ }
 }
