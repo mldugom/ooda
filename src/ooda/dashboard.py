@@ -10,6 +10,8 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from .policy import BlockerError, parse_blocker
 from urllib.parse import urlparse
 
 
@@ -105,7 +107,16 @@ def _collect_project(repo: Path) -> dict:
     elif trace and trace_work_id == work.get("id"):
         if result_state in {"blocked", "budget_exhausted"}:
             stage = "observe"
+            # A blocker that still permits exploration must not render as "nothing
+            # can happen" -- that reading is what stalled whole research lanes.
             controller = "blocked"
+            if result_state == "blocked":
+                try:
+                    blocker = parse_blocker(result.get("blocker") or "blocked")
+                except BlockerError:
+                    blocker = None
+                if blocker is not None and blocker.exploration_allowed:
+                    controller = f"blocked: {blocker.blocker_type} (exploration open)"
         elif result_state == "needs_human_gate":
             stage = "review"
             controller = "needs human gate"
@@ -144,6 +155,7 @@ def _collect_project(repo: Path) -> dict:
         "claim": work.get("claim_level") or "n-a",
         "result_state": result_state,
         "result_summary": result_summary,
+        "blocker": (result.get("blocker") if isinstance(result.get("blocker"), dict) else None),
         "blockers": blockers,
         "next_gate": next_gate,
         "branch": git["branch"],

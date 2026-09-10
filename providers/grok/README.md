@@ -1,65 +1,37 @@
-# Grok Provider Adapter
+# Grok provider flavor
 
-Grok is OODA's first execution provider, not OODA's identity.
+Grok is the current reference flavor for OODA.
 
-## Install / update
+## Where the skills live
 
-Normal installation is one command from the OODA repo:
+The authoritative source for every provider skill and reference doc is:
 
-```bash
-bash install.sh
+```
+src/ooda/resources/
+├── EFFICIENT_AGENT.md              runner policy (Grok adapter)
+├── reference/                      conditional doctrine, single source
+└── grok/skills/{ooda,ooda-controller}/SKILL.md
 ```
 
-That installs the `ooda` CLI plus both Grok skills below. Internal install scripts remain under `scripts/` for maintenance/compatibility, not normal use.
+There is deliberately **one** copy. An earlier layout kept an editable duplicate
+under `providers/*/skills/`, which could drift from the packaged copy without CI
+noticing. If you are looking for the skill text, edit it under
+`src/ooda/resources/` — nowhere else.
 
-## Current Grok skills
+## Install
 
-| Skill | Job |
-|---|---|
-| `/ooda <mission-file>` | Worker adapter. Executes one bounded mission inside a target project under its role/profile/lenses/claim/authority. |
-| `/ooda-controller [thought or control question]` | Thin cross-project Controller. Handles Intake, Proposal, and Control; proposes worker missions without absorbing deep worker context. |
+```bash
+bash scripts/install-grok.sh     # symlink/copy from a checkout
+ooda setup                       # pip installs
+```
 
-The separation is intentional: the Controller chooses **what work should happen**; `/ooda` workers load the detailed project context required to actually do it.
+Both install the two skills, the efficiency policy, and the `reference/` files
+each skill can load on demand. `ooda doctor --install` verifies that every
+reference a skill names actually resolves after installation.
 
-## `/ooda` worker behavior
+## What is Grok-specific
 
-Keep the existing Grok Build runtime and lifecycle unchanged.
-
-A Grok worker session receives an `ooda/work-order/v1` contract (normally created through the friendly `ooda mission` command or by the Controller) and executes it under the selected role/profile/lenses while obeying the target project's local instructions.
-
-The worker adapter does not replace `/start`, `/handoff`, Git authority, or project-local rules.
-
-## `/ooda-controller` behavior
-
-The Controller normally reads only compact cross-project control state:
-
-- project registry / `.ooda/project.json`;
-- concise `PROJECT_STATE.md`-style summaries;
-- active missions/work orders;
-- latest useful traces;
-- human gates;
-- relevant PR state;
-- freshness/blockers;
-- Lawrence/ChatGPT's current raw thought.
-
-It has three modes:
-
-1. **Intake** — discuss/triage a raw thought without automatically spending agent resources.
-2. **Proposal** — turn an earned idea into a bounded worker mission with role/profile/lenses/claim/scope/verification.
-3. **Control** — summarize what needs attention across projects and surface the next gate.
-
-If deeper code, web, data, research, implementation, or validation context is required, the Controller delegates to the appropriate worker instead of doing that work itself.
-
-See `docs/CONTROLLER.md`.
-
-## Work-order construction boundary
-
-Work-order construction remains a Controller capability rather than another permanent bot.
-
-If robust construction requires deep evidence, the Controller should first propose a small orientation spike to the appropriate worker (researcher, architect, validator, product-strategist, etc.), then construct the final mission from the returned concise evidence.
-
-This keeps the Controller useful without making its context surface grow into a worker context.
-
-## Provider-neutral boundary
-
-Future providers must consume the same mission/work-order semantics and emit the same trace semantics. Controller behavior is also provider-neutral conceptually; provider-specific session management stays under `providers/`, not in `core/` or `contracts/`.
+Runner flags (`--rules`, `--max-turns`, `--no-subagents`), the `~/.grok/skills`
+layout, child-agent dispatch, status line, and xAI cost telemetry. Core OODA
+semantics — missions, typed blockers, claim/authority ceilings, traces, the truth
+hierarchy — are provider-neutral and live in `src/ooda/`.

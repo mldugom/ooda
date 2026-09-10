@@ -3,38 +3,28 @@
   "id": "example-001",
   "project_id": "example-quant-research",
   "objective": "Test one pre-specified lagged hypothesis using point-in-time data before expanding the research scope.",
-  "role": "researcher",
-  "profile": "quantitative-research",
-  "lenses": [
-    "scientific",
-    "statistical",
-    "value-of-information"
-  ],
+  "why_now": "The decision it serves is trade/skip at buy time; nothing downstream can be sized until this is measured.",
   "claim_level": "discovery",
+  "critical_facts": [
+    "development population 14,308; sealed holdout 4,401 must stay unscored",
+    "six populated, unconfounded features; the schema advertises more",
+    "outcome and several features share a denominator"
+  ],
   "scope": {
-    "allowed": [
-      "research/**",
-      "reports/**",
-      "tests/**"
-    ],
-    "forbidden": [
-      "live execution",
-      "unapproved production changes"
-    ]
+    "allowed": ["research/**", "reports/**", "tests/**"],
+    "forbidden": ["live execution", "unapproved production changes", "scoring the sealed holdout"]
   },
   "verification": [
     "point-in-time cutoffs preserved",
     "pre-specified hypothesis evaluated as written",
     "result persisted whether positive or negative"
   ],
-  "budget": {
-    "max_turns": 6,
-    "max_investigation_steps": 8
-  },
+  "environment_requirements": ["path:data/pit-snapshot.parquet"],
+  "environment_route_to": "the operator host that holds the snapshot",
+  "budget": {"max_turns": 6, "max_investigation_steps": 8},
   "stop_conditions": [
-    "current durable state conflicts with task assumptions",
+    "baseline metrics are computed",
     "required data is not available point-in-time",
-    "task requires modifying a protected subsystem",
     "objective materially changes",
     "budget is exhausted",
     "qualification claim would be required to continue"

@@ -8,6 +8,84 @@ Its job is to help the human + ChatGPT turn raw thoughts into bounded missions, 
 
 The Controller should feel persistent to the operator, but its chat/session is disposable. Durable memory comes from compact control artifacts.
 
+
+## vnext: what the Controller now enforces
+
+Three semantics moved out of prose and into deterministic code (`ooda.policy`),
+because prose advice repeated four times still lost to a propagating state token.
+
+### Typed blockers
+
+A bare `blocked` is not a valid result. Every blocker carries `blocker_type`,
+`blocked_for`, `claim_ceiling`, and `exploration_allowed`, plus a `target` when it
+names a specific quantity or comparison.
+
+- **Stages describe evidence, not permission.** `sequencing` never bars work on
+  its own; "R1D.3C not qualified" does not block R1D.4.
+- **A claim ceiling is not a work ceiling.** Qualification can be blocked while
+  exploratory modelling continues. Exploration survives every blocker except a
+  scientific one covering exploration, and that binds only its named target.
+- A blocker naming a target binds only that target — a missing sportsbook
+  baseline does not close an Elo-vs-market comparison.
+
+The case names above are this repository's record of where the rules came from.
+The *installed* controller and references state them generically: a benchmark
+answer key in general-purpose doctrine is doctrine a model can pattern-match
+instead of reasoning from. Real case facts live in tests and `research/`.
+
+Before returning BLOCK or idling, the Controller answers in writing: *is there a
+cheap, scientifically honest experiment available now that does not violate the
+current claim or authority ceiling?*
+
+### Truth hierarchy
+
+Authority is scoped to the kind of question, so no one source outranks every
+other globally (`ooda.policy.FACT_DOMAINS`):
+
+| Question | Authority |
+|---|---|
+| Is it running now? live clocks, locks, data source | **runtime** |
+| What branch / HEAD / PR exists? | **git** |
+| What target, prereg, or spec was frozen? | **frozen artifact** |
+| What did the last validated mission conclude? | **verified trace** |
+
+`PROJECT_STATE` is compact durable orientation; project view and Control Room are
+derived convenience. Neither ever outranks the surface that owns the fact. A
+later runtime reading does not retroactively change what was preregistered, and a
+frozen prereg does not know whether the collector is running now.
+
+When PROJECT_STATE disagrees with the owner of the fact, the Controller flags it
+stale rather than propagating it. If it cannot see the runtime, it says so rather
+than inferring live state from prose.
+
+### Environment preflight
+
+Before dispatching any mission that needs local datasets, an operator-host
+runtime, private files, live processes, GPUs, or credentials, the Controller
+verifies the executing environment has them — `ooda preflight --work-order FILE`.
+If not, it routes the mission instead of implementing blind.
+
+## Optional routing descriptors
+
+`role`, `profile`, and `lenses` are optional aids, never required fields. The
+vnext ablation found no measurable gain from them on ordinary data-science work.
+Default lens count is 0–1; two or more need a stated reason. They still earn
+their place on specialist domains — see `reference/routing-vocabulary.md`.
+
+## Conditional doctrine
+
+The Controller hot path is ~1,560 token-equivalents (from ~3,750 pre-vnext).
+Everything conditional lives in `reference/*.md` beside the installed skill and
+loads only when its trigger applies:
+
+| Reference | Trigger |
+|---|---|
+| `predictive-science.md` | any predictive or modelling mission |
+| `blocker-semantics.md` | a blocker is contested or needs re-typing |
+| `validation-routing.md` | consequence class is unclear |
+| `visualization.md` | choosing an evidence surface |
+| `routing-vocabulary.md` | choosing a specialist role or lens |
+
 ## One Controller, isolated child workers
 
 A separate terminal/window is **not required** for each worker.

@@ -28,6 +28,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 ooda = [
   "resources/EFFICIENT_AGENT.md",
+  "resources/reference/*.md",
   "resources/grok/skills/ooda/SKILL.md",
   "resources/grok/skills/ooda-controller/SKILL.md",
   "resources/deepseek/skills/ooda/SKILL.md",

@@ -1,5 +1,11 @@
 # Grok Efficient Agent Policy
 
+Grok adapter policy, installed to `~/.grok/policies/` and passed as `--rules`.
+Provider-neutral OODA semantics — missions, typed blockers, claim and authority
+ceilings, the truth hierarchy — live in `src/ooda/` and the skills, not here.
+The numeric budgets below are calibrated to Grok's context economics and are
+deliberately provider-specific; do not treat them as core doctrine.
+
 Optimize for useful work per model call, bounded context growth, and low-cost reproducibility.
 
 ## Default execution behavior
@@ -33,9 +39,10 @@ For clear implementation tasks:
 
 These are operating limits, not correctness overrides. If exceeding them is necessary, surface the reason before continuing.
 
-## Context / credit discipline
+## Context / credit discipline (Grok-specific thresholds)
 
-Treat context size as a cost control, not only a capacity limit.
+Treat context size as a cost control, not only a capacity limit. These
+thresholds assume Grok's window and pricing; another provider needs its own.
 
 - Below ~150k tokens: normal work.
 - Around 150k: finish the current coherent slice before opening new scope.
@@ -48,32 +55,32 @@ If the current context is unknown and the session has become long or expensive, 
 
 ## Plan-mode discipline
 
-- Use Plan mode for architecture, research design, major refactors, ambiguous requirements, and high-impact changes.
-- Do not use Plan mode for every tiny fix, simple rerun, label change, or obvious one-path implementation.
-- While in Plan mode, treat the repository as read-only.
-- Do not use shell redirection, scripts, Git operations, subagents, or other mechanisms to modify repository state before plan approval.
-- After approval, make only changes covered by the approved plan.
-- If implementation must materially depart from the approved plan, stop and surface the change before proceeding.
+- Use Plan mode for architecture, research design, major refactors, ambiguous
+  requirements, and high-impact changes — not for tiny fixes, reruns, or
+  obvious one-path implementations.
+- In Plan mode the repository is read-only: no redirection, scripts, Git
+  operations, or subagents that modify state before approval.
+- After approval make only what the plan covers; if implementation must depart
+  materially, stop and surface it first.
 
 ## Agent / workflow discipline
 
-- Do not spawn subagents or workflows for tasks that one agent can perform efficiently.
-- The `/ooda-controller` may delegate **one bounded child mission at a time** after the mission/work-order boundary is explicit. Treat this as context isolation, not permission for broad fan-out.
-- A delegated child should receive only the mission contract and minimum project context needed to execute it; the Controller should absorb only a concise result/evidence summary and durable trace/handoff state.
-- Do not fan out research by default. Parallel children require genuinely independent workstreams or explicit operator intent.
-- Avoid recursive research loops or child agents spawning more children merely to increase activity.
-- Avoid repeatedly asking another agent to verify already-established facts.
+- Do not spawn subagents for tasks one agent can do efficiently.
+- One bounded child mission at a time, after the mission boundary is explicit.
+  No fan-out without genuinely independent workstreams or explicit operator intent.
+- A child receives the mission and minimum context; the Controller absorbs only a
+  concise result. Do not re-verify established facts with another agent.
 - Do not use subagents to circumvent tool-call, Plan-mode, authority, or context limits.
-- A separate terminal/window is optional. Prefer an inline child session when the runtime can preserve child context isolation and the mission is bounded; use a separate session/worktree only when isolation, duration, concurrency, or review ergonomics materially justify it.
+- Prefer an inline child when the runtime isolates context; use a separate
+  session or worktree only when duration, concurrency, or review justifies it.
 
 ## Worktree discipline
 
-- Do not create or switch to an isolated worktree for ordinary single-agent work.
-- Use isolation only when explicitly requested or materially useful.
-- Surface worktree use immediately.
-- Never confuse worktree state with primary-checkout state.
-- Before checkpoint/end, establish actual checkout and HEAD.
-- Never declare work landed until the intended branch actually contains it.
+- No isolated worktree for ordinary single-agent work; use it only when
+  requested or materially useful, and surface it immediately.
+- Never confuse worktree state with primary-checkout state. Establish actual
+  checkout and HEAD before closeout, and never declare work landed until the
+  intended branch contains it.
 
 ## Verbose-command discipline
 
@@ -94,6 +101,20 @@ For historical replay, backtests, or gate studies:
 - evaluate features, gates, prices, universe membership, age, and availability as of the historical decision timestamp;
 - never substitute current-state facts for point-in-time facts unless explicitly intended;
 - if a result differs dramatically from known production incidence or prior validated behavior, sanity-check methodology before interpreting economics.
+
+## Worker context budget
+
+- A worker bootstrap carries the mission, its critical facts (normally <= 10),
+  and pointers. Not history.
+- Do not pre-load old traces, whole research histories, PROJECT_STATE prose,
+  doctrine files, dashboards, or unrelated PRs. Fetch depth on demand.
+- Do not re-read an unchanged large file you have already read this session.
+- One coherent subject per worker session. If a materially different idea
+  appears, capture it as a compact note and continue; it belongs in a fork or a
+  later mission. This is semantic isolation, not session ceremony — sub-questions
+  inside one mission stay put.
+- Conditional doctrine lives in `reference/*.md` beside each skill and is read
+  only when its trigger applies.
 
 ## Context discipline
 

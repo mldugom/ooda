@@ -121,9 +121,15 @@ Default outcomes are:
 
 Roles represent accountability; profiles represent expertise; lenses represent the few analytical perspectives likely to change the decision.
 
-## Roles
+## Roles, profiles, and lenses — optional
 
-OODA V1 roles are:
+These are **routing aids, not required fields**. A vnext ablation found no
+measurable gain from them on ordinary data-science work, where a worker given
+none scored joint-top. Attach one only when it will materially change worker
+behavior; otherwise state the scientific constraints directly. A mission with no
+role, profile, or lens is valid.
+
+Roles:
 
 - `controller`
 - `researcher`
@@ -155,7 +161,12 @@ Current OODA lenses:
 - `product-user`
 - `security-abuse`
 
-Normally select no more than three for one bounded action. OODA/Boyd is the backbone; do not mechanically select the `boyd` lens for every mission.
+**Default lens count is 0–1.** Two or more require a concrete stated reason
+(`--lens-why`); three is the hard cap. Lenses genuinely earn their place on
+specialist domains — market microstructure, security, reliability, portfolio,
+risk — where a generic worker may not bring the perspective. For quantitative
+work, prefer loading `reference/predictive-science.md` over attaching
+`scientific`/`statistical`/`model-risk` by name.
 
 ## Claim levels
 
@@ -180,15 +191,86 @@ Unless an explicit human gate grants otherwise, OODA does not authorize:
 
 ## Trace result states
 
-Trace result states are:
-
 - `completed`
-- `negative_finding`
-- `blocked`
+- `negative_finding` — **a successful outcome.** No signal, insufficient sample,
+  weak features, poorly conditioned target, not identifiable. Preserve it and
+  re-orient; do not respond by adding features, trying more models, or moving the
+  target.
+- `blocked` — must be **typed** (below)
 - `budget_exhausted`
 - `needs_human_gate`
 
-Negative findings are first-class durable evidence when they prevent repeated wasted work.
+### Typed blockers
+
+A bare `blocked` is not a valid result: it loses the information that decides
+what may still happen, and a controller that prioritises blocked missions will
+keep re-surfacing a stall that was never real.
+
+```
+blocker_type        scientific | data | environment | authority | promotion | sequencing
+blocked_for         exploration | evidence | qualification | production | capital
+claim_ceiling       discovery | evidence | qualification | n-a
+exploration_allowed yes | no
+target              the exact quantity or comparison affected
+```
+
+Two rules enforced in code (`ooda.policy`, covered by
+`tests/test_vnext_regressions.py`):
+
+- **Stages describe evidence, not permission.** `sequencing` never bars work.
+- **A claim ceiling is not a work ceiling.** Exploration survives every blocker
+  except a scientific one covering exploration, and that binds only its target.
+
+Pre-vnext traces carrying a bare `blocked` still load, as `blocker_type: legacy`;
+they do not bar exploration but must be re-typed before supporting a claim.
+
+## Truth hierarchy
+
+**Authority is scoped to the kind of question**, so no single source outranks
+every other globally:
+
+| Question | Authority |
+|---|---|
+| Is it running now? live clocks, locks, data source | **runtime** |
+| What branch / HEAD / PR exists? | **git** |
+| What target, prereg, or spec was frozen? | **frozen artifact** |
+| What did the last validated mission conclude? | **verified trace** |
+
+`PROJECT_STATE` is compact durable orientation; project view and Control Room are
+derived convenience. Neither ever outranks the surface that owns the fact. A
+later runtime reading does not retroactively change what was preregistered, and a
+frozen prereg does not know whether the collector is running now.
+
+PROJECT_STATE carries durable orientation — goal, current decision, bottleneck,
+strongest evidence, claim ceilings, active blocker, next unknown, human gate,
+pointers. It does **not** carry mutable runtime facts that can be queried
+authoritatively, and it never outranks them. `ooda state-check` flags them.
+
+## Environment preflight
+
+A mission needing local datasets, an operator-host runtime, private files, live
+processes, GPUs, or credentials declares them and is checked before dispatch:
+
+```bash
+ooda preflight --work-order .ooda/work-orders/R6E-01.json
+```
+
+An entire remote research cycle was once implemented against data the environment
+did not have. This is the check that prevents the repeat.
+
+## Prediction charter
+
+For consequential predictive work, freeze the target before substantial
+modelling:
+
+```bash
+ooda charter --new
+ooda charter --diff old.json new.json    # detects goalpost movement
+```
+
+Changing decision, target, decision time, baseline, primary metrics, or holdout
+redefines success and requires an explicit re-orientation decision with the
+evidence that motivated it. **A disappointing model is not that evidence.**
 
 ## Project view
 
