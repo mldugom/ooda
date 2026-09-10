@@ -24,7 +24,6 @@ class TestReferencesExist(unittest.TestCase):
             self.assertTrue((RES / "reference" / ref).is_file(), f"missing source: {ref}")
 
     def test_every_reference_a_skill_names_is_in_its_manifest(self):
-        """No skill may name a reference the installer does not ship."""
         for skill in GROK_SKILLS:
             text = (RES / f"grok/skills/{skill}/SKILL.md").read_text(encoding="utf-8")
             for named in referenced_files(text):
@@ -32,14 +31,12 @@ class TestReferencesExist(unittest.TestCase):
                               f"{skill} names {named} but the manifest does not ship it")
 
     def test_no_dead_docs_pointer_survives(self):
-        """The old `see docs/X.md` form must not come back."""
         for skill in GROK_SKILLS:
             text = (RES / f"grok/skills/{skill}/SKILL.md").read_text(encoding="utf-8")
             self.assertNotIn("docs/", text,
                              f"{skill} points at docs/ which is never installed")
 
     def test_manifest_has_no_orphan(self):
-        """Every shipped reference is named by at least one skill."""
         named = set()
         for skill in GROK_SKILLS:
             text = (RES / f"grok/skills/{skill}/SKILL.md").read_text(encoding="utf-8")
@@ -49,12 +46,15 @@ class TestReferencesExist(unittest.TestCase):
 
 
 class TestInstalledLayoutResolves(unittest.TestCase):
-    """Install for real, then resolve every pointer from an unrelated cwd."""
-
-    def _install(self, home: Path):
+    def _install(self, home: Path, *, check: bool = True):
         env = dict(os.environ, GROK_HOME=str(home))
-        subprocess.run(["bash", str(ROOT / "scripts/install-grok.sh")],
-                       check=True, env=env, capture_output=True)
+        return subprocess.run(
+            ["bash", str(ROOT / "scripts/install-grok.sh")],
+            check=check,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
 
     def test_references_resolve_from_a_foreign_cwd(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -64,7 +64,7 @@ class TestInstalledLayoutResolves(unittest.TestCase):
             unrelated.mkdir()
             cwd = os.getcwd()
             try:
-                os.chdir(unrelated)  # a normal project cwd, nothing to do with OODA
+                os.chdir(unrelated)
                 for skill in GROK_SKILLS:
                     skill_dir = home / "skills" / skill
                     text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
@@ -74,6 +74,42 @@ class TestInstalledLayoutResolves(unittest.TestCase):
                                         f"{skill} -> reference/{named} is DEAD after install")
             finally:
                 os.chdir(cwd)
+
+    def test_pre_vnext_dangling_skill_links_are_migrated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "grokhome"
+            skills = home / "skills"
+            skills.mkdir(parents=True)
+            for skill in GROK_SKILLS:
+                # This is the exact pre-vnext installation shape. The target no
+                # longer exists on current main, so the symlink is dangling.
+                (skills / skill).symlink_to(ROOT / "providers" / "grok" / "skills" / skill)
+
+            proc = self._install(home)
+
+            self.assertIn("Migrated legacy OODA skill link", proc.stdout)
+            for skill in GROK_SKILLS:
+                skill_dir = skills / skill
+                self.assertFalse(skill_dir.is_symlink())
+                self.assertTrue((skill_dir / "SKILL.md").is_file())
+                self.assertTrue((skill_dir / "reference").is_dir())
+
+    def test_unrelated_skill_symlink_is_never_replaced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "grokhome"
+            skills = home / "skills"
+            target = Path(tmp) / "my-skill"
+            target.mkdir()
+            skills.mkdir(parents=True)
+            link = skills / "ooda"
+            link.symlink_to(target)
+
+            proc = self._install(home, check=False)
+
+            self.assertEqual(proc.returncode, 2)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), target.resolve())
+            self.assertIn("Refusing to replace unrelated skill symlink", proc.stderr)
 
     def test_cli_setup_installs_the_same_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -88,7 +124,6 @@ class TestInstalledLayoutResolves(unittest.TestCase):
                                     f"ooda setup did not install {skill}/reference/{ref}")
 
     def test_trivial_work_does_not_need_a_reference(self):
-        """The small-task short-circuit must sit before any reference trigger."""
         text = (RES / "grok/skills/ooda/SKILL.md").read_text(encoding="utf-8")
         head = text.split("## 1. Observe")[0]
         self.assertIn("Is this small?", head)
@@ -96,8 +131,6 @@ class TestInstalledLayoutResolves(unittest.TestCase):
 
 
 class TestSingleSource(unittest.TestCase):
-    """One editable copy of every skill; drift must be impossible, not merely detected."""
-
     def test_no_duplicate_skill_files_outside_resources(self):
         strays = [p for p in ROOT.rglob("SKILL.md")
                   if "src/ooda/resources" not in p.as_posix()
@@ -111,7 +144,6 @@ class TestSingleSource(unittest.TestCase):
         self.assertEqual(sorted(names), sorted(set(names)), "duplicate reference sources")
 
     def test_no_doc_duplicates_a_reference_body(self):
-        """Copying reference prose into docs/ recreates the drift this replaced."""
         for ref in (RES / "reference").glob("*.md"):
             body = ref.read_text(encoding="utf-8")
             fingerprint = max(body.split("\n\n"), key=len).strip()[:120]
@@ -124,7 +156,6 @@ class TestSingleSource(unittest.TestCase):
         self.assertIn("resources/reference/*.md", pyproject)
 
     def test_shell_and_python_manifests_agree(self):
-        """install-grok.sh and layout.py must ship the same set."""
         sh = (ROOT / "scripts/install-grok.sh").read_text(encoding="utf-8")
         for skill, refs in SKILL_REFERENCES.items():
             line = [ln for ln in sh.split("\n") if ln.strip().startswith(f"{skill})")]
