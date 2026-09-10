@@ -151,14 +151,25 @@ def validate_trace(d):
             blocker = parse_blocker(result.get("blocker") or "blocked")
         except BlockerError as exc:
             errors.append(f"invalid blocker: {exc}")
-        else:
-            if blocker.needs_retyping:
-                # Readable, not fatal: old traces must keep loading.
-                errors.append(
-                    "WARN blocked result carries no typed blocker; re-type it "
-                    "(blocker_type/blocked_for/claim_ceiling) before relying on it"
-                )
     return errors
+
+
+def trace_warnings(d):
+    """Non-fatal notes. Pre-vnext traces must keep validating, not start failing."""
+    warnings = []
+    result = d.get("result")
+    if isinstance(result, dict) and result.get("state") == "blocked":
+        try:
+            blocker = parse_blocker(result.get("blocker") or "blocked")
+        except BlockerError:
+            return warnings
+        if blocker.needs_retyping:
+            warnings.append(
+                "blocked result carries no typed blocker; re-type it "
+                "(blocker_type/blocked_for/claim_ceiling) before relying on it. "
+                "Exploration is not barred by an untyped blocker."
+            )
+    return warnings
 
 
 def validate_file(path: Path):
@@ -171,6 +182,13 @@ def validate_file(path: Path):
     if schema == "ooda/trace/v1":
         return validate_trace(data)
     return [f"unknown schema: {schema!r}"]
+
+
+def warnings_for_file(path: Path):
+    data = load(path)
+    if data.get("schema") == "ooda/trace/v1":
+        return trace_warnings(data)
+    return []
 
 
 def cmd_init(a):
@@ -212,6 +230,8 @@ def _report_validation(path: Path) -> int:
         for error in errors:
             print(f"FAIL {path}: {error}")
         return 1
+    for warning in warnings_for_file(path):
+        print(f"WARN {path}: {warning}", file=sys.stderr)
     print(f"PASS {path}")
     return 0
 
