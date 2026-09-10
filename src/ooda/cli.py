@@ -10,6 +10,19 @@ import uuid
 from importlib.resources import files
 from pathlib import Path
 
+from .charter import SCHEMA as CHARTER_SCHEMA, diff_charter, new_charter, validate_charter
+from .layout import GROK_SKILLS, SKILL_REFERENCES
+from .policy import (
+    BLOCKED_FOR,
+    BLOCKER_CHALLENGE,
+    BLOCKER_TYPES,
+    CLAIM_CEILINGS,
+    Blocker,
+    parse_blocker,
+    validation_route,
+)
+from .preflight import preflight
+
 ROLES = {
     "controller",
     "researcher",
@@ -314,28 +327,37 @@ def _install_text(target: Path, content: str, *, force: bool) -> int:
     return 0
 
 
+def _setup_items(grok_home: Path):
+    """Every file `ooda setup` installs, including on-demand references.
+
+    References are installed beside the skill that names them so a relative
+    `reference/X.md` resolves from any project working directory.
+    """
+    items = [
+        (grok_home / "policies" / "EFFICIENT_AGENT.md", _resource_text("EFFICIENT_AGENT.md")),
+    ]
+    for skill in GROK_SKILLS:
+        items.append((
+            grok_home / "skills" / skill / "SKILL.md",
+            _resource_text("grok", "skills", skill, "SKILL.md"),
+        ))
+        for ref in SKILL_REFERENCES[skill]:
+            items.append((
+                grok_home / "skills" / skill / "reference" / ref,
+                _resource_text("reference", ref),
+            ))
+    return items
+
+
 def cmd_setup(a):
     grok_home = Path(os.environ.get("GROK_HOME", str(Path.home() / ".grok"))).expanduser()
-    items = [
-        (
-            grok_home / "skills" / "ooda" / "SKILL.md",
-            _resource_text("grok", "skills", "ooda", "SKILL.md"),
-        ),
-        (
-            grok_home / "skills" / "ooda-controller" / "SKILL.md",
-            _resource_text("grok", "skills", "ooda-controller", "SKILL.md"),
-        ),
-        (
-            grok_home / "policies" / "EFFICIENT_AGENT.md",
-            _resource_text("EFFICIENT_AGENT.md"),
-        ),
-    ]
+    items = _setup_items(grok_home)
 
     failures = sum(_install_text(path, content, force=a.force) for path, content in items)
     if failures:
         return 2
 
-    print("OODA Grok skills configured.")
+    print(f"OODA Grok skills configured ({len(items)} files).")
     print("Use `grok-safe`, then `/ooda-controller` or `/ooda <mission-file>`.")
     return 0
 

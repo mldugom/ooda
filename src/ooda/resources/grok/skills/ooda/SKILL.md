@@ -1,6 +1,6 @@
 ---
 name: ooda
-description: Execute or assess one bounded OODA work order without replacing project-local lifecycle or authority.
+description: Execute one bounded OODA mission without replacing project-local lifecycle or authority.
 when-to-use:
   - execute OODA work order
   - route bounded research engineering product or finance work
@@ -13,207 +13,114 @@ metadata:
 
 # /ooda — Bounded Worker Adapter
 
-OODA is a provider-neutral operating doctrine. This skill is only the Grok worker adapter.
+Execute one bounded mission inside its envelope, re-orienting when reality
+changes. Do not replace project-local instructions, `/start`, `/handoff`, Git
+authority, or human integration gates.
 
-Do not replace project-local instructions, `/start`, `/handoff`, Git authority, or human integration gates.
+## Is this small?
 
-A work order is the durable output of Observe → Orient → Decide. Your job is to execute Act inside its envelope while continuing to re-observe and re-orient when reality changes.
+Deterministic, reversible, local, no empirical claim, no architecture change, no
+production or capital effect → fix it, run the targeted test, report in a line or
+two. No evidence packet, no validator, no documentation review, no dashboard
+update. Skip the rest of this file.
 
 ## 1. Observe
 
-Before acting:
-- establish repository/branch/HEAD/dirty/worktree truth;
-- read the minimum durable state needed for the objective;
-- identify applicable project instructions and protected surfaces;
-- identify prior relevant results, including negative findings;
-- identify relevant domain/architecture/process documentation when the mission touches those concepts;
-- separate verified facts from inference.
+Establish branch/HEAD/dirty truth and read only the durable state the objective
+needs. **Fresher authoritative evidence beats stale prose:** runtime > git >
+frozen artifact > trace > project state > dashboard. Flag stale state rather than
+acting on it; if you cannot see the runtime, say so instead of inferring it.
 
-If a supplied work order conflicts with current repository truth, stop and report the conflict instead of silently adapting the mission.
+If the mission depends on local datasets, an operator-host runtime, private
+files, live processes, GPUs, or credentials — **verify they are present here
+before doing data-dependent work.** If they are absent, stop and return the route
+("code built here, evaluation must run on host X"). Do not implement blind
+against data you cannot see.
+
+If the work order conflicts with repository truth, stop and report the conflict
+rather than silently adapting.
 
 ## 2. Orient
 
-Identify or honor the supplied:
-- one accountable role;
-- one expertise profile;
-- normally no more than three lenses;
-- claim level: DISCOVERY, EVIDENCE, QUALIFICATION, or N/A.
+State the key uncertainty that could invalidate the action. Honor any supplied
+claim ceiling. `role` / `profile` / `lens` are optional — if the mission supplied
+none, direct scientific constraints are sufficient; do not invent ceremony.
 
-Roles:
-- controller
-- researcher
-- product-strategist
-- architect
-- engineer
-- validator
-- portfolio-manager
-- trader
-- risk-manager
-
-Common lenses:
-- boyd
-- stanley-lehman
-- taleb
-- scientific
-- statistical
-- model-risk
-- value-of-information
-- causal-mechanism
-- market-microstructure
-- portfolio
-- reliability-systems
-- product-user
-- security-abuse
-
-Do not spawn separate agents merely because several lenses are selected.
-
-Identify the key uncertainty/risk that could invalidate the chosen action. If the work order lacks enough orientation to execute safely, stop for clarification/re-orientation rather than inventing assumptions.
+For predictive or modelling work, read `reference/predictive-science.md` and
+confirm the mission has a target charter before substantial modelling. If the
+target is unclear or moving, stop and get it frozen first.
 
 ## 3. Decide
 
-State the single bounded action you intend to take and why it has high information/value relative to broader work.
-
-Check:
-- allowed vs forbidden scope;
-- verification expectations;
-- budget;
-- stop conditions;
-- authority;
-- foreseeable documentation impact.
-
+State the single bounded action and why it has high information value now. Check
+allowed vs forbidden scope, verification, budget, stop condition, authority.
 If the objective materially changes, stop rather than expanding scope.
 
 ## 4. Act
 
-Execute only the bounded action.
+Cheapest sufficient investigation; targeted verification first. Preserve project
+scientific and engineering invariants. Green tests are not certification.
+Discovery cannot self-promote. Do not merge, force-push, mutate live runtime, or
+touch capital without explicit authority.
 
-Rules:
-- preserve project-specific scientific/engineering invariants;
-- use the cheapest sufficient investigation;
-- targeted verification first;
-- do not confuse green tests with certification;
-- discovery cannot self-promote to qualification;
-- do not merge, force-push, modify live capital, or bypass project authority unless explicitly authorized by current project rules.
+**Prefer deterministic checks over prose assertions.** Where the project has (or
+can cheaply gain) executable checks for point-in-time correctness, split
+membership, holdout sealing, target construction, missingness, leakage fields,
+arithmetic identities, or metric invariants — run them and report their result.
+Code asserts admissibility; you interpret it.
 
-### Re-observe during execution
+Re-observe during execution: if a material new fact appears, ask whether it
+changes orientation, and stop for a new decision if the objective or authority no
+longer holds. Bounded tactical corrections inside scope are fine.
 
-Do not treat the work order as a blind completion command.
+If a materially different idea appears, capture it as a compact note and continue
+the current subject. It belongs in a fork or a later mission, not this one.
 
-If a material new fact appears:
-
-1. re-observe the new state;
-2. ask whether it changes the mission's orientation;
-3. continue only if the bounded objective/authority remain valid;
-4. otherwise stop and return for a new OODA decision.
-
-Bounded tactical corrections are allowed when they serve the same objective and remain inside scope/authority.
-
-### Documentation-impact gate
-
-Before handoff, assess whether the mission materially changed how the system/research should be understood.
-
-Check for changes to:
-- domain concepts/entities;
-- architecture/component boundaries;
-- data/process/authority flows;
-- interfaces/contracts;
-- user/operator workflows;
-- research methodology/evidence gates;
-- public commands/configuration;
-- durable negative findings worth preserving.
-
-If none changed, report:
-
-`DOCUMENTATION: none — conceptual surface unchanged`
-
-If material impact exists, update the smallest durable documentation artifact inside allowed scope. Prefer simple Markdown diagrams/cheat sheets/process flows that remain diffable.
-
-For substantial structural changes, an `architect` review may be warranted. For consequential truth/consistency checks, a separate `validator` mission may be warranted. Do not create extra roles for routine documentation.
-
-See `docs/DOCUMENTATION_STEWARDSHIP.md` in the OODA doctrine repo when available.
-
-### Quantitative research feedback loop
-
-When the active profile is `quantitative-research`, `statistics`, `data-science`, `ml-research`, `quant-markets`, or an equivalent project-specific quantitative profile, do not return only terminal prose after a material empirical result.
-
-Run a compact research-feedback loop automatically:
-
-1. **OBSERVE THE DATA** — record authoritative dataset/snapshot, sample/support, PIT/as-of semantics, material missingness/coverage, and source SHA when relevant.
-2. **ORIENT THE QUESTION** — state the hypothesis/uncertainty, claim ceiling, primary metric/comparison, and the main leakage/alternative-explanation risk.
-3. **DECIDE THE EVIDENCE SURFACE** — choose the smallest useful summary/table/diagram/diagnostic/panel before generating artifacts.
-4. **ACT + REDUCE** — preserve the new evidence in the smallest durable artifact that makes the result easy to re-observe.
-5. **VERIFY THE INTERPRETATION** — report effect/metric, support, sensitivity/uncertainty, explicit non-claims, and the next highest-value unknown.
-
-For material quantitative evidence, the default handoff/research packet should contain or point to:
+## 5. Report — compact durable record
 
 ```text
-QUESTION
-DATA
-ANALYSIS
-KEY EVIDENCE
-INTERPRETATION
-ARTIFACT DECISION
-ARTIFACTS
-DASHBOARD IMPACT
-NEXT UNKNOWN
+RESULT:      completed | negative_finding | blocked | budget_exhausted | needs_human_gate
+EVIDENCE:    the finding, with sample/metric/uncertainty where empirical
+ARTIFACTS:   pointers, not contents
+NON-CLAIMS:  what this does NOT establish, and the claim ceiling reached
+BLOCKER:     typed, if blocked (see below)
+NEXT UNKNOWN: highest-value uncertainty this exposed
+HUMAN GATE:  decision needed, or none
+STATE:       branch/commit/PR pointer
 ```
 
-`KEY EVIDENCE` should usually be a compact table with `n`, metric/effect, sensitivity/uncertainty when available, and verdict/status. A diagram is appropriate when the data flow, experiment design, feature/target boundary, model stack, or stage progression would otherwise be hard to remember.
+Do not restate the work order, replay the session, or paste raw output. Do not
+duplicate mutable facts a fresh session can query authoritatively.
 
-Do not create redundant files. Existing research markdown, CSV/JSON, HTML reports, TRACE, or project dashboard panels may satisfy the packet when they already carry the needed information.
+**A negative result is a success.** No signal, insufficient data, weak features,
+poorly conditioned target, not identifiable — report it plainly and stop. Do not
+respond by adding features, trying more models, or changing the target. Changing
+a frozen target is a re-orientation decision for the Controller and the operator,
+never a worker's edit.
 
-If a project has a stable research-dashboard contract, assess dashboard impact automatically. Refresh an existing durable panel when the result directly changes that panel and doing so is inside scope. If a new panel is warranted but dashboard work is outside scope, return a proposed panel contract instead of silently expanding the mission.
+### If blocked, type it
 
-For dashboard changes, visual verification should include desktop/narrow screenshots when the environment supports browser capture. If capture is unavailable, run structural/smoke checks and report visual inspection as pending rather than claiming the dashboard looks good.
+```
+blocker_type:        scientific | data | environment | authority | promotion | sequencing
+blocked_for:         exploration | evidence | qualification | production | capital
+claim_ceiling:       discovery | evidence | qualification | n-a
+exploration_allowed: yes | no
+target:              (scientific only — the exact unidentifiable quantity)
+```
 
-Skip new artifacts for purely administrative/design-only/no-new-evidence tasks when existing artifacts already make the state legible; record `ARTIFACT DECISION: none` with a short reason when the choice is material.
+Stages describe evidence, never permission. `sequencing` alone never stops work.
+Before reporting blocked, answer in writing: *is there a cheap, scientifically
+honest experiment available now that does not violate the claim ceiling?*
 
-See `docs/QUANTITATIVE_RESEARCH_LOOP.md` in the OODA doctrine repo when available.
+## Load on demand
 
-### Research-visualization gate
-
-For quantitative/data-science/research work, visual output must earn its complexity.
-
-Use this order:
-
-1. **text/table** when exact values, a short ranking, or a pass/fail gate answers the question;
-2. **diagnostic plot** when shape, path, tails, calibration, missingness, PIT/leakage, or relationship structure matters;
-3. **durable panel** only when the same stable diagnostic will be revisited across missions/stages;
-4. **research dashboard** only when several stable panels support one recurring operator workflow;
-5. **live monitor** only when wall-clock freshness can change an operator action and decision-time availability is explicit.
-
-Do not make one dashboard tab per research step, do not plot merely because a metric exists, and do not silently expand a bounded research mission into dashboard construction.
-
-If visualization work is material, record one of `none`, `diagnostic`, `durable-panel`, `dashboard`, or `live-monitor` in the RESULT/TRACE plus the decision question it serves. A diagnostic plot should state the sample/provenance and what outcome would change the decision. A durable panel/dashboard must have stable sample/metric/timestamp semantics and remain derived from authoritative research artifacts.
-
-If a dashboard becomes warranted but is outside the work-order scope, stop at a proposed panel contract and return to the Controller instead of building it opportunistically.
-
-See `docs/RESEARCH_VISUALIZATION.md` in the OODA doctrine repo when available.
-
-## 5. Re-observe and report
-
-At completion return a concise OODA TRACE summary:
-
-- OBSERVE: verified current state relevant to the task;
-- ORIENT: role/profile/lenses + key uncertainty/risk;
-- DECIDE: bounded action chosen;
-- ACT: what changed/tested;
-- RESULT: completed | negative_finding | blocked | budget_exhausted | needs_human_gate, plus the factual/technical finding;
-- SO WHAT: immediate practical implication in plain stakeholder language;
-- BIGGER IDEA: how the result changes or advances the larger project/research/product objective;
-- VERIFICATION: tests/artifacts/evidence;
-- DOCUMENTATION: none or durable docs updated/created;
-- COST: turns/tool calls/cost when available;
-- NEXT GATE: human/ChatGPT decision or next bounded loop.
-
-For material quantitative research, also make the research-feedback packet above easy to find in the TRACE or authoritative result artifact. The operator should not have to ask later what sample was used, what analysis ran, what the key numbers were, what artifacts exist, or what uncertainty comes next.
-
-`SO WHAT` and `BIGGER IDEA` are not marketing summaries. Name the concrete dataset, model, experiment, gate, feature family, system, or user decision whenever possible. Avoid vague relative pronouns such as “it”, “this”, or “the idea” when the actual noun is available.
-
-For trivial administrative missions, keep these implication blocks to one line or omit them when they would add no information. For research, validation, architecture, product, and consequential engineering missions, include them.
-
-Do not emit private chain-of-thought. Report decision provenance and evidence only.
+- `reference/predictive-science.md` — predictive/modelling work
+- `reference/visualization.md` — choosing an evidence surface
+- `reference/validation-routing.md` — is independent validation needed?
+- `reference/documentation-impact.md` — did the conceptual surface change?
+- `reference/runtime-reliability.md` — live processes, locking, mutable substrates
 
 ## Design rule
 
-> Cycle quickly by making current truth cheap to establish and feedback cheap to preserve—not by skipping orientation or verification.
+> Make current truth cheap to establish and feedback cheap to preserve — without
+> skipping orientation or verification.
