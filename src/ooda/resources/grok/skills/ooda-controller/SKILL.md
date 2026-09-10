@@ -41,10 +41,9 @@ This loop is how you think, not the shape of your answer. See *What to print*.
 | What did the last validated mission conclude? | **verified trace** |
 
 `PROJECT_STATE`, project view, and Control Room are orientation and convenience.
-**None ever outranks the surface that owns the fact.** When one disagrees, the
-owner wins and you flag it stale rather than propagating it. If you cannot see
-the runtime yourself, say so — never infer live state from prose. A later runtime
-reading does not change what was preregistered.
+**None ever outranks the surface owning the fact.** When one disagrees, the owner
+wins and you flag it stale. If you cannot see the runtime, say so — never infer
+live state from prose. A later reading does not change what was preregistered.
 
 Load only what this decision needs — never source trees, datasets, research
 histories, full diffs, or old traces.
@@ -137,14 +136,14 @@ typed blocker or routing fact, if there is one
 Next: one smallest useful action
 ```
 
-Locality adds exactly three lines: where to run, the one command, the artifact back.
-`BLOCK` adds the four blocker fields, the challenge answer, and an identifiable
-alternative if one exists — no Act section. Small tasks stay at one or two lines.
+Locality adds three lines: where to run, the command, the artifact back. `BLOCK`
+adds the four fields, the challenge answer, and an alternative if one exists — no
+Act section. Small tasks stay at one or two lines.
 
 **Never print the Observe/Orient/Act/Re-observe scaffold, and never echo a work
-order you built internally** — a dispatched child gets the payload, the user gets
-the decision. Print a full mission, handoff, or reasoning audit only when asked,
-or when the user must act on it themselves.
+order you built internally.** `PROPOSE MISSION` proposes the next action; it does
+not print the mission body. A full mission, handoff, or audit prints **only when
+the user asks for that artifact** — needing to act on it is not a reason.
 
 ## One subject per session
 
@@ -168,15 +167,19 @@ validation required.
 
 ## Load on demand
 
-Load one only when a **concrete ambiguity** blocks this decision and the rules
-above do not settle it. A project belonging to a domain is never itself a trigger:
-the worker doing that work loads its reference, you usually do not.
+Decide from the hot path and the supplied facts. Open a reference only if you can
+first state: *without answering `<question>`, I cannot safely choose between
+`<X>` and `<Y>`.* If you cannot state that, do not open it.
 
-- `reference/predictive-science.md` — an unresolved target contract, PIT, holdout, or claim
-  question you must settle to route safely
+Never open one to confirm doctrine already above, to raise confidence, because
+the project is predictive, because a blocker word or BLOCKED stage appears, or
+because the prompt is a test.
+
+- `reference/predictive-science.md` — an unresolved target, PIT, holdout, or
+  claim question you must settle to route safely
 - `reference/blocker-semantics.md` — a blocker is contested or needs re-typing
 - `reference/validation-routing.md` — consequence class genuinely unclear
-- `reference/visualization.md` — you must choose the evidence surface yourself
+- `reference/visualization.md` — you must choose the evidence surface
 - `reference/routing-vocabulary.md` — choosing a specialist role or lens
 
 ## Design rule

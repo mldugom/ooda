@@ -20,7 +20,10 @@ BUDGETS = [
     # everything that was not a rule. It trades a small always-loaded increase
     # for a large reduction in per-answer output, which is where Grok telemetry
     # showed the cost. Still -53% against the 3,750 pre-vnext baseline.
-    (RES / "grok/skills/ooda-controller/SKILL.md", 1800, 2200),
+    # Forensic pass closed two provable loopholes: a confirmation-read trigger
+    # and the "must act on it themselves" clause that let a whole work order
+    # print. Both are mechanical rules, not prose. Still -52% vs pre-vnext.
+    (RES / "grok/skills/ooda-controller/SKILL.md", 1820, 2250),
     # Grew deliberately in the locality pass: execution routing, derived-artifact
     # reuse, Python-first, and output hygiene are new worker policy. Still -27%
     # against the 1,912 pre-vnext baseline.

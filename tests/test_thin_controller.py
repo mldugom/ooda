@@ -40,10 +40,21 @@ class TestReferenceLoading(unittest.TestCase):
         self.assertIn("predictive-science.md", self.section)
         self.assertTrue((RES / "reference/predictive-science.md").is_file())
 
-    def test_loading_requires_a_concrete_ambiguity(self):
-        lowered = self.section.lower()
-        self.assertIn("concrete ambiguity", lowered)
-        self.assertIn("never itself a trigger", lowered)
+    def test_loading_requires_a_statable_unresolved_question(self):
+        """The rule must be mechanical: name the question or do not open the file."""
+        lowered = flat(self.section)
+        self.assertIn("cannot safely choose between", lowered)
+        self.assertIn("if you cannot state that, do not open it", lowered)
+
+    def test_confirmation_reads_are_named_and_forbidden(self):
+        """Grok opened references "so the decision matches doctrine" -- a
+        confirmation read that the earlier "concrete ambiguity" wording did not
+        explicitly forbid."""
+        lowered = flat(self.section)
+        self.assertIn("never open one to confirm doctrine", lowered)
+        for anti_pattern in ("raise confidence", "project is predictive",
+                             "blocker word", "blocked stage", "prompt is a test"):
+            self.assertIn(anti_pattern, lowered)
 
     def test_worker_may_still_load_predictive_science_normally(self):
         """Narrowing is controller-scoped; the worker doing the work is unaffected."""
@@ -89,11 +100,22 @@ class TestOutputContract(unittest.TestCase):
     def test_full_output_remains_available_on_request(self):
         """Narrowing the default must not remove the capability."""
         contract = flat(self.text.split("## What to print")[1])
-        self.assertIn("when asked", contract)
+        self.assertIn("only when the user asks", contract)
         self.assertTrue(
             "handoff" in contract or "audit" in contract,
             "the contract must say what a request can still produce",
         )
+
+    def test_needing_to_act_is_not_a_reason_to_print_the_mission(self):
+        """The old clause "or when the user must act on it themselves" was the
+        escape hatch Grok used to print a whole work order."""
+        contract = flat(self.text.split("## What to print")[1])
+        self.assertNotIn("must act on it themselves", contract)
+        self.assertIn("needing to act on it is not a reason", contract)
+
+    def test_propose_mission_does_not_mean_print_the_mission(self):
+        contract = flat(self.text.split("## What to print")[1])
+        self.assertIn("does not print the mission body", contract)
 
     def test_default_shape_names_the_four_verbs(self):
         contract = self.text.split("## What to print")[1]
