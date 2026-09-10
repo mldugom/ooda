@@ -96,9 +96,14 @@ is the only part worth tokens.
 
 **Environment preflight first.** If the mission needs local datasets, an
 operator-host runtime, private files, live processes, GPUs, or credentials,
-verify the executing environment actually has them *before* dispatching. If it
-does not, stop and route: "code can be built here; data-dependent evaluation must
-run on host X." Never implement a data-dependent mission blind.
+verify the executing environment actually has them *before* dispatching.
+
+**Data stays where it lives; code moves to the data.** When the data is elsewhere,
+that is routing, not a block: code may be written and tested here against
+fixtures, and the deterministic run happens where the data is. Name one reusable
+Python entry point and the compact artifact it returns — never move bulk data or
+verbose output into model context. Reuse an authoritative derived artifact when
+its upstream contract is unchanged; a fresh session is not a reason to recompute.
 
 Then hand the worker only:
 

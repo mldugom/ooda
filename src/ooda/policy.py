@@ -509,3 +509,87 @@ def project_state_warnings(text: str) -> List[StateWarning]:
                 warnings.append(StateWarning(i, stripped[:100], reason))
                 break
     return warnings
+
+
+# --------------------------------------------------------------------------
+# Derived-artifact reuse
+# --------------------------------------------------------------------------
+#
+# Tenniskal replayed ~38k match events to produce a frozen 1,042-row evaluation
+# artifact. A downstream Elo-vs-Kalshi comparison should read that artifact, not
+# replay the history again because a fresh session started. Recomputation is
+# warranted only when the upstream contract actually changed.
+
+
+def contract_fingerprint(contract: Dict[str, Any]) -> str:
+    """Stable hash of an upstream contract, so key order and prose do not matter."""
+    import hashlib
+    import json as _json
+
+    blob = _json.dumps(contract or {}, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
+@dataclass(frozen=True)
+class DerivedArtifact:
+    """An authoritative product of deterministic upstream work.
+
+    ``upstream_contract`` is whatever must hold for the artifact to still answer
+    the question: source dataset, target definition, filters, split, as-of date.
+    """
+
+    name: str
+    upstream_contract: Dict[str, Any] = field(default_factory=dict)
+    rows: Optional[int] = None
+    path: str = ""
+
+    @property
+    def fingerprint(self) -> str:
+        return contract_fingerprint(self.upstream_contract)
+
+
+@dataclass(frozen=True)
+class ReuseDecision:
+    reuse: bool
+    reason: str
+    changed: Tuple[str, ...] = ()
+
+    def __bool__(self) -> bool:
+        return self.reuse
+
+
+def artifact_reuse(
+    artifact: Optional[DerivedArtifact],
+    current_contract: Dict[str, Any],
+    *,
+    upstream_under_challenge: bool = False,
+) -> ReuseDecision:
+    """Reuse an authoritative derived artifact when its contract still holds.
+
+    ``upstream_under_challenge`` is the one case where recomputation is right
+    even with an unchanged contract: the mission is questioning how the artifact
+    was built, so reading its output would beg the question.
+    """
+    if artifact is None:
+        return ReuseDecision(False, "no derived artifact exists; compute it")
+    if upstream_under_challenge:
+        return ReuseDecision(
+            False,
+            f"the mission challenges how {artifact.name} was constructed; recompute rather than assume it",
+        )
+    changed = tuple(sorted(
+        key for key in set(artifact.upstream_contract) | set(current_contract or {})
+        if artifact.upstream_contract.get(key) != (current_contract or {}).get(key)
+    ))
+    if changed:
+        return ReuseDecision(
+            False,
+            f"{artifact.name} is stale: " + ", ".join(changed) + " changed since it was built",
+            changed,
+        )
+    rows = f" ({artifact.rows} rows)" if artifact.rows else ""
+    return ReuseDecision(
+        True,
+        f"reuse {artifact.name}{rows}; the upstream contract is unchanged. "
+        "A fresh session is not a reason to recompute.",
+    )

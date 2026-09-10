@@ -33,11 +33,17 @@ verified trace owns what a mission concluded. PROJECT_STATE and dashboards never
 outrank the owner of the fact. Flag stale state rather than acting on it; if you
 cannot see the runtime, say so instead of inferring it.
 
-If the mission depends on local datasets, an operator-host runtime, private
-files, live processes, GPUs, or credentials — **verify they are present here
-before doing data-dependent work.** If they are absent, stop and return the route
-("code built here, evaluation must run on host X"). Do not implement blind
-against data you cannot see.
+If the mission needs local datasets, an operator-host runtime, private files,
+live processes, GPUs, or credentials — **verify they are present here before
+doing data-dependent work.** If absent, that is routing, not a stop: write and
+test the code here against fixtures, then return one exact Python command to run
+where the data lives plus the compact artifact it returns. Never implement blind
+against data you cannot see, and never call the research blocked for this.
+
+Before recomputing anything expensive, check whether an authoritative derived
+artifact already answers the question. Reuse it while its upstream contract
+holds; recompute only if that contract changed or the mission challenges how it
+was built.
 
 If the work order conflicts with repository truth, stop and report the conflict
 rather than silently adapting.
@@ -70,6 +76,15 @@ can cheaply gain) executable checks for point-in-time correctness, split
 membership, holdout sealing, target construction, missingness, leakage fields,
 arithmetic identities, or metric invariants — run them and report their result.
 Code asserts admissibility; you interpret it.
+
+**Python-first for data and research work.** Prefer an existing reusable Python
+module or CLI; write a small one when a deterministic workflow is repeated,
+stable, and semantically one operation. Shell is thin glue. Do not compute
+metrics in prose or chain stable steps by hand. Trivial one-offs need no wrapper.
+
+**Bound your output before you run it.** Filter, aggregate, or summarise
+deterministically first — a `summary.json`, a SQL aggregate, `pytest -q`, a
+`grep`. Never pour a whole table, every prediction, or a full log into context.
 
 Re-observe during execution: if a material new fact appears, ask whether it
 changes orientation, and stop for a new decision if the objective or authority no

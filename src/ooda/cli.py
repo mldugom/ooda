@@ -24,7 +24,7 @@ from .policy import (
     project_state_warnings,
     validation_route,
 )
-from .preflight import preflight
+from .preflight import plan_execution, preflight
 
 ROLES = {
     "controller",
@@ -381,21 +381,33 @@ def cmd_preflight(a):
     """Check the environment before a data-dependent mission, not after."""
     requirements = list(a.requires or [])
     route_to = a.route_to
+    entry_point = a.entry_point or ""
+    result_artifact = a.result_artifact or ""
     if a.work_order:
         mission = load(Path(a.work_order))
         requirements += list(mission.get("environment_requirements") or [])
         route_to = route_to or mission.get("environment_route_to")
+        entry_point = entry_point or mission.get("entry_point", "")
+        result_artifact = result_artifact or mission.get("result_artifact", "")
     if not requirements:
         print("PREFLIGHT no environment requirements declared; nothing to verify")
         return 0
-    report = preflight(requirements, route_to=route_to)
-    for result in report.results:
+    plan = plan_execution(
+        requirements,
+        entry_point=entry_point,
+        result_artifact=result_artifact,
+        route_to=route_to,
+    )
+    for result in plan.report.results:
         mark = "OK  " if result.satisfied else "MISS"
-        print(f"{mark} {result.requirement.kind}:{result.requirement.value} — {result.detail}")
-    if report.satisfied:
-        print("PREFLIGHT ok")
+        # Only claim "here" for something we actually found here.
+        where = result.requirement.at or ("here" if result.satisfied else plan.run_at)
+        print(f"{mark} {result.requirement.label} [{where}] — {result.detail}")
+    print(f"RUN AT {plan.run_at}")
+    print(plan.summary())
+    if plan.report.satisfied:
         return 0
-    print(f"PREFLIGHT blocked — {report.handoff()}", file=sys.stderr)
+    # Not an error state: the mission is routed, not blocked. Code work continues.
     return 3
 
 
@@ -623,9 +635,11 @@ def parser():
 
     q = subs.add_parser("preflight", help="check this environment can run a mission")
     q.add_argument("--requires", action="append", default=[], metavar="KIND:VALUE",
-                   help="path:/data/x.sqlite | command:psql | env:API_KEY | host_service:collector")
+                   help="path:/data/x.sqlite@operator host | command:psql | env:API_KEY | host_service:collector")
     q.add_argument("--work-order", help="read environment_requirements from a mission file")
     q.add_argument("--route-to", help="where the mission should run instead")
+    q.add_argument("--entry-point", help="the one reusable Python command that does the deterministic work")
+    q.add_argument("--result-artifact", help="the compact artifact that comes back, e.g. result.json")
     q.set_defaults(func=cmd_preflight)
 
     q = subs.add_parser("charter", help="freeze or diff a prediction target charter")

@@ -17,7 +17,10 @@ RES = ROOT / "src/ooda/resources"
 # (path, lo budget, hi budget)
 BUDGETS = [
     (RES / "grok/skills/ooda-controller/SKILL.md", 1700, 2100),
-    (RES / "grok/skills/ooda/SKILL.md", 1350, 1650),
+    # Grew deliberately in the locality pass: execution routing, derived-artifact
+    # reuse, Python-first, and output hygiene are new worker policy. Still -27%
+    # against the 1,912 pre-vnext baseline.
+    (RES / "grok/skills/ooda/SKILL.md", 1450, 1800),
     # Grew deliberately at vnext: the worker context budget and one-subject-per-
     # session rules were added, net of trimming doctrine the skills now carry.
     (RES / "EFFICIENT_AGENT.md", 1600, 2000),

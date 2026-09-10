@@ -6,8 +6,9 @@ depart from them deliberately and say why.
 ## Start here, in this order
 
 ```
-decision -> target -> decision time -> baseline -> sample -> split -> metrics
--> holdout -> stop rule
+decision -> target / decision time -> authoritative data location
+-> local deterministic dataset build -> baseline / metrics / invariants
+-> compact evidence -> interpretation -> next unknown
 ```
 
 Answer those before feature programmes, complex models, or qualification chains.
@@ -16,6 +17,80 @@ feature effort that produces none.
 
 Tennis: results → Elo → probability metrics → compare with market.
 Crypto: buy-time features → target → C0/C1/C2 → evaluate.
+
+## Data stays where it lives; code moves to the data
+
+Spend model reasoning on choosing the question, naming the confounds, designing
+the test, and interpreting the result. Do not spend it on bulk data transport,
+row-by-row inspection, arithmetic, schema rediscovery, or chaining stable steps
+by hand. **The model is not the data plane.**
+
+1. Identify the decision and the authoritative data.
+2. Establish where that data actually lives.
+3. Check whether this environment can reach it (`ooda preflight`).
+4. If not, that is **routing, not a block** — write and test the deterministic
+   code here against fixtures, and run it where the data is.
+5. Prefer an existing reusable Python entry point; create one only when the
+   workflow is repeated, stable, and semantically one operation.
+6. Run the deterministic part outside the model; return compact evidence.
+
+The operator is not the pipeline. If a remote agent cannot reach the host, it
+returns **one** exact command — not twelve manual steps.
+
+```bash
+python -m alpha.research.broad_baseline \
+  --snapshot data/radar.sqlite \
+  --summary-json result.json
+```
+
+## Python-first for deterministic work
+
+Preference order: an existing Python module or CLI → a small new one when it
+earns its existence → SQL executed from Python → shell as thin launch glue →
+a manual multi-command sequence only when genuinely simpler and one-off.
+
+Python handles SQLite, CSV/JSON/Parquet, feature construction, metrics,
+invariants, branching, reuse, tests, and structured output better than a long
+shell pipeline. This applies to research computation, dataset construction,
+metric evaluation, and scientific validation — not to every engineering task.
+
+An abstraction earns its existence only when it reduces repeated tool calls,
+context volume, operator error, scientific inconsistency, or duplicated logic.
+`pytest -q tests/test_x.py` does not need a wrapper.
+
+## Reuse authoritative derived artifacts
+
+Before replaying expensive upstream work, ask whether a derived artifact already
+answers the downstream question. **Reuse it while its upstream contract holds.**
+A fresh session or a new worker is not a reason to recompute.
+
+Tenniskal: the Elo replay processed ~38k eligible matches into a frozen 1,042-row
+evaluation set. An Elo-vs-Kalshi comparison reads that artifact. It replays the
+history only if the Elo construction itself is what is being challenged.
+
+Recompute when the upstream contract changed — source, target definition,
+filters, split, as-of date — or when the mission challenges how the artifact was
+built. Never reuse a stale artifact silently.
+
+## Compact evidence, not transcripts
+
+Deterministic output should be machine-readable and bounded — a small JSON
+summary plus artifact pointers, not a large stdout dump:
+
+```json
+{"experiment": "broad_baseline", "dataset_sha256": "...", "n": 13411,
+ "target": "...", "target_prevalence": 0.47,
+ "metrics": {"C0": {}, "C1": {}, "C2": {}},
+ "invariants": {"pit": "PASS", "holdout_overlap": 0, "prospective_inspected": false},
+ "artifacts": ["..."]}
+```
+
+Before running anything expected to be verbose: filter, aggregate, redirect, or
+summarise deterministically. Prefer a `summary.json`, a SQL aggregate count,
+`pytest -q`, or a targeted `grep`. Avoid `cat` on a large CSV, dumping a whole
+table, printing every prediction, or reading a large derived dataset when an
+aggregate is enough.
+
 
 ## Target charter — freeze it before modelling
 
