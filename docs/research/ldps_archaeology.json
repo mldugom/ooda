@@ -1,0 +1,307 @@
+{
+  "repo_head": "194ae57cc5110bd9b6ee5329a9aff40ef6dcef57",
+  "n_commits": 116,
+  "n_files_head": 376,
+  "bulk_imports": [
+    {
+      "sha": "345d9ec91",
+      "date": "2026-07-03",
+      "files_added": 116
+    },
+    {
+      "sha": "bb5cd1c1c",
+      "date": "2026-07-12",
+      "files_added": 41
+    },
+    {
+      "sha": "194ae57cc",
+      "date": "2026-07-27",
+      "files_added": 25
+    }
+  ],
+  "stages": [
+    {
+      "stage": "docs",
+      "first_ts": 1776531967,
+      "first_date": "2026-04-18",
+      "first_sha": "a5a6e0670",
+      "cohort_size": 1,
+      "resolved": true,
+      "n_files": 33
+    },
+    {
+      "stage": "config",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 3
+    },
+    {
+      "stage": "other",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 25
+    },
+    {
+      "stage": "decision_surface",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 34
+    },
+    {
+      "stage": "features",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 77
+    },
+    {
+      "stage": "validation",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 39
+    },
+    {
+      "stage": "models",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 93
+    },
+    {
+      "stage": "portfolio_staking",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 24
+    },
+    {
+      "stage": "backtesting",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 11
+    },
+    {
+      "stage": "eval_metric",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 8
+    },
+    {
+      "stage": "ingestion",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 20
+    },
+    {
+      "stage": "notebook",
+      "first_ts": 1783046359,
+      "first_date": "2026-07-03",
+      "first_sha": "345d9ec91",
+      "cohort_size": 116,
+      "resolved": false,
+      "n_files": 2
+    },
+    {
+      "stage": "monitoring",
+      "first_ts": 1783638415,
+      "first_date": "2026-07-09",
+      "first_sha": "582e359bb",
+      "cohort_size": 14,
+      "resolved": true,
+      "n_files": 5
+    },
+    {
+      "stage": "calibration",
+      "first_ts": 1785182416,
+      "first_date": "2026-07-27",
+      "first_sha": "194ae57cc",
+      "cohort_size": 25,
+      "resolved": false,
+      "n_files": 6
+    }
+  ],
+  "stages_absent": [],
+  "stages_shadowed": {
+    "target_def": [
+      {
+        "dir": "data/mlb/ingestion/archive",
+        "claimed_by": "ingestion"
+      },
+      {
+        "dir": "data/mlb/pipeline/archive",
+        "claimed_by": "ingestion"
+      }
+    ],
+    "baselines": [
+      {
+        "dir": "data/mlb/modeling/portfolio",
+        "claimed_by": "validation"
+      }
+    ]
+  },
+  "rework_naive": [
+    {
+      "dir": "PROJECT_STATE.yaml",
+      "n_commits": 14,
+      "designed_churn": true
+    },
+    {
+      "dir": "docs",
+      "n_commits": 13,
+      "designed_churn": true
+    },
+    {
+      "dir": "data/mlb/eda",
+      "n_commits": 12,
+      "designed_churn": false
+    },
+    {
+      "dir": "docs",
+      "n_commits": 8,
+      "designed_churn": true
+    },
+    {
+      "dir": "data/mlb",
+      "n_commits": 7,
+      "designed_churn": false
+    },
+    {
+      "dir": "data/mlb",
+      "n_commits": 7,
+      "designed_churn": false
+    },
+    {
+      "dir": ".gitignore",
+      "n_commits": 6,
+      "designed_churn": false
+    },
+    {
+      "dir": "docs",
+      "n_commits": 6,
+      "designed_churn": true
+    },
+    {
+      "dir": "docs",
+      "n_commits": 6,
+      "designed_churn": true
+    },
+    {
+      "dir": "docs",
+      "n_commits": 6,
+      "designed_churn": true
+    }
+  ],
+  "rework_corrected": [
+    {
+      "dir": "data/mlb/eda",
+      "n_commits": 12,
+      "stage": "features"
+    },
+    {
+      "dir": "data/mlb",
+      "n_commits": 7,
+      "stage": "other"
+    },
+    {
+      "dir": "data/mlb",
+      "n_commits": 7,
+      "stage": "ingestion"
+    },
+    {
+      "dir": ".gitignore",
+      "n_commits": 6,
+      "stage": "config"
+    },
+    {
+      "dir": "data/mlb/pipeline",
+      "n_commits": 4,
+      "stage": "ingestion"
+    },
+    {
+      "dir": "data/mlb/eda",
+      "n_commits": 3,
+      "stage": "features"
+    },
+    {
+      "dir": "data/mlb/ingestion",
+      "n_commits": 3,
+      "stage": "ingestion"
+    },
+    {
+      "dir": "data/mlb/pipeline",
+      "n_commits": 3,
+      "stage": "features"
+    },
+    {
+      "dir": "data/mlb/pipeline",
+      "n_commits": 3,
+      "stage": "models"
+    },
+    {
+      "dir": "taleb_audit.py",
+      "n_commits": 3,
+      "stage": "validation"
+    }
+  ],
+  "abandoned": {
+    "n_files": 31,
+    "n_archived_in_place": 27,
+    "n_deleted": 4,
+    "by_stage": {
+      "other": 5,
+      "decision_surface": 1,
+      "features": 7,
+      "models": 7,
+      "portfolio_staking": 3,
+      "ingestion": 6,
+      "validation": 2
+    },
+    "by_dir": {
+      "data/mlb/eda/archive": 14,
+      "data/mlb/pipeline/archive": 6,
+      "data/mlb/archive": 3,
+      "data/mlb/ingestion/archive": 3,
+      "notebooks/archive": 1,
+      "reports/taleb_audit": 1,
+      "reports/taleb_audit_v4": 1,
+      "2026-07-04-212141-command-messagestartcommand-message.txt": 1
+    }
+  },
+  "composition_lines": {
+    "modeling": 108150,
+    "scaffolding": 33001,
+    "evaluation": 24224
+  },
+  "composition_files": {
+    "modeling": 210,
+    "scaffolding": 93,
+    "evaluation": 60
+  }
+}
