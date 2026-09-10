@@ -19,6 +19,7 @@ from ooda.policy import (
     validation_route,
     work_permitted,
 )
+from ooda.policy import project_state_warnings
 from ooda.preflight import preflight
 
 
@@ -315,6 +316,39 @@ class Test13OptionalSpecialistLens(unittest.TestCase):
                / "src/ooda/resources/reference/routing-vocabulary.md").read_text(encoding="utf-8")
         for lens in ("market-microstructure", "security-abuse", "reliability-systems", "portfolio"):
             self.assertIn(lens, ref)
+
+
+class Test04bProjectStateHygiene(unittest.TestCase):
+    """PROJECT_STATE is orientation, not an event log of mutable facts."""
+
+    STALE = """# PROJECT_STATE
+Goal: predict the +1h outcome.
+Currently on branch feature/broad-model, PR #42 open.
+Collector is paused.
+Development population 14,308 rows.
+"""
+
+    CLEAN = """# PROJECT_STATE
+Goal: improve the trade/skip decision at buy time.
+Current decision: is there signal in buy-time features at all?
+Current bottleneck: no baseline has been measured.
+Claim ceiling: discovery. Sealed holdout untouched.
+Next unknown: does C1 beat C0 on log loss?
+Authoritative pointers: .ooda/charter.json, the tape health endpoint, Git.
+"""
+
+    def test_mutable_facts_are_flagged(self):
+        warnings = project_state_warnings(self.STALE)
+        reasons = " ".join(w.reason for w in warnings)
+        self.assertIn("Git", reasons)
+        self.assertIn("runtime", reasons)
+        self.assertGreaterEqual(len(warnings), 3)
+
+    def test_orientation_prose_is_not_flagged(self):
+        self.assertEqual(project_state_warnings(self.CLEAN), [])
+
+    def test_headings_and_code_blocks_are_ignored(self):
+        self.assertEqual(project_state_warnings("# branch\n> PR #1\n```\nHEAD\n```\n"), [])
 
 
 class TestBackwardCompatibility(unittest.TestCase):

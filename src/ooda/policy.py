@@ -385,3 +385,59 @@ def lens_budget_ok(lenses: Sequence[str], *, justification: str = "") -> Tuple[b
     if not justification.strip():
         return False, f"{n} lenses require a concrete justification"
     return True, f"{n} lenses justified: {justification.strip()}"
+
+
+# --------------------------------------------------------------------------
+# PROJECT_STATE hygiene
+# --------------------------------------------------------------------------
+
+# Facts that belong to an authoritative surface, not to durable prose. A summary
+# that restates them is stale the moment it is written -- this is the shape of
+# the "collection paused" error, where prose outlived the runtime it described.
+_MUTABLE_FACT_PATTERNS = (
+    (r"\b(?:currently |now )?(?:on |at )?branch\b", "branch state belongs to Git"),
+    (r"\bPR\s*#?\d+\b", "PR state belongs to Git"),
+    (r"\bHEAD\b", "HEAD belongs to Git"),
+    (r"\bcollector (?:is )?(?:running|paused|stopped|active)\b", "process state belongs to the runtime"),
+    (r"\bwriter (?:is )?(?:running|paused|stopped|active|held)\b", "writer state belongs to the runtime"),
+    (r"\b(?:as of|last updated|last run)\s+\d{4}-\d{2}-\d{2}", "timestamps go stale; point at the source"),
+    (r"\b\d{1,3}(?:,\d{3})+\s+(?:rows|records|events|units)\b", "counts belong to the data artifact"),
+)
+
+# Sections a durable orientation summary should carry.
+PROJECT_STATE_TOPICS = (
+    "goal", "decision", "bottleneck", "evidence", "claim",
+    "blocker", "next unknown", "gate",
+)
+
+
+@dataclass(frozen=True)
+class StateWarning:
+    line_number: int
+    line: str
+    reason: str
+
+
+def project_state_warnings(text: str) -> List[StateWarning]:
+    """Flag mutable facts frozen into durable prose.
+
+    Advisory, not fatal: the point is to move the fact to its authoritative
+    surface, not to fail a build over a sentence.
+    """
+    import re as _re
+
+    warnings: List[StateWarning] = []
+    in_fence = False
+    for i, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        # Fenced examples and headings quote these facts deliberately.
+        if in_fence or not stripped or stripped.startswith(("#", ">")):
+            continue
+        for pattern, reason in _MUTABLE_FACT_PATTERNS:
+            if _re.search(pattern, stripped, _re.IGNORECASE):
+                warnings.append(StateWarning(i, stripped[:100], reason))
+                break
+    return warnings

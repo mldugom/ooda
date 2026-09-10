@@ -21,6 +21,7 @@ from .policy import (
     CLAIM_CEILINGS,
     Blocker,
     parse_blocker,
+    project_state_warnings,
     validation_route,
 )
 from .preflight import preflight
@@ -423,6 +424,26 @@ def cmd_route_validation(a):
     return 0
 
 
+def cmd_state_check(a):
+    """Warn when durable orientation prose has absorbed mutable runtime facts."""
+    path = Path(a.file)
+    if not path.is_file():
+        print(f"FAIL {path} not found", file=sys.stderr)
+        return 2
+    warnings = project_state_warnings(path.read_text(encoding="utf-8"))
+    if not warnings:
+        print(f"STATE ok {path} carries orientation, not runtime truth")
+        return 0
+    for w in warnings:
+        print(f"WARN {path}:{w.line_number} {w.reason}\n     {w.line}", file=sys.stderr)
+    print(
+        f"\n{len(warnings)} mutable fact(s) frozen into prose. "
+        "Point at the authoritative surface instead; prose never outranks it.",
+        file=sys.stderr,
+    )
+    return 0 if a.warn_only else 1
+
+
 def cmd_validate(a):
     print("INFO `ooda validate` is kept for compatibility; prefer `ooda doctor FILE`.", file=sys.stderr)
     return _report_validation(Path(a.file))
@@ -594,6 +615,11 @@ def parser():
     q.add_argument("--diff", nargs=2, metavar=("OLD", "NEW"), help="detect goalpost movement")
     q.add_argument("--output", default=".ooda/charter.json")
     q.set_defaults(func=cmd_charter)
+
+    q = subs.add_parser("state-check", help="flag mutable runtime facts frozen into PROJECT_STATE prose")
+    q.add_argument("file", nargs="?", default="PROJECT_STATE.md")
+    q.add_argument("--warn-only", action="store_true", help="never exit non-zero")
+    q.set_defaults(func=cmd_state_check)
 
     q = subs.add_parser("route-validation", help="route validation by consequence")
     q.add_argument("--signal", action="append", default=[], help="repeatable consequence signal")
