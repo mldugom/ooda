@@ -22,10 +22,12 @@ class WorkflowTests(unittest.TestCase):
             "project_class": "trading-research",
             "authority": {"integration_owner": "human"},
         }))
+        # Deliberately stale-looking prose. Minimal OODA may warn about this,
+        # but must never promote it into the current decision summary/prompt.
         (repo / "PROJECT_STATE.md").write_text(
-            "# Project State\n\n## Current objective\nTest wallet history against the market benchmark.\n\n"
-            "## Open decisions / blockers\nNeed held-out economic evidence.\n\n"
-            "## Next gate\nMeasure net value after realistic costs.\n"
+            "# Project State\n\n## Current objective\nPID 99999 runs an old observe-only process from deadbee.\n\n"
+            "## Open decisions / blockers\nDo not unfreeze OLD-STAGE.\n\n"
+            "## Next gate\nKeep exactly one old writer.\n"
         )
         return repo
 
@@ -71,6 +73,33 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("--prompt", captured[0])
         self.assertEqual(stream["session_id"], "session-123")
         self.assertFalse(stream["allow_subagents"])
+
+    def test_run_without_objective_or_trusted_state_orients_on_current_truth(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = self._repo(root)
+            grok_home = root / "grok"
+            ooda_home = root / "ooda-home"
+            self._install_skill(grok_home)
+            captured = []
+
+            def fake_call(command):
+                captured.append(command)
+                session = workflow._session_root(repo) / "orientation-session"
+                session.mkdir(parents=True)
+                return 0
+
+            with mock.patch.dict(os.environ, {"GROK_HOME": str(grok_home), "OODA_HOME": str(ooda_home)}, clear=False), \
+                 mock.patch.object(workflow, "_grok_binary", return_value="grok"), \
+                 mock.patch.object(workflow.subprocess, "call", side_effect=fake_call):
+                rc = workflow.run_work(repo, None)
+
+        self.assertEqual(rc, 0)
+        prompt = captured[0][captured[0].index("--prompt") + 1]
+        self.assertIn("current authoritative repository, data, and runtime state", prompt)
+        self.assertIn("Treat PROJECT_STATE.md", prompt)
+        self.assertNotIn("PID 99999 runs an old", prompt)
+        self.assertNotIn("OLD-STAGE", prompt)
 
     def test_subagents_require_explicit_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -144,7 +173,7 @@ class WorkflowTests(unittest.TestCase):
         call.assert_not_called()
         self.assertIn("predates the current OODA rules", err.getvalue())
 
-    def test_next_is_deterministic_and_does_not_launch_grok(self):
+    def test_next_is_deterministic_and_refuses_stale_project_state(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = self._repo(Path(tmp))
             out = io.StringIO()
@@ -153,9 +182,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         call.assert_not_called()
         text = out.getvalue()
-        self.assertIn("Current question", text)
-        self.assertIn("Next highest-value step", text)
-        self.assertNotIn("C1", text)
+        self.assertIn("Current decision state: not yet refreshed", text)
+        self.assertIn("ooda run", text)
+        self.assertNotIn("PID 99999", text)
+        self.assertNotIn("OLD-STAGE", text)
 
     def test_help_exposes_only_small_everyday_surface_first(self):
         text = workflow.help_text()
