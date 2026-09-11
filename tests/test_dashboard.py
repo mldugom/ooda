@@ -9,49 +9,43 @@ from ooda.dashboard import discover_projects, render_html
 
 
 class DashboardTests(unittest.TestCase):
-    def test_discovers_adopted_repo_and_renders_control_room(self):
+    def test_discovers_project_in_decision_language(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             repo = root / "demo"
             (repo / ".ooda/work-orders").mkdir(parents=True)
             (repo / ".ooda/traces").mkdir(parents=True)
-            (repo / ".ooda/project.json").write_text(
-                json.dumps(
-                    {
-                        "schema": "ooda/project/v1",
-                        "project_id": "demo",
-                        "project_class": "software-product",
-                    }
-                )
-            )
+            (repo / ".ooda/project.json").write_text(json.dumps({
+                "schema": "ooda/project/v1", "project_id": "demo", "project_class": "quantitative-research"
+            }))
             (repo / "PROJECT_STATE.md").write_text(
-                "# Project State\n\n"
-                "## Current objective\nShip one vertical slice.\n\n"
-                "## Open decisions / blockers\n- None\n\n"
-                "## Next gate\nReview UX\n"
+                "# Project State\n\n## Current objective\nTest whether wallet history improves prediction quality.\n\n"
+                "## Open decisions / blockers\nNeed more held-out evidence.\n\n## Next gate\nCompare against the current benchmark.\n"
             )
-            (repo / ".ooda/work-orders/DEMO-01.json").write_text(
-                json.dumps(
-                    {
-                        "id": "DEMO-01",
-                        "role": "engineer",
-                        "profile": "full-stack",
-                        "claim_level": "n-a",
-                        "lenses": ["product-user"],
-                    }
-                )
-            )
+            (repo / ".ooda/project-view.json").write_text(json.dumps({
+                "schema": "ooda/project-view/v1",
+                "goal": "Make better profitable trade decisions.",
+                "decision_served": "Which trades are worth taking?",
+                "stakeholder_summary": "Early evidence is promising but not decisive.",
+                "timeline": [],
+            }))
+            (repo / ".ooda/work-orders/DEMO-01.json").write_text(json.dumps({"id": "DEMO-01"}))
 
             projects = discover_projects(root)
             self.assertEqual(len(projects), 1)
-            self.assertEqual(projects[0]["project_id"], "demo")
-            self.assertEqual(projects[0]["stage"], "act")
-            self.assertEqual(projects[0]["work_order"], "DEMO-01")
+            p = projects[0]
+            self.assertEqual(p["project_id"], "demo")
+            self.assertEqual(p["status"], "Work in progress")
+            self.assertEqual(p["goal"], "Make better profitable trade decisions.")
+            self.assertEqual(p["decision"], "Which trades are worth taking?")
+            self.assertIn("wallet history", p["current_question"])
 
-            page = render_html(projects, 60, root)
-            self.assertIn("OODA Control Room", page)
-            self.assertIn("Refresh now", page)
-            self.assertIn("Ship one vertical slice", page)
+            page = render_html(projects, 0, root)
+            self.assertIn("Prediction Work", page)
+            self.assertIn("BUSINESS OBJECTIVE", page)
+            self.assertIn("CURRENT MODELING / ENGINEERING QUESTION", page)
+            self.assertNotIn("OBJECTIVE LADDER", page)
+            self.assertNotIn("COST GUZZLERS", page)
 
 
 if __name__ == "__main__":

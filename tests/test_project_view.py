@@ -37,18 +37,15 @@ class ProjectViewTests(unittest.TestCase):
     def test_requires_exactly_one_current_rung(self):
         data = json.loads(json.dumps(SAMPLE))
         data["objective_ladder"][1]["status"] = "provisional"
-        errors = project_view.validate_project_view(data)
-        self.assertIn("objective_ladder must contain exactly one current rung", errors)
+        self.assertIn("objective_ladder must contain exactly one current rung", project_view.validate_project_view(data))
 
-    def test_terminal_renderer_has_ladder_timeline_and_summary(self):
+    def test_terminal_renderer_keeps_historical_view_capability(self):
         rendered = project_view.render_text(SAMPLE)
         self.assertIn("OBJECTIVE LADDER — sample", rendered)
         self.assertIn("● CURRENT Test the frozen hypotheses", rendered)
         self.assertIn("DECISION", rendered)
         self.assertIn("IMMEDIATE CONSEQUENCE", rendered)
         self.assertIn("PROGRAM IMPACT", rendered)
-        self.assertNotIn("SO WHAT", rendered)
-        self.assertNotIn("BIGGER IDEA", rendered)
         self.assertIn("CURRENT STAKEHOLDER SUMMARY", rendered)
 
     def test_cli_reads_project_view(self):
@@ -71,35 +68,31 @@ class ProjectViewTests(unittest.TestCase):
             self.assertEqual(rc, 2)
             self.assertIn("No durable project view", err.getvalue())
 
-    def test_dashboard_renders_project_view(self):
+    def test_dashboard_uses_timeline_without_promoting_the_ladder_to_primary_ui(self):
         project = {
+            "repo": Path("/tmp/sample"),
             "project_id": "sample",
             "project_class": "quantitative-research",
-            "objective": "Test frozen hypotheses",
-            "stage": "orient",
-            "controller": "idle",
-            "work_order": "—",
-            "role": "—",
-            "profile": "—",
-            "lenses": [],
-            "claim": "n-a",
-            "result_state": "—",
-            "result_summary": "—",
-            "blockers": "None",
-            "next_gate": "Design the next test",
+            "goal": "Improve a prediction decision.",
+            "decision": "Choose the better model.",
+            "current_question": "Test frozen hypotheses",
+            "evidence": SAMPLE["stakeholder_summary"],
+            "uncertainty": "Need the controlled test.",
+            "next_step": "Run the controlled test.",
+            "status": "Ready to choose next work",
+            "result_state": "",
+            "work_order": "",
             "branch": "main",
             "head": "abc1234",
             "dirty": "no",
             "updated": "2026-09-08 00:00",
-            "objective_ladder": SAMPLE["objective_ladder"],
             "timeline": SAMPLE["timeline"],
-            "stakeholder_summary": SAMPLE["stakeholder_summary"],
+            "session": {},
         }
-        html = dashboard.render_html([project], 0, Path("/tmp"))
-        self.assertIn("CURRENT STAKEHOLDER SUMMARY", html)
-        self.assertIn("OBJECTIVE LADDER", html)
-        self.assertIn("RECENT DECISION TIMELINE", html)
-        self.assertIn("Freeze the candidate set", html)
+        page = dashboard.render_html([project], 0, Path("/tmp"))
+        self.assertIn("Recent material decisions", page)
+        self.assertIn("Freeze the candidate set", page)
+        self.assertNotIn("OBJECTIVE LADDER", page)
 
 
 if __name__ == "__main__":
