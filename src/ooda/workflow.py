@@ -19,6 +19,10 @@ from .layout import SKILL_REFERENCES
 from .policy import project_state_warnings
 
 WORKSTREAM_SCHEMA = "ooda/workstream/v1"
+DEFAULT_ORIENTATION_OBJECTIVE = (
+    "Orient on current authoritative repository, data, and runtime state; identify the business/modeling decision "
+    "this project is trying to improve and the single highest-value modeling or engineering step to take next."
+)
 
 
 def _repo(start: Path) -> Optional[Path]:
@@ -163,17 +167,23 @@ def print_next(repo: Path) -> int:
         text = _nonempty(value)
         if text:
             print(f"{label}: {text}")
-    if not any(_nonempty(value) for _, value in rows):
-        print("No decision-oriented project state is recorded yet.")
-        return 1
+
+    current_keys = ("current_question", "evidence", "uncertainty", "next_step")
+    if not any(_nonempty(p.get(key)) for key in current_keys):
+        print("Current decision state: not yet refreshed from authoritative repository/data/runtime sources.")
+        print("Next action: run `ooda run` to orient on current truth before choosing modeling work.")
     return 0
 
 
-def _run_objective(repo: Path, supplied: Optional[str]) -> Optional[str]:
+def _run_objective(repo: Path, supplied: Optional[str]) -> str:
     if supplied and supplied.strip():
         return supplied.strip()
     p = _project(repo)
-    return _nonempty(p.get("next_step")) or _nonempty(p.get("current_question")) or None
+    return (
+        _nonempty(p.get("next_step"))
+        or _nonempty(p.get("current_question"))
+        or DEFAULT_ORIENTATION_OBJECTIVE
+    )
 
 
 def _prompt(repo: Path, objective: str) -> str:
@@ -195,12 +205,14 @@ def _prompt(repo: Path, objective: str) -> str:
         f"Objective: {objective}\n"
         + ("\nCurrent decision context:\n" + context_text + "\n" if context_text else "")
         + "\nOperating constraints:\n"
+        "- Treat PROJECT_STATE.md, project-view.json, dashboard text, and prior chat as orientation only. Before calling a mutable fact current, verify it from its authoritative Git, runtime, data, or frozen scientific source.\n"
         "- Before expensive or data-dependent work, establish which data/runtime is authoritative and whether it is available here.\n"
         "- Keep authoritative/private data where it lives. If execution must happen elsewhere, prepare deterministic code here and return one reproducible command plus one compact result artifact.\n"
         "- Use the repository's own integrity/tests at the boundary where evidence is accepted.\n"
         "- Preserve negative findings; do not manufacture a narrative or add model complexity merely because a result disappoints.\n"
         "- Do not merge, deploy, mutate live systems, risk capital, or self-certify a consequential claim without explicit authority.\n"
         "- Stay on this objective. Use normal business and data-science language in updates; internal OODA labels are secondary technical detail.\n"
+        "- Do not repeat PIDs, commit hashes, live counts, or other fast-changing implementation facts in the stakeholder summary unless the user explicitly asks for technical detail.\n"
     )
 
 
@@ -219,9 +231,6 @@ def _prelaunch(repo: Path) -> tuple[Optional[str], list[str]]:
 
 def run_work(repo: Path, objective: Optional[str], *, allow_subagents: bool = False) -> int:
     objective = _run_objective(repo, objective)
-    if not objective:
-        print("OODA run: no objective or next modeling step is recorded. Supply one: ooda run \"<objective>\"", file=sys.stderr)
-        return 2
     grok, errors = _prelaunch(repo)
     if errors:
         for error in errors:
@@ -344,8 +353,8 @@ def help_text() -> str:
     return """OODA — minimal prediction-work interface
 
 Everyday commands:
-  ooda next                     show the decision, evidence, uncertainty, and next step
-  ooda run [\"objective\"]       launch one Grok workstream in this repository
+  ooda next                     show the trusted decision context and next step
+  ooda run [\"objective\"]       launch one Grok workstream in this repository; if omitted, orient on current truth first
   ooda continue                 resume the exact OODA-started Grok session
   ooda check                    check framework/project integrity without using model tokens
   ooda dashboard                open the read-only stakeholder dashboard
@@ -375,7 +384,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         return continue_work(repo)
     if command == "run":
         parser = argparse.ArgumentParser(prog="ooda run", add_help=True)
-        parser.add_argument("objective", nargs="?", help="bounded modeling/research/engineering objective; defaults to recorded next step")
+        parser.add_argument("objective", nargs="?", help="bounded modeling/research/engineering objective; if omitted, orient on current truth or use the trusted recorded next step")
         parser.add_argument("--allow-subagents", action="store_true", help="explicitly enable Grok subagents for this workstream")
         args = parser.parse_args(argv[1:])
         return run_work(repo, args.objective, allow_subagents=args.allow_subagents)
