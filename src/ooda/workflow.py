@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 from urllib.parse import quote
 
+from .cli import load, validate_project
 from .dashboard import discover_projects
 from .grok_safe import _grok_binary
 from .layout import SKILL_REFERENCES
 from .policy import project_state_warnings
-from .cli import load, validate_project
 
 WORKSTREAM_SCHEMA = "ooda/workstream/v1"
 
@@ -37,9 +37,7 @@ def _resource_path(*parts: str):
 
 
 def _expected_skill_files() -> Dict[str, bytes]:
-    out = {
-        "skills/ooda/SKILL.md": _resource_path("grok", "skills", "ooda", "SKILL.md").read_bytes(),
-    }
+    out = {"skills/ooda/SKILL.md": _resource_path("grok", "skills", "ooda", "SKILL.md").read_bytes()}
     for ref in SKILL_REFERENCES["ooda"]:
         out[f"skills/ooda/reference/{ref}"] = _resource_path("reference", ref).read_bytes()
     return out
@@ -116,8 +114,7 @@ def _write_workstream(repo: Path, session_id: str, *, allow_subagents: bool) -> 
 
 
 def _session_root(repo: Path) -> Path:
-    encoded = quote(str(repo.resolve()), safe="")
-    return _grok_home() / "sessions" / encoded
+    return _grok_home() / "sessions" / quote(str(repo.resolve()), safe="")
 
 
 def _session_ids(repo: Path) -> set[str]:
@@ -144,9 +141,7 @@ def _latest_session(repo: Path, candidates: set[str]) -> Optional[str]:
 
 def _project(repo: Path) -> Dict[str, Any]:
     projects = discover_projects(repo)
-    if projects:
-        return projects[0]
-    return {"repo": repo, "project_id": repo.name}
+    return projects[0] if projects else {"repo": repo, "project_id": repo.name}
 
 
 def _nonempty(value: Any) -> str:
@@ -214,9 +209,8 @@ def _prelaunch(repo: Path) -> tuple[Optional[str], list[str]]:
     grok = _grok_binary()
     if not grok:
         errors.append("Grok CLI not found; set GROK_BIN or put grok on PATH")
-    project_path = repo / ".ooda" / "project.json"
     try:
-        project_errors = validate_project(load(project_path))
+        project_errors = validate_project(load(repo / ".ooda" / "project.json"))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         project_errors = [str(exc)]
     errors.extend(f"project: {error}" for error in project_errors)
@@ -244,13 +238,16 @@ def run_work(repo: Path, objective: Optional[str], *, allow_subagents: bool = Fa
     command.extend(["--prompt", _prompt(repo, objective)])
     rc = subprocess.call(command)
 
-    after = _session_ids(repo)
-    new_ids = after - before
-    session_id = _latest_session(repo, new_ids) or _latest_session(repo, after)
+    # A normal interactive launch creates a new Grok session. Record only a
+    # newly observed session id. Falling back to "most recent" could silently
+    # bind OODA to an unrelated Grok conversation, which is worse than refusing
+    # continuation and asking for a fresh run.
+    new_ids = _session_ids(repo) - before
+    session_id = _latest_session(repo, new_ids)
     if session_id:
         _write_workstream(repo, session_id, allow_subagents=allow_subagents)
     elif rc == 0:
-        print("OODA run: Grok exited normally but its session id could not be recorded; `ooda continue` will fail closed.", file=sys.stderr)
+        print("OODA run: Grok exited normally but no new session id was observed; `ooda continue` will fail closed.", file=sys.stderr)
     return rc
 
 
@@ -293,9 +290,8 @@ def continue_work(repo: Path) -> int:
 
 def check(repo: Path) -> int:
     failures = 0
-    project_path = repo / ".ooda" / "project.json"
     try:
-        errors = validate_project(load(project_path))
+        errors = validate_project(load(repo / ".ooda" / "project.json"))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         errors = [str(exc)]
     if errors:
