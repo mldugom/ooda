@@ -102,9 +102,9 @@ class WorkflowTests(unittest.TestCase):
             grok_home = root / "grok"
             ooda_home = root / "ooda-home"
             self._install_skill(grok_home)
-            session = workflow._session_root(repo) / "ooda-session"
-            session.mkdir(parents=True)
             with mock.patch.dict(os.environ, {"GROK_HOME": str(grok_home), "OODA_HOME": str(ooda_home)}, clear=False):
+                session = workflow._session_root(repo) / "ooda-session"
+                session.mkdir(parents=True)
                 workflow._write_workstream(repo, "ooda-session", allow_subagents=False)
                 with mock.patch.object(workflow, "_grok_binary", return_value="grok"), \
                      mock.patch.object(workflow.subprocess, "call", return_value=0) as call:
@@ -123,22 +123,22 @@ class WorkflowTests(unittest.TestCase):
             grok_home = root / "grok"
             ooda_home = root / "ooda-home"
             self._install_skill(grok_home)
-            session = workflow._session_root(repo) / "old-session"
-            session.mkdir(parents=True)
-            stream_path = workflow._workstream_path(repo)
-            stream_path.parent.mkdir(parents=True)
-            stream_path.write_text(json.dumps({
-                "schema": workflow.WORKSTREAM_SCHEMA,
-                "repo": str(repo.resolve()),
-                "session_id": "old-session",
-                "framework_fingerprint": "old-rules",
-                "allow_subagents": False,
-            }))
             err = io.StringIO()
-            with mock.patch.dict(os.environ, {"GROK_HOME": str(grok_home), "OODA_HOME": str(ooda_home)}, clear=False), \
-                 mock.patch.object(workflow, "_grok_binary", return_value="grok"), \
-                 mock.patch.object(workflow.subprocess, "call") as call, redirect_stderr(err):
-                rc = workflow.continue_work(repo)
+            with mock.patch.dict(os.environ, {"GROK_HOME": str(grok_home), "OODA_HOME": str(ooda_home)}, clear=False):
+                session = workflow._session_root(repo) / "old-session"
+                session.mkdir(parents=True)
+                stream_path = workflow._workstream_path(repo)
+                stream_path.parent.mkdir(parents=True)
+                stream_path.write_text(json.dumps({
+                    "schema": workflow.WORKSTREAM_SCHEMA,
+                    "repo": str(repo.resolve()),
+                    "session_id": "old-session",
+                    "framework_fingerprint": "old-rules",
+                    "allow_subagents": False,
+                }))
+                with mock.patch.object(workflow, "_grok_binary", return_value="grok"), \
+                     mock.patch.object(workflow.subprocess, "call") as call, redirect_stderr(err):
+                    rc = workflow.continue_work(repo)
 
         self.assertEqual(rc, 2)
         call.assert_not_called()
