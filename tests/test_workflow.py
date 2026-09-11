@@ -70,7 +70,9 @@ class WorkflowTests(unittest.TestCase):
 
         self.assertEqual(rc, 0)
         self.assertNotIn("--subagents", captured[0])
-        self.assertIn("--prompt", captured[0])
+        self.assertNotIn("--prompt", captured[0])
+        self.assertNotIn("--single", captured[0])
+        self.assertIn("Test one model comparison", captured[0][-1])
         self.assertEqual(stream["session_id"], "session-123")
         self.assertFalse(stream["allow_subagents"])
 
@@ -95,7 +97,7 @@ class WorkflowTests(unittest.TestCase):
                 rc = workflow.run_work(repo, None)
 
         self.assertEqual(rc, 0)
-        prompt = captured[0][captured[0].index("--prompt") + 1]
+        prompt = captured[0][-1]
         self.assertIn("current authoritative repository, data, and runtime state", prompt)
         self.assertIn("Treat PROJECT_STATE.md", prompt)
         self.assertNotIn("PID 99999 runs an old", prompt)
