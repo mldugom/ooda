@@ -244,7 +244,9 @@ def run_work(repo: Path, objective: Optional[str], *, allow_subagents: bool = Fa
     command = [grok, "--cwd", str(repo), "--rules", _resource_path("EFFICIENT_AGENT.md").read_text(encoding="utf-8")]
     if allow_subagents:
         command.append("--subagents")
-    command.extend(["--prompt", _prompt(repo, objective)])
+    # Grok's interactive CLI accepts the initial prompt as the positional PROMPT.
+    # --prompt is not a valid flag in the current CLI; -p/--single is headless.
+    command.append(_prompt(repo, objective))
     rc = subprocess.call(command)
 
     # A normal interactive launch creates a new Grok session. Record only a
