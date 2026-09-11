@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-from .dashboard import discover_projects, _read_json
+from .dashboard import discover_projects
 
 
 def _e(value: Any) -> str:
@@ -16,26 +16,17 @@ def _e(value: Any) -> str:
 
 
 def _current_gate(project: Dict[str, Any]) -> str:
-    repo = project.get("repo")
-    if isinstance(repo, Path):
-        view = _read_json(repo / ".ooda" / "project-view.json")
-        if view.get("schema") == "ooda/project-view/v1":
-            gate = view.get("human_gate") or view.get("next_gate")
-            if gate:
-                return str(gate)
+    """Return only the trusted current next step collected by dashboard.
+
+    Older project-view `human_gate`/`next_gate` fields are deliberately not
+    re-read here. They are derived prose and were observed to outlive the
+    runtime/research state they described.
+    """
     return str(project.get("next_step") or "")
 
 
 def _fresh_projects(root: Path) -> List[Dict[str, Any]]:
-    projects = discover_projects(root)
-    out: List[Dict[str, Any]] = []
-    for project in projects:
-        item = dict(project)
-        gate = _current_gate(item)
-        if gate:
-            item["next_step"] = gate
-        out.append(item)
-    return out
+    return discover_projects(root)
 
 
 def _field(label: str, value: Any, *, strong: bool = False) -> str:
@@ -95,6 +86,16 @@ def _project_card(project: Dict[str, Any]) -> str:
     uncertainty = _field("WHAT IS STILL UNCERTAIN", project.get("uncertainty"))
     next_step = _field("NEXT HIGHEST-VALUE STEP", project.get("next_step"), strong=True)
 
+    has_current_state = any(
+        str(project.get(key) or "").strip()
+        for key in ("current_question", "evidence", "uncertainty", "next_step")
+    )
+    refresh_note = "" if has_current_state else (
+        '<div class="refresh-note"><b>Current decision state needs a refresh.</b> '
+        'OODA will not substitute old project prose for present-tense evidence. '
+        'Run <code>ooda run</code> to orient from current repository, data, and runtime truth.</div>'
+    )
+
     technical_bits = [
         f"repository: {_e(project.get('repo'))}",
         f"git: {_e(project.get('branch'))} @ {_e(project.get('head'))}",
@@ -126,6 +127,7 @@ def _project_card(project: Dict[str, Any]) -> str:
         {uncertainty}
       </div>
       {next_step}
+      {refresh_note}
       {_session_html(project)}
       {_timeline_html(project)}
       <details class="technical-details">
@@ -163,7 +165,8 @@ header{{display:flex;justify-content:space-between;gap:20px;align-items:end;marg
 .status-badge{{font-size:12px;font-weight:800;background:var(--soft);border:1px solid #c8d8d2;border-radius:999px;padding:6px 10px}}
 .business-objective{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}} .evidence-grid{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}}
 .decision-field{{border:1px solid var(--rule);border-radius:8px;padding:11px 12px;background:#fff}} .decision-field.strong{{border-top:3px solid var(--accent)}} .decision-field b{{display:block;margin-top:5px;font-size:14px;line-height:1.4}}
-.project-card>.decision-field{{margin-top:10px;background:var(--soft)}} .session-strip{{margin-top:10px;padding:8px 10px;border-left:3px solid var(--accent);background:#f7faf8}} .session-strip b{{font-size:12px}}
+.project-card>.decision-field{{margin-top:10px;background:var(--soft)}} .refresh-note{{margin-top:10px;padding:10px 12px;border:1px dashed var(--rule);border-radius:8px;color:var(--muted);background:#faf8f2}} .refresh-note b{{color:var(--ink)}}
+.session-strip{{margin-top:10px;padding:8px 10px;border-left:3px solid var(--accent);background:#f7faf8}} .session-strip b{{font-size:12px}}
 .technical-details,.decision-history{{margin-top:11px;color:var(--muted)}} summary{{cursor:pointer;font-weight:700}} .technical-details p{{margin-top:6px;font-size:12px}}
 .decision-row{{display:grid;grid-template-columns:90px 1fr 1.2fr;gap:10px;padding:7px 0;border-bottom:1px solid #eee8dc;font-size:12px}} .decision-row em{{font-style:normal;color:var(--muted)}}
 .empty{{background:var(--paper);border:1px dashed var(--rule);border-radius:10px;padding:18px;color:var(--muted)}}
