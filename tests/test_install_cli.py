@@ -38,7 +38,6 @@ class InstallCliTests(unittest.TestCase):
             bin_dir = home / ".local" / "bin"
             home.mkdir(parents=True)
             bin_dir.mkdir(parents=True)
-
             legacy = bin_dir / "ooda"
             legacy.symlink_to(ROOT / "scripts" / "ooda")
 
@@ -57,7 +56,6 @@ class InstallCliTests(unittest.TestCase):
             bin_dir = home / ".local" / "bin"
             home.mkdir(parents=True)
             bin_dir.mkdir(parents=True)
-
             legacy = bin_dir / "grok-safe"
             legacy.symlink_to(ROOT / "scripts" / "grok-safe")
 
@@ -76,7 +74,6 @@ class InstallCliTests(unittest.TestCase):
             bin_dir = home / ".local" / "bin"
             home.mkdir(parents=True)
             bin_dir.mkdir(parents=True)
-
             legacy = bin_dir / "grok-safe"
             legacy.write_text(
                 "#!/usr/bin/env bash\n"
@@ -98,7 +95,6 @@ class InstallCliTests(unittest.TestCase):
             bin_dir = home / ".local" / "bin"
             home.mkdir(parents=True)
             bin_dir.mkdir(parents=True)
-
             unknown = bin_dir / "grok-safe"
             unknown.write_text("#!/bin/sh\necho unrelated\n", encoding="utf-8")
 
@@ -108,12 +104,45 @@ class InstallCliTests(unittest.TestCase):
             self.assertEqual(unknown.read_text(encoding="utf-8"), "#!/bin/sh\necho unrelated\n")
             self.assertIn("Refusing to replace existing", cp.stderr)
 
+    def test_obsolete_managed_deepseek_wrapper_is_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            bin_dir = home / ".local" / "bin"
+            home.mkdir(parents=True)
+            bin_dir.mkdir(parents=True)
+            old = bin_dir / "deepseek-safe"
+            old.write_text(
+                "#!/usr/bin/env bash\n"
+                f"# OODA deepseek-safe source: {ROOT}\n"
+                "echo old\n",
+                encoding="utf-8",
+            )
+
+            cp = run_installer(home, bin_dir)
+
+            self.assertEqual(cp.returncode, 0, cp.stderr)
+            self.assertFalse(old.exists())
+            self.assertIn("Removed obsolete OODA-managed", cp.stdout)
+
+    def test_unrelated_deepseek_executable_is_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            bin_dir = home / ".local" / "bin"
+            home.mkdir(parents=True)
+            bin_dir.mkdir(parents=True)
+            unrelated = bin_dir / "deepseek-safe"
+            unrelated.write_text("#!/bin/sh\necho unrelated\n", encoding="utf-8")
+
+            cp = run_installer(home, bin_dir)
+
+            self.assertEqual(cp.returncode, 0, cp.stderr)
+            self.assertEqual(unrelated.read_text(encoding="utf-8"), "#!/bin/sh\necho unrelated\n")
+
     def test_macos_bash_persists_path_in_bash_profile(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "home"
             bin_dir = home / ".local" / "bin"
             home.mkdir(parents=True)
-
             env = os.environ.copy()
             env.update(
                 {

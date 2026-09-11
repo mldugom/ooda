@@ -15,9 +15,9 @@ from pathlib import Path
 DEFAULT_PORT = 8792
 PORT_SEARCH_SPAN = 20
 CURRENT_UI_MARKERS = (
-    "project-sidebar",
-    "human-gate-band",
-    "domain-compact-control-room",
+    "stakeholder-dashboard",
+    "business-objective",
+    "technical-details",
 )
 
 
@@ -40,10 +40,7 @@ def _is_any_ooda_dashboard(port: int, root: Path) -> bool:
     body = _dashboard_body(port)
     if body is None:
         return False
-    return (
-        "<title>OODA Control Room</title>" in body
-        and html.escape(str(root)) in body
-    )
+    return "<title>OODA Control Room</title>" in body and html.escape(str(root)) in body
 
 
 def _is_ooda_dashboard(port: int, root: Path) -> bool:
@@ -63,17 +60,12 @@ def _select_port(preferred: int, root: Path) -> tuple[int, bool]:
             return port, True
         if not _port_open(port):
             return port, False
-    raise RuntimeError(
-        f"No free OODA dashboard port found in {preferred}-{preferred + PORT_SEARCH_SPAN - 1}"
-    )
+    raise RuntimeError(f"No free OODA dashboard port found in {preferred}-{preferred + PORT_SEARCH_SPAN - 1}")
 
 
 def launch() -> int:
-    root = Path(
-        os.environ.get("OODA_PROJECTS_ROOT", str(Path.home() / "repos"))
-    ).expanduser()
+    root = Path(os.environ.get("OODA_PROJECTS_ROOT", str(Path.home() / "repos"))).expanduser()
     preferred = int(os.environ.get("OODA_DASHBOARD_PORT", str(DEFAULT_PORT)))
-
     stale_preferred = _is_any_ooda_dashboard(preferred, root) and not _is_ooda_dashboard(preferred, root)
 
     try:
@@ -83,17 +75,14 @@ def launch() -> int:
         return 2
 
     url = f"http://127.0.0.1:{port}/"
-
     if port != preferred:
         if stale_preferred:
             print(
-                f"OODA dashboard: stale pre-upgrade Control Room is still running on port {preferred}; "
-                f"starting the current UI on {port}. The old process is left untouched."
+                f"OODA dashboard: an older Control Room is still running on port {preferred}; "
+                f"starting the current dashboard on {port}. The old process is left untouched."
             )
         else:
-            print(
-                f"OODA dashboard: port {preferred} is in use by another service; using {port} instead."
-            )
+            print(f"OODA dashboard: port {preferred} is in use by another service; using {port} instead.")
 
     if not reuse:
         log_dir = Path.home() / ".ooda"
@@ -115,10 +104,7 @@ def launch() -> int:
                 break
             time.sleep(0.1)
         else:
-            print(
-                f"OODA dashboard failed to start; see {log_dir / 'dashboard.log'}",
-                file=sys.stderr,
-            )
+            print(f"OODA dashboard failed to start; see {log_dir / 'dashboard.log'}", file=sys.stderr)
             return 2
 
     print(url)

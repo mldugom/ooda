@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ooda-ai"
 version = "0.4.4"
-description = "Provider-neutral OODA control system for bounded AI-assisted work"
+description = "Decision-centered OODA harness for AI-assisted prediction systems"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
@@ -17,7 +17,6 @@ Repository = "https://github.com/mldugom/ooda"
 [project.scripts]
 ooda = "ooda.entrypoint:main"
 grok-safe = "ooda.grok_safe:main"
-deepseek-safe = "ooda.deepseek_safe:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -31,6 +30,4 @@ ooda = [
   "resources/reference/*.md",
   "resources/grok/skills/ooda/SKILL.md",
   "resources/grok/skills/ooda-controller/SKILL.md",
-  "resources/deepseek/skills/ooda/SKILL.md",
-  "resources/deepseek/skills/ooda-controller/SKILL.md",
 ]
