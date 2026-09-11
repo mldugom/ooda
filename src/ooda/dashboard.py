@@ -84,9 +84,16 @@ def _session(repo: Path) -> dict:
 
 
 def _collect_project(repo: Path) -> Dict[str, Any]:
+    """Collect one stakeholder view without promoting stale prose to current truth.
+
+    PROJECT_STATE and the old stakeholder_summary remain readable historical
+    material, but they are not allowed to populate current decision fields.
+    The study found that mutable process/runtime facts copied into prose outlive
+    reality. Current fields therefore come only from explicit decision fields in
+    project-view, or from an actually open work order for the current question.
+    """
     project_path = repo / ".ooda" / "project.json"
     project = _read_json(project_path)
-    state_path = repo / "PROJECT_STATE.md"
     view = _view(repo)
     work_path, work = _latest_json(repo / ".ooda" / "work-orders")
     trace_path, trace = _latest_json(repo / ".ooda" / "traces")
@@ -95,23 +102,28 @@ def _collect_project(repo: Path) -> Dict[str, Any]:
 
     result = trace.get("result") if isinstance(trace.get("result"), dict) else {}
     result_state = str(result.get("state") or "")
-    result_summary = str(result.get("summary") or "").strip()
     work_id = str(work.get("id") or (work_path.stem if work_path else ""))
+    trace_matches_work = bool(work and trace and trace.get("work_order_id") == work.get("id"))
 
-    objective = _section(state_path, "Current objective")
-    blockers = _section(state_path, "Open decisions / blockers")
-    state_gate = _section(state_path, "Next gate")
-
+    # Goal and decision are durable orientation, not mutable runtime facts.
     brief = repo / ".ooda" / "domain-decision-brief.md"
     goal = str(view.get("goal") or _section(brief, "VALUE FUNCTION") or "").strip()
     decision = str(view.get("decision_served") or _section(brief, "DECISIONS") or "").strip()
-    bottleneck = str(view.get("current_bottleneck") or _section(brief, "CURRENT BOTTLENECK") or blockers).strip()
-    stakeholder = str(view.get("stakeholder_summary") or "").strip()
-    next_step = str(view.get("human_gate") or view.get("next_gate") or state_gate or trace.get("next_gate") or "").strip()
+
+    # Do not use PROJECT_STATE, stakeholder_summary, old human_gate, or generic
+    # trace prose as if they were current. A work order is current only while it
+    # has no matching trace. Otherwise the current decision fields must be
+    # refreshed explicitly by a new OODA workstream.
+    current_question = str(view.get("current_question") or "").strip()
+    if work and not trace_matches_work and work.get("objective"):
+        current_question = str(work.get("objective") or "").strip()
+    evidence = str(view.get("evidence") or "").strip()
+    uncertainty = str(view.get("uncertainty") or "").strip()
+    next_step = str(view.get("next_step") or "").strip()
 
     if not work:
         status = "Ready to choose next work"
-    elif trace and trace.get("work_order_id") == work.get("id"):
+    elif trace_matches_work:
         if result_state == "needs_human_gate":
             status = "Needs your decision"
         elif result_state == "blocked":
@@ -123,13 +135,17 @@ def _collect_project(repo: Path) -> Dict[str, Any]:
             if blocker is not None and blocker.exploration_allowed:
                 status = "Constraint identified; research can continue"
         elif result_state in {"completed", "negative_finding"}:
-            status = "Result ready to review"
+            status = "Result recorded; orient on what matters next"
         else:
             status = "Result recorded"
     else:
         status = "Work in progress"
 
-    candidates = [p for p in (project_path, state_path, work_path, trace_path, repo / ".ooda" / "project-view.json") if p and p.exists()]
+    candidates = [
+        p
+        for p in (project_path, work_path, trace_path, repo / ".ooda" / "project-view.json")
+        if p and p.exists()
+    ]
     try:
         newest = max(candidates, key=lambda p: p.stat().st_mtime)
         updated = time.strftime("%Y-%m-%d %H:%M", time.localtime(newest.stat().st_mtime))
@@ -142,9 +158,9 @@ def _collect_project(repo: Path) -> Dict[str, Any]:
         "project_class": str(project.get("project_class") or ""),
         "goal": goal,
         "decision": decision,
-        "current_question": objective,
-        "evidence": result_summary or stakeholder,
-        "uncertainty": bottleneck,
+        "current_question": current_question,
+        "evidence": evidence,
+        "uncertainty": uncertainty,
         "next_step": next_step,
         "status": status,
         "result_state": result_state,
